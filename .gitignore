@@ -1,0 +1,13 @@
+*.mp4
+config.json
+__pycache__
+build/
+dist/
+main.spec
+configuration.spec
+.venv
+.gemini_api_key
+background_videos/*
+output/*
+.yb_cache/*
+.polly_cache/*
