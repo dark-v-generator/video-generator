@@ -22,7 +22,8 @@ pip install -r requirements.txt
 ### Configurar credenciais
 
 Para executar o projeto é preciso ter as seguintes variáveis de ambiente configuradas:
-´´´
+
+```
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_DEFAULT_REGION=...
