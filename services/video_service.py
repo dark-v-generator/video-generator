@@ -34,7 +34,8 @@ def generate_video(
 
     width, height = background_video.clip.size
     if cover is not None:
-        cover.center()
+        cover.fit_width(width, config.padding)
+        cover.center(width, height)
         cover.set_duration(config.cover_duration)
         cover.apply_fadeout(1)
         background_video.merge(cover)
@@ -45,7 +46,8 @@ def generate_video(
             clip_height=height,
             padding=config.padding
         )
-        water_mark.center()
+        water_mark.fit_width(width, config.padding)
+        water_mark.center(width, height)
         water_mark.set_duration(audio.clip.duration)
         background_video.merge(water_mark)
     return background_video

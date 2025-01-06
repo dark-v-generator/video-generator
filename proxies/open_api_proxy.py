@@ -9,12 +9,7 @@ def generate_history(prompt:str) -> History:
         messages=[
             {
                 "role": "system", 
-                "content": """
-                    Você é um contador de histórias, e deve contar histórias em uma linguagem
-                    simples e fácil de entender. As histórias contadas devem usar temas que despertem
-                    o interesse do público como brigas de família, injustiças, traições, amores proibidos,
-                    entre outros. As histórias devem ser curtas e objetivas, com no máximo 500 palavras.
-                """
+                "content": "Você é um contador de histórias"
             },
             {
                 "role": "user", 
@@ -30,6 +25,10 @@ def generate_history(prompt:str) -> History:
                     "properties": {
                         "title": {
                             "description": "Título da história",
+                            "type": "string"
+                        },
+                        "subtitle": {
+                            "description": "Subtítulo da história",
                             "type": "string"
                         },
                         "description": {

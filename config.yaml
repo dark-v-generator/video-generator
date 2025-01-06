@@ -1,8 +1,15 @@
 main:
+  test_mode: true
   output_path: final.mp4
-  history_prompt: O tema da história é traição
+  history_prompt: 
+    Você é um contador de histórias, e relatos de pessoas comuns. As histórias devem ser em 
+    uma linguagem simples e fácil de entender. As histórias contadas devem usar temas que despertem
+    o interesse do público como brigas de família, injustiças, traições, amores proibidos,
+    entre outros, sempre com suspense e reviravoltas.
   video_config:
     watermark_path: assets/watermark.png
     end_silence_duration: 5
     background_audio_path: background_audios/suspense.mp3
-    
+    cover_duration: 5
+  cover_config:
+    font_path: assets/kite_one.ttf
