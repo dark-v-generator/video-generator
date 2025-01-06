@@ -1,3 +1,3 @@
-from core import cover_generator
+from services import cover_service
 
-cover_generator.generate_cover("A Traição que Partiu Meu Coração", "Uma história de amor, traição e dor", "output.png")
+cover_service.generate_cover("A Traição que Partiu Meu Coração", "Uma história de amor, traição e dor", "output.png")

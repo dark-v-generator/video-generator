@@ -1,0 +1,6 @@
+main:
+  output_path: final.mp4
+  history_prompt: O tema da história é traição
+  video_config:
+    watermark_path: assets/watermark.png
+    end_silence_duration: 5

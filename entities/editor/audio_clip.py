@@ -2,13 +2,24 @@ from moviepy import editor
 import os
 from moviepy.audio.AudioClip import AudioArrayClip
 import numpy as np
+from io import BytesIO
+import tempfile
 
 class AudioClip:
-    def __init__(self, file_path, volume=1):
-        if not os.path.isfile(file_path):
-            raise Exception("O arquivo de áudio não existe.")
-
-        self.clip = editor.AudioFileClip(file_path)
+    def __init__(self, source, volume=1):
+        if isinstance(source, str):
+            if not os.path.isfile(source):
+                raise Exception("O arquivo de áudio não existe.")
+            self.clip = editor.AudioFileClip(source)
+        elif isinstance(source, BytesIO):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
+                temp_file.write(source.read())
+                temp_file_path = temp_file.name
+            self.clip = editor.AudioFileClip(temp_file_path)
+            os.remove(temp_file_path)
+        else:
+            raise Exception("Fonte de áudio inválida. Deve ser um caminho de arquivo ou um stream.")
+        
         self.clip = self.clip.volumex(volume)
 
     def add_end_silence(self, duration_in_seconds):

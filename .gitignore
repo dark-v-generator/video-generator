@@ -5,7 +5,8 @@ build/
 dist/
 main.spec
 configuration.spec
-.venv
+.venv/
+venv/
 .gemini_api_key
 background_videos/*
 output/*
