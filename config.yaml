@@ -1,11 +1,12 @@
 main:
-  test_mode: true
-  output_path: final.mp4
+  test_mode: false
+  output_path: terror.mp4
   history_prompt: 
     Você é um contador de histórias, e relatos de pessoas comuns. As histórias devem ser em 
     uma linguagem simples e fácil de entender. As histórias contadas devem usar temas que despertem
     o interesse do público como brigas de família, injustiças, traições, amores proibidos,
-    entre outros, sempre com suspense e reviravoltas.
+    entre outros, sempre com suspense e reviravoltas. O tema da história que voê vai contar é
+    terror
   video_config:
     watermark_path: assets/watermark.png
     end_silence_duration: 5
