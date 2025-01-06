@@ -4,3 +4,5 @@ main:
   video_config:
     watermark_path: assets/watermark.png
     end_silence_duration: 5
+    background_audio_path: background_audios/suspense.mp3
+    

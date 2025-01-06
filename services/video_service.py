@@ -19,8 +19,9 @@ def create_video_compilation(min_duration: int) -> video_clip.VideoClip:
     return video
 
 def generate_video(
-        audio:audio_clip.AudioClip, 
-        background_video:video_clip.VideoClip,
+        audio: audio_clip.AudioClip, 
+        background_video: video_clip.VideoClip,
+        cover: image_clip.ImageClip = None,
         config: config.VideoConfig = config.VideoConfig(),
     ) -> video_clip.VideoClip:
     audio.add_end_silence(config.end_silece_seconds)
@@ -32,13 +33,7 @@ def generate_video(
     background_video.set_audio(audio)
 
     width, height = background_video.clip.size
-    if config.cover_path is not None:
-        cover = image_clip.ImageClip(
-            config.cover_path,
-            clip_width=width,
-            clip_height=height,
-            padding=config.padding
-        )
+    if cover is not None:
         cover.center()
         cover.set_duration(config.cover_duration)
         cover.apply_fadeout(1)

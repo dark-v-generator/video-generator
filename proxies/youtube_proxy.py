@@ -20,11 +20,11 @@ def get_video_ids(channel_id, max_results=500):
     return video_ids
 
 
-def download_youtube_video(video_id, output_path):
+def download_youtube_video(video_id):
     output_path = f'/tmp/{video_id}.mp4'
     url = f'https://www.youtube.com/watch?v={video_id}'
     yt = YouTube(url, 'WEB_CREATOR', use_oauth=True)
     if not os.path.exists(output_path):
         stream = yt.streams.get_highest_resolution()
-        stream.download(output_path='.yt_cache/', filename=f'{video_id}.mp4')
+        stream.download(output_path='/tmp', filename=f'{video_id}.mp4')
     return output_path, yt.length
