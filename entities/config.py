@@ -17,10 +17,6 @@ class CoverConfig(BaseModel):
     rounding_radius: int = Field(30, title="Rounding radius")
     width: int = Field(1400, title="Width of the cover")
     height: int = Field(400, title="Height of the cover")
-    font_scale_rate: float = Field(
-        0.578, title="Defines the rate from font size to pixel width"
-    )
-    line_distance: int = Field(80, title="Line distance")
 
 
 class VideoConfig(BaseModel):

@@ -11,8 +11,20 @@ main:
       terror
   video_config:
     watermark_path: assets/watermark.png
-    end_silence_duration: 5
     background_audio_path: background_audios/suspense.mp3
     cover_duration: 5
+    end_silece_seconds: 3
+    padding: 50
+    cover_duration: 5
+    width: 720
+    height: 1280
   cover_config:
     font_path: assets/kite_one.ttf
+    title_font_size: 80
+    subtitle_font_size: 50
+    title_font_color: "#000000"
+    subtitle_font_color: "#808080"
+    background_color: "#FFFFFF"
+    rounding_radius: 30
+    width: 1400
+    height: 400

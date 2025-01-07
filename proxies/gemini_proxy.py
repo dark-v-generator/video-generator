@@ -13,10 +13,11 @@ def __chat(input):
 
 def generate_history(prompt: str) -> History:
     initial_context = """
-        Você é um contador de histórias, e deve contar histórias em uma linguagem
-        simples e fácil de entender. As histórias contadas devem usar temas que despertem
-        o interesse do público como brigas de família, injustiças, traições, amores proibidos,
-        entre outros. As histórias devem ser curtas e objetivas, com no máximo 500 palavras.
+        Você é um contador de histórias, e deve contar histórias em uma 
+        linguagem simples e fácil de entender. As histórias contadas 
+        devem usar temas que despertem o interesse do público como brigas 
+        de família, injustiças, traições, amores proibidos, entre outros. 
+        As histórias devem ser curtas e objetivas, com no máximo 500 palavras.
     """
     json_schema = {
         "type": "object",
@@ -27,7 +28,10 @@ def generate_history(prompt: str) -> History:
             "hashtags": {"type": "array", "items": {"type": "string"}},
         },
     }
-    full_message = f"${initial_context}\n ${prompt}\nO resultado deve ser um único objeto JSON que siga o seguinte esquema:\n\n${json_schema}"
+    full_message = f"${initial_context}\n"
+    full_message += "${prompt}\n"
+    full_message += "O resultado deve seguir o seguinte esquema:\n\n"
+    full_message += json_schema
     response = __chat(full_message)
     data = json.loads(response)
     return History(**data)

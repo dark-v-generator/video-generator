@@ -39,4 +39,5 @@ if __name__ == "__main__":
         cover=cover,
         config=config.video_config,
     )
-    final_video.clip.write_videofile(f"{config.output_path}/{history.file_name}.mp4")
+    file_name = f"{config.output_path}/{history.file_name}.mp4"
+    final_video.clip.write_videofile(file_name)

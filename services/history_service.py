@@ -14,4 +14,4 @@ def generate_history(config: config.HistoryConfig = config.HistoryConfig()) -> H
 
 def save_history(history: History, output_path: str):
     with open(output_path, "w") as file:
-        json.dump(history.dict(), file, indent=4)
+        json.dump(history.model_dump(), file, indent=4)
