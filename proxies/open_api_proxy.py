@@ -2,19 +2,14 @@ import json
 from entities.history import History
 from openai import OpenAI
 
-def generate_history(prompt:str) -> History:
+
+def generate_history(prompt: str) -> History:
     client = OpenAI()
     response = client.chat.completions.create(
-        model="gpt-4o-mini", 
+        model="gpt-4o-mini",
         messages=[
-            {
-                "role": "system", 
-                "content": "Você é um contador de histórias"
-            },
-            {
-                "role": "user", 
-                "content": prompt
-            }
+            {"role": "system", "content": "Você é um contador de histórias"},
+            {"role": "user", "content": prompt},
         ],
         response_format={
             "type": "json_schema",
@@ -25,35 +20,33 @@ def generate_history(prompt:str) -> History:
                     "properties": {
                         "title": {
                             "description": "Título da história",
-                            "type": "string"
+                            "type": "string",
                         },
                         "subtitle": {
                             "description": "Subtítulo da história",
-                            "type": "string"
+                            "type": "string",
                         },
                         "description": {
                             "description": "Breve descrição da história",
-                            "type": "string"
+                            "type": "string",
                         },
                         "content": {
                             "description": "Conteúdo da história",
-                            "type": "string"
+                            "type": "string",
                         },
                         "hashtags": {
                             "description": "Lista de hashtags para as redes sociais",
                             "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
+                            "items": {"type": "string"},
                         },
                         "file_name": {
                             "description": "Nome do arquivo da história sem extensão",
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        }
+                            "type": "string",
+                        },
+                    },
+                },
+            },
+        },
     )
     raw_data = response.choices[0].message.content
     data = json.loads(raw_data)

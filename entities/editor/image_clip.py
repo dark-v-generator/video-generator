@@ -1,15 +1,16 @@
 from moviepy import editor
 
+
 class ImageClip:
     def __init__(self, file_path, clip_width=0, clip_height=0, padding=0):
         self.clip = editor.ImageClip(file_path)
-    
+
     def apply_fadein(self, duration):
         self.clip = self.clip.crossfadein(duration)
-    
+
     def apply_fadeout(self, duration):
         self.clip = self.clip.crossfadeout(duration)
-    
+
     def set_duration(self, duration):
         self.clip = self.clip.set_duration(duration)
 

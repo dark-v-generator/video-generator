@@ -1,6 +1,7 @@
 from moviepy import editor
 import random
 
+
 class VideoClip:
     def __init__(self, file_path=None, audio_clip=None):
         self.clip = None if file_path == None else editor.VideoFileClip(file_path)
@@ -26,12 +27,11 @@ class VideoClip:
         if original_aspect_ratio > desired_aspect_ratio:
             new_width = int(self.clip.size[1] * desired_aspect_ratio)
             margin = (self.clip.size[0] - new_width) / 2
-            self.clip = self.clip.crop(x1=margin, x2=self.clip.size[0]-margin)
+            self.clip = self.clip.crop(x1=margin, x2=self.clip.size[0] - margin)
         elif original_aspect_ratio < desired_aspect_ratio:
-            new_height = int(
-                self.clip.size[0] / desired_aspect_ratio)
+            new_height = int(self.clip.size[0] / desired_aspect_ratio)
             margin = (self.clip.size[1] - new_height) / 2
-            self.clip = self.clip.crop(y1=margin, y2=self.clip.size[1]-margin)
+            self.clip = self.clip.crop(y1=margin, y2=self.clip.size[1] - margin)
         self.clip = self.clip.resize(newsize=(width, height))
 
     def ajust_duration(self, duration):
