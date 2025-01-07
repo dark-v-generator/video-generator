@@ -30,7 +30,7 @@ def generate_video(
     if config.background_audio_path is not None:
         audio.merge(audio_clip.AudioClip(config.background_audio_path, volume=0.1))
 
-    background_video.resize(config.width, config.width)
+    background_video.resize(config.width, config.height)
     background_video.ajust_duration(audio.clip.duration)
     background_video.set_audio(audio)
 
