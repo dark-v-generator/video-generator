@@ -4,41 +4,39 @@ from openai import OpenAI
 
 
 def generate_history(prompt: str) -> History:
-    response_schema = (
-        {
-            "name": "history_schema",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "description": "Título da história",
-                        "type": "string",
-                    },
-                    "subtitle": {
-                        "description": "Subtítulo da história",
-                        "type": "string",
-                    },
-                    "description": {
-                        "description": "Breve descrição da história",
-                        "type": "string",
-                    },
-                    "content": {
-                        "description": "Conteúdo da história",
-                        "type": "string",
-                    },
-                    "hashtags": {
-                        "description": "Lista de hashtags para as redes sociais",
-                        "type": "array",
-                        "items": {"type": "string"},
-                    },
-                    "file_name": {
-                        "description": "Nome do arquivo da história sem extensão",
-                        "type": "string",
-                    },
+    response_schema = {
+        "name": "history_schema",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "description": "Título da história",
+                    "type": "string",
+                },
+                "subtitle": {
+                    "description": "Subtítulo da história",
+                    "type": "string",
+                },
+                "description": {
+                    "description": "Breve descrição da história",
+                    "type": "string",
+                },
+                "content": {
+                    "description": "Conteúdo da história",
+                    "type": "string",
+                },
+                "hashtags": {
+                    "description": "Lista de hashtags para as redes sociais",
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "file_name": {
+                    "description": "Nome do arquivo da história sem extensão",
+                    "type": "string",
                 },
             },
         },
-    )
+    }
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",

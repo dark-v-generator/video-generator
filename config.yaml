@@ -2,7 +2,7 @@ main:
   output_path: output/
   history_config:
     use_file: true
-    history_path: output/o_sussurro_da_floresta.json
+    history_path: output/a_casa_abandonada.json
     prompt: 
       Você é um contador de histórias, e relatos de pessoas comuns. As histórias devem ser em 
       uma linguagem simples e fácil de entender. As histórias contadas devem usar temas que despertem
@@ -19,12 +19,11 @@ main:
     width: 720
     height: 1280
   cover_config:
-    font_path: assets/kite_one.ttf
+    font_family: roboto
     title_font_size: 80
     subtitle_font_size: 50
     title_font_color: "#000000"
     subtitle_font_color: "#808080"
     background_color: "#FFFFFF"
     rounding_radius: 30
-    width: 1400
-    height: 400
+    padding: 50

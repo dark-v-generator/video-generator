@@ -8,15 +8,14 @@ class HistoryConfig(BaseModel):
 
 
 class CoverConfig(BaseModel):
-    font_path: str = Field(None, title="Path to the font file")
+    font_family: str = Field("Arial", title="Font family")
     title_font_size: int = Field(80, title="Title font size")
     subtitle_font_size: int = Field(50, title="Subtitle font size")
     title_font_color: str = Field("#000000", title="Font color")
     subtitle_font_color: str = Field("#808080", title="Subtitle font color")
     background_color: str = Field("#FFFFFF", title="Background color")
     rounding_radius: int = Field(30, title="Rounding radius")
-    width: int = Field(1400, title="Width of the cover")
-    height: int = Field(400, title="Height of the cover")
+    padding: int = Field(50, title="Padding")
 
 
 class VideoConfig(BaseModel):

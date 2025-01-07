@@ -5,15 +5,14 @@ from services import speech_service
 from services import video_service
 
 
-def test_cover():
+def generate_cover():
     config = config_service.get_main_config()
     history = history_service.generate_history(config.history_config)
-    cover_service.__generate_svg_cover(
-        history.title, history.subtitle, "output.png", config.cover_config
+    cover_service.__generate_html_cover(
+        history.title, history.subtitle, "cover.png", config.cover_config
     )
 
-
-if __name__ == "__main__":
+def generate_history():
     config = config_service.get_main_config()
     print("Generating history...")
     history = history_service.generate_history(config.history_config)
@@ -41,3 +40,7 @@ if __name__ == "__main__":
     )
     file_name = f"{config.output_path}/{history.file_name}.mp4"
     final_video.clip.write_videofile(file_name)
+
+if __name__ == "__main__":
+    generate_history()
+    # generate_cover()
