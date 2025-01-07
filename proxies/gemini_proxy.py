@@ -13,10 +13,10 @@ def __chat(input):
 
 def generate_history(prompt: str) -> History:
     initial_context = """
-        Você é um contador de histórias, e deve contar histórias em uma 
-        linguagem simples e fácil de entender. As histórias contadas 
-        devem usar temas que despertem o interesse do público como brigas 
-        de família, injustiças, traições, amores proibidos, entre outros. 
+        Você é um contador de histórias, e deve contar histórias em uma
+        linguagem simples e fácil de entender. As histórias contadas
+        devem usar temas que despertem o interesse do público como brigas
+        de família, injustiças, traições, amores proibidos, entre outros.
         As histórias devem ser curtas e objetivas, com no máximo 500 palavras.
     """
     json_schema = {

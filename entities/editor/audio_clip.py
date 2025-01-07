@@ -18,8 +18,7 @@ class AudioClip:
                 suffix=".mp3",
             ) as temp_file:
                 temp_file.write(source.read())
-                temp_file_path = temp_file.nam
-                print("Audio tmp file path:", temp_file_path)
+                temp_file_path = temp_file.name
             self.clip = editor.AudioFileClip(temp_file_path)
             os.remove(temp_file_path)
         else:
