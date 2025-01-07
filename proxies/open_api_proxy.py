@@ -45,6 +45,10 @@ def generate_history(prompt:str) -> History:
                             "items": {
                                 "type": "string"
                             }
+                        },
+                        "file_name": {
+                            "description": "Nome do arquivo da história sem extensão",
+                            "type": "string"
                         }
                     }
                 }

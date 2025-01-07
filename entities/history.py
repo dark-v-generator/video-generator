@@ -7,3 +7,4 @@ class History(BaseModel):
     description: str = Field(..., title="Description of the history")
     content: str = Field(..., title="Content of the history")
     hashtags: List[str] = Field(..., title="List of hashtags")
+    file_name: str = Field('', title="File name of the history")

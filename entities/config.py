@@ -1,14 +1,20 @@
 from pydantic import BaseModel, Field
 
+class HistoryConfig(BaseModel):
+    prompt: str = Field(None, title="Prompt for the history section")
+    history_path: str = Field(None, title="Path to the history file")
+    use_file: bool = Field(False, title="Use file for history")
+
 class CoverConfig(BaseModel):
     font_path: str = Field(None, title="Path to the font file")
     title_font_size: int = Field(80, title="Title font size")
     subtitle_font_size: int = Field(50, title="Subtitle font size")
-    padding: int = Field(50, title="Padding")
     title_font_color: str = Field("#000000", title="Font color")
     subtitle_font_color: str = Field("#808080", title="Subtitle font color")
     background_color: str = Field("#FFFFFF", title="Background color")
     rounding_radius: int = Field(30, title="Rounding radius")
+    width: int = Field(1400, title="Width of the cover")
+    height: int = Field(400, title="Height of the cover")
     font_scale_rate: float = Field(0.578, title="Defines the rate from font size to pixel width")
     line_distance: int = Field(80, title="Line distance")
 
@@ -24,9 +30,8 @@ class VideoConfig(BaseModel):
 
 class MainConfig(BaseModel):
     output_path: str = Field(None, title="Path to save the output video")
-    history_prompt: str = Field(None, title="Prompt for the history section")
-    test_mode: bool = Field(True, title="Test mode")
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
+    history_config: HistoryConfig = Field(HistoryConfig(), title="History configuration")
 
 
