@@ -8,7 +8,9 @@ class HistoryConfig(BaseModel):
 
 
 class CoverConfig(BaseModel):
-    font_family: str = Field("Arial", title="Font family")
+    subtitle: str = Field(None, title="Subtitle")
+    title_font_family: str = Field("Arial", title="Font family")
+    subtitle_font_family: str = Field("Arial", title="Subtitle font family")
     title_font_size: int = Field(80, title="Title font size")
     subtitle_font_size: int = Field(50, title="Subtitle font size")
     title_font_color: str = Field("#000000", title="Font color")
@@ -26,6 +28,8 @@ class VideoConfig(BaseModel):
     cover_duration: int = Field(5, title="Cover duration")
     width: int = Field(720, title="Width of the video")
     height: int = Field(1280, title="Height of the video")
+    youtube_channel_id: str = Field("UCCZIevhN62jJ2gb-u__M95g", title="Youtube channel id")
+
 
 
 class MainConfig(BaseModel):

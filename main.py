@@ -30,6 +30,7 @@ def generate_history():
     print("Generating video compilation...")
     background_video = video_service.create_video_compilation(
         speech.clip.duration,
+        config.video_config,
     )
 
     final_video = video_service.generate_video(
@@ -40,6 +41,13 @@ def generate_history():
     )
     file_name = f"{config.output_path}/{history.file_name}.mp4"
     final_video.clip.write_videofile(file_name)
+    print(history.title)
+    print(history.subtitle)
+    print()
+    print(history.description)
+    for hashtag in history.hashtags:
+        print(hashtag, end=" ")
+    print()
 
 if __name__ == "__main__":
     generate_history()

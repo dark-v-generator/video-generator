@@ -5,6 +5,9 @@ from entities.editor import image_clip
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sigmar&display=swap" rel="stylesheet">
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,7 +18,6 @@ HTML_TEMPLATE = """
             justify-content: center;
             align-items: center;
             text-align: center;
-            font-family: {font_family};
         }}
         .container {{
             width: 100%;
@@ -31,10 +33,12 @@ HTML_TEMPLATE = """
         .title {{
             font-size: {title_font_size}px;
             color: {title_font_color};
+            font-family: {title_font_family};
         }}
         .subtitle {{
             font-size: {subtitle_font_size}px;
             color: {subtitle_font_color};
+            font-family: {subtitle_font_family};
             margin-top: 10px;
         }}
     </style>
@@ -51,15 +55,16 @@ HTML_TEMPLATE = """
 def __generate_html_cover(title: str, subtitle: str, output_path: str, config: config.CoverConfig = config.CoverConfig()):
     html_content = HTML_TEMPLATE.format(
         background_color=config.background_color,
-        font_family=config.font_family,
         title_font_size=config.title_font_size,
         title_font_color=config.title_font_color,
         subtitle_font_size=config.subtitle_font_size,
         subtitle_font_color=config.subtitle_font_color,
         title=title,
-        subtitle=subtitle,
+        subtitle=config.subtitle if config.subtitle else subtitle,
         padding=config.padding,
-        rounding_radius=config.rounding_radius
+        rounding_radius=config.rounding_radius,
+        title_font_family=config.title_font_family,
+        subtitle_font_family=config.subtitle_font_family,
     )
 
     tmp_html_path = f"{tempfile.mktemp()}.html"

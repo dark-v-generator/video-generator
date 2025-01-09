@@ -4,9 +4,8 @@ from proxies import youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 
 
-def create_video_compilation(min_duration: int) -> video_clip.VideoClip:
-    channel_id = "UCCZIevhN62jJ2gb-u__M95g"
-    video_ids = youtube_proxy.get_video_ids(channel_id, max_results=500)
+def create_video_compilation(min_duration: int, config: config.VideoConfig = config.VideoConfig()) -> video_clip.VideoClip:
+    video_ids = youtube_proxy.get_video_ids(config.youtube_channel_id, max_results=500)
     random.shuffle(video_ids)
     video = video_clip.VideoClip()
     total_duration = 0

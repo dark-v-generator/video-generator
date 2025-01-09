@@ -1,17 +1,31 @@
 main:
   output_path: output/
   history_config:
-    use_file: true
-    history_path: output/a_casa_abandonada.json
+    use_file: false
+    history_path: output/desabafo_mae_interfere_namoro.json
     prompt: 
-      Você é um contador de histórias, e relatos de pessoas comuns. As histórias devem ser em 
-      uma linguagem simples e fácil de entender. As histórias contadas devem usar temas que despertem
-      o interesse do público como brigas de família, injustiças, traições, amores proibidos,
-      entre outros, sempre com suspense e reviravoltas. O tema da história que voê vai contar é
-      terror
+      Você é um contador de desabafos, e gostaria que você fizesse um desabafo de uma injustiça, 
+      a história deve ser contada apenas por uma pessoa, mostrando o lado dela da situação, 
+      contando alguma injustiça que passou como um desabafo. 
+      A linguagem deve ser uma linguagem simples de entender e escrita para ser narrada automaticamente, 
+      portanto evite notações como "5 °C" e use "5 graus" no lugar, por exemplo, também use letras maiúsculas 
+      quando quiser exemplificar um grito ou entonação de voz.
+      O título da história deve ser chmativo e simples, e o desabafo deve ser feito em primeira pessoa.
+      Para exemplificar como eu quero a história vou deixar um desabafo aqui de exemplo
+
+
+      Título - Meu pai acabou de me ligar para me desejar um Feliz Natal, mesmo eu estando sem-teto há 3 meses.
+      
+      Estou sem-teto há 3 meses e meu pai mora a cerca de uma hora de onde eu passo meu tempo, eu costumo ficar próximo à biblioteca, parque, cafeteria, e restaurantes.
+      Ele mora com a esposa e eles têm uma casa de dois andares. O filho da esposa dele e a esposa dele moram no segundo andar e eles têm um porão completamente abandonado. Quando eu estava prestes a ficar sem-teto, pedi para ficar lá por alguns meses, até conseguir me reerguer, mas a resposta deles foi "DE JEITO NENHUM"
+      Que tipo de comportamento sadista é esse? Dois dias atrás, estava -5 graus enquanto eu ficava na rua.
+      Ele não responde minhas ligações há uns 2 meses. MAS ME LIGA PRA ME DESEJAR FELIZ NATAL?
+      Obrigado por ouvirem meu desabafo e feliz natal pra vocês.
+
+      Faça agora um envolvendo uma mãe que interfere no namoro do filho
   video_config:
+    youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
     watermark_path: assets/watermark.png
-    background_audio_path: background_audios/suspense.mp3
     cover_duration: 5
     end_silece_seconds: 3
     padding: 50
@@ -19,11 +33,13 @@ main:
     width: 1080
     height: 1920
   cover_config:
-    font_family: roboto
+    subtitle: "Desabafo"
+    title_font_family: Sigmar
+    subtitle_font_family: Sigmar
     title_font_size: 80
     subtitle_font_size: 50
-    title_font_color: "#000000"
-    subtitle_font_color: "#808080"
-    background_color: "#FFFFFF"
+    title_font_color: "#F5F5F5"
+    subtitle_font_color: "#EEDE2F"
+    background_color: "#0049B7"
     rounding_radius: 30
     padding: 50
