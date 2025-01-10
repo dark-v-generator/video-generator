@@ -2,9 +2,11 @@ from pydantic import BaseModel, Field
 
 
 class HistoryConfig(BaseModel):
-    prompt: str = Field(None, title="Prompt for the history section")
-    history_path: str = Field(None, title="Path to the history file")
-    use_file: bool = Field(False, title="Use file for history")
+    auto_generate: bool = Field(False, title="Auto generate history")
+    prompt: str = Field(None, title="Prompt for auto generation")
+    title: str = Field(None, title="Title")
+    content: str = Field(None, title="Content")
+    file_name: str = Field("history", title="File name")
 
 
 class CoverConfig(BaseModel):

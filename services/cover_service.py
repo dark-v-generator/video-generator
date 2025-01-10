@@ -52,7 +52,7 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def __generate_html_cover(title: str, subtitle: str, output_path: str, config: config.CoverConfig = config.CoverConfig()):
+def __generate_html_cover(title: str, output_path: str, config: config.CoverConfig = config.CoverConfig()):
     html_content = HTML_TEMPLATE.format(
         background_color=config.background_color,
         title_font_size=config.title_font_size,
@@ -60,7 +60,7 @@ def __generate_html_cover(title: str, subtitle: str, output_path: str, config: c
         subtitle_font_size=config.subtitle_font_size,
         subtitle_font_color=config.subtitle_font_color,
         title=title,
-        subtitle=config.subtitle if config.subtitle else subtitle,
+        subtitle=config.subtitle,
         padding=config.padding,
         rounding_radius=config.rounding_radius,
         title_font_family=config.title_font_family,
@@ -77,8 +77,8 @@ def __generate_html_cover(title: str, subtitle: str, output_path: str, config: c
     }
     imgkit.from_file(tmp_html_path, output_path, options=options)
 
-def generate_cover(title: str, subtitle: str, config: config.CoverConfig = config.CoverConfig()) -> image_clip.ImageClip:
+def generate_cover(title: str, config: config.CoverConfig = config.CoverConfig()) -> image_clip.ImageClip:
     output_path = f"{tempfile.mktemp()}.png"
-    __generate_html_cover(title, subtitle, output_path, config)
+    __generate_html_cover(title, output_path, config)
     print(f"Cover generated at {output_path}")
     return image_clip.ImageClip(output_path)
