@@ -25,6 +25,6 @@ def download_youtube_video(video_id):
     url = f"https://www.youtube.com/watch?v={video_id}"
     yt = YouTube(url, "WEB_CREATOR", use_oauth=True)
     if not os.path.exists(output_path):
-        stream = yt.streams.get_highest_resolution()
+        stream = yt.streams.filter(only_video=True).order_by('bitrate').desc().first()
         stream.download(output_path="/tmp", filename=f"{video_id}.mp4")
     return output_path, yt.length

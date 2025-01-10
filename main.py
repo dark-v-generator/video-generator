@@ -3,17 +3,17 @@ from services import cover_service
 from services import history_service
 from services import speech_service
 from services import video_service
+import sys
 
-
-def generate_cover():
-    config = config_service.get_main_config()
+def generate_cover(config_path: str = "config.yaml"):
+    config = config_service.get_main_config(config_path)
     history = history_service.load_history(config.history_config)
     cover_service.__generate_html_cover(
         history.title, "cover.png", config.cover_config
     )
 
-def generate_history():
-    config = config_service.get_main_config()
+def generate_history(config_path: str = "config.yaml"):
+    config = config_service.get_main_config(config_path)
     print("Generating history...")
     history = history_service.load_history(config.history_config)
     history_service.save_history(
@@ -45,5 +45,6 @@ def generate_history():
     final_video.clip.write_videofile(file_name)
 
 if __name__ == "__main__":
-    generate_history()
-    # generate_cover()
+    config_path = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+    generate_history(config_path)
+    # generate_cover(config_path)

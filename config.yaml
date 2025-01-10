@@ -1,52 +1,30 @@
 main:
+  seed: DBCG6L4ZYA
   output_path: output/
   history_config:
-    auto_generate: true
-    prompt:
-      Observe essa história
-
-      """
-      Título - Meu pai acabou de me ligar para me desejar um Feliz Natal, mesmo eu estando sem-teto há 3 meses.
-      
-      Estou sem-teto há 3 meses e meu pai mora a cerca de uma hora de onde eu passo meu tempo, eu costumo ficar próximo à biblioteca, parque, cafeteria, e restaurantes.
-      Ele mora com a esposa e eles têm uma casa de dois andares. O filho da esposa dele e a esposa dele moram no segundo andar e eles têm um porão completamente abandonado. Quando eu estava prestes a ficar sem-teto, pedi para ficar lá por alguns meses, até conseguir me reerguer, mas a resposta deles foi "DE JEITO NENHUM"
-      Que tipo de comportamento sadista é esse? Dois dias atrás, estava -5 graus enquanto eu ficava na rua.
-      Ele não responde minhas ligações há uns 2 meses. MAS ME LIGA PRA ME DESEJAR FELIZ NATAL?
-      Obrigado por ouvirem meu desabafo e feliz natal pra vocês.
-      """
-
-      Você é um contador de desabafos, e gostaria que você fizesse um desabafo de uma injustiça,
-      suas histórias devem ter pontos chaves parecidos com a história acima, que são
-
-      Título chamativo - A história tem um título chamativo que levanta alguns questionamentos como o título acima
-      que levanta os questionamentos
-      "Por que o pai ligou para desejar feliz natal se não responde as ligações?"
-      "Por que o pai deixa o filho ficar sem teto?"
-      "O que ele fez para ficar sem teto?"
-
-      Situação absurda - A história deve ter uma situação absurda, para chamar a atenção do espectador e 
-      gerar engajamento, como o da história acima que são
-      "O pai deixa o filho sem teto mesmo tendo um porão abandonado"
-      "O pai liga para desejar feliz natal mesmo o filho estando sem teto"
-
-      Desabafo - A história deve ser contada apenas por uma pessoa, mostrando o lado dela da situação,
-      contando alguma injustiça que passou como um desabafo.
-
-      A linguagem deve ser uma linguagem simples de entender e escrita para ser narrada automaticamente,
-      portanto evite notações como "5 °C" e use "5 graus" no lugar, por exemplo, também use letras maiúsculas
-      quando quiser exemplificar um grito ou entonação de voz.
-
-      Agora é com você, crie uma história com esses pontos chaves e faça um desabafo de uma injustiça.
-    file_name: sem_teto
-    title: Meu pai acabou de me ligar para me desejar um Feliz Natal, mesmo eu estando sem-teto há 3 meses.
-    content:
-      Estou sem-teto há 3 meses e meu pai mora a cerca de uma hora de onde eu passo meu tempo, eu costumo ficar próximo à biblioteca, parque, cafeteria, e restaurantes.
-      Ele mora com a esposa e eles têm uma casa de dois andares. O filho da esposa dele e a esposa dele moram no segundo andar e eles têm um porão completamente abandonado. 
-      Quando eu estava prestes a ficar sem-teto, pedi para ficar lá por alguns meses, até conseguir me reerguer, mas a resposta deles foi "DE JEITO NENHUM"
-      Que tipo de comportamento sadista é esse? Dois dias atrás, estava -5 graus enquanto eu ficava na rua.
-      Ele não responde minhas ligações há uns 2 meses. MAS ME LIGA PRA ME DESEJAR FELIZ NATAL?
-      Obrigado por ouvirem meu desabafo e feliz natal pra vocês.
+    content: "Olá a todos, preciso compartilhar algo que tem me consumido por dentro. Hoje, recebi uma ligação\
+        \ do meu irmão, só que não era uma conversa qualquer. Ele me ligou PARA ME PARABENIZAR PELO MEU ANIVERSÁRIO.\
+        \ Sim, pelos meus 30 anos! Mas o que ele não sabe, ou talvez não se importe, é que estou vivendo em\
+        \ um abrigo há seis meses.\n\nPara quem não sabe, a vida tem sido uma luta. Depois de uma separação\
+        \ conturbada, perdi minha casa e meus sonhos de uma vida estável. O engraçado (ou triste) é que ele\
+        \ mora a apenas 15 minutos de onde estou, em uma casa enorme, com um lindo jardim e espaço de sobra.\
+        \ Quando pedi para ficar lá só por um tempo, a resposta dele foi \"NÃO, ESTOU OCUPADO\", mesmo tendo\
+        \ um quarto vago. \n\nEnquanto ele festejou o meu aniversário, eu estava em uma pequena cama em um\
+        \ lugar frio, cercado por estranhos. Não consegui entender como ele pode simplesmente ignorar minha\
+        \ situação e ainda assim ligar para dizer \"Feliz Aniversário!\". Onde está a compaixão? O que eu\
+        \ fiz para merecer isso? Se a vida está difícil para mim, que ele tenha ao menos o bom senso de não\
+        \ fazer questão de me lembrar disso na data em que deveria ser uma celebração. \n\nAcho que o que\
+        \ mais me dói é a indiferença. Eu gostaria de ser ouvido, de encontrar alguém que se importasse, não\
+        \ só em datas festivas. Na verdade, gostaria de ter a chance de ouvir dele que tudo ficaria bem, que\
+        \ ele estaria ali por mim. Mas não... ele só aparece em momentos festivos. Então, eu me pergunto,\
+        \ o que eu sou para ele? Um número? Um dia no calendário? \n\nEnfim, decidi compartilhar isso para\
+        \ que outros que estejam passando por algo assim saibam que não estão sozinhos. Vamos lembrar que\
+        \ as palavras têm poder e que, às vezes, um simples gesto pode mudar a vida de alguém. Obrigado por\
+        \ me ouvirem e Feliz Aniversário para mim, eu apenas espero um dia ter a mesma felicidade."
+    file_name: a_ligacao_do_silencio
+    title: A ligação do silêncio
   video_config:
+    low_quality: false
     youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
     watermark_path: assets/watermark.png
     cover_duration: 5
