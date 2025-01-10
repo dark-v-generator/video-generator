@@ -1,3 +1,4 @@
+import random
 from pydantic import BaseModel, Field
 
 
@@ -31,13 +32,20 @@ class VideoConfig(BaseModel):
     width: int = Field(720, title="Width of the video")
     height: int = Field(1280, title="Height of the video")
     youtube_channel_id: str = Field("UCCZIevhN62jJ2gb-u__M95g", title="Youtube channel id")
-
-
+    low_quality: bool = Field(False, title="Low quality")
 
 class MainConfig(BaseModel):
+    @staticmethod
+    def __generate_random_seed() -> str:
+        return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))
+
     output_path: str = Field(None, title="Path to save the output video")
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     history_config: HistoryConfig = Field(
         HistoryConfig(), title="History configuration"
     )
+    seed: str = Field(__generate_random_seed(), title="Seed")
+    
+    def int_seed(self) -> int:
+        return int.from_bytes(self.seed.encode(), 'little')

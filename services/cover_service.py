@@ -80,5 +80,4 @@ def __generate_html_cover(title: str, output_path: str, config: config.CoverConf
 def generate_cover(title: str, config: config.CoverConfig = config.CoverConfig()) -> image_clip.ImageClip:
     output_path = f"{tempfile.mktemp()}.png"
     __generate_html_cover(title, output_path, config)
-    print(f"Cover generated at {output_path}")
     return image_clip.ImageClip(output_path)

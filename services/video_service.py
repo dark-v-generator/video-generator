@@ -10,7 +10,7 @@ def create_video_compilation(min_duration: int, config: config.VideoConfig = con
     video = video_clip.VideoClip()
     total_duration = 0
     for video_id in video_ids:
-        video_path, duration = youtube_proxy.download_youtube_video(video_id)
+        video_path, duration = youtube_proxy.download_youtube_video(video_id, config.low_quality)
         new_video = video_clip.VideoClip(video_path)
         video.concat(new_video)
         total_duration += duration
@@ -29,7 +29,11 @@ def generate_video(
     if config.background_audio_path is not None:
         audio.merge(audio_clip.AudioClip(config.background_audio_path, volume=0.1))
 
-    background_video.resize(config.width, config.height)
+    if config.low_quality:
+        aspect_ratio = config.width / config.height
+        background_video.resize(int(400 * aspect_ratio), 400)
+    else:
+        background_video.resize(config.width, config.height)
     background_video.ajust_duration(audio.clip.duration)
     background_video.set_audio(audio)
 
