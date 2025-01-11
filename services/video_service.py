@@ -4,13 +4,17 @@ from proxies import youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 
 
-def create_video_compilation(min_duration: int, config: config.VideoConfig = config.VideoConfig()) -> video_clip.VideoClip:
+def create_video_compilation(
+    min_duration: int, config: config.VideoConfig = config.VideoConfig()
+) -> video_clip.VideoClip:
     video_ids = youtube_proxy.get_video_ids(config.youtube_channel_id, max_results=500)
     random.shuffle(video_ids)
     video = video_clip.VideoClip()
     total_duration = 0
     for video_id in video_ids:
-        video_path, duration = youtube_proxy.download_youtube_video(video_id, config.low_quality)
+        video_path, duration = youtube_proxy.download_youtube_video(
+            video_id, config.low_quality
+        )
         new_video = video_clip.VideoClip(video_path)
         video.concat(new_video)
         total_duration += duration

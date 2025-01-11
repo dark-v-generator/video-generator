@@ -38,6 +38,7 @@ main:
 
       Agora é com você, crie uma história com esses pontos chaves e faça um desabafo de uma injustiça.
   video_config:
+    low_quality: true
     youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
     watermark_path: assets/watermark.png
     cover_duration: 5

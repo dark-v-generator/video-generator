@@ -16,7 +16,7 @@ def synthesize_speech(text, output_format="mp3", voice_id="Ricardo") -> BytesIO:
     )
     metadata = response.get("ResponseMetadata")
     audio_stream = response.get("AudioStream")
-    if metadata and metadata.get('HTTPStatusCode') == 200:
+    if metadata and metadata.get("HTTPStatusCode") == 200:
         with closing(audio_stream) as stream:
             audio_stream = BytesIO(stream.read())
             return audio_stream

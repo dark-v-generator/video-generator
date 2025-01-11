@@ -1,30 +1,35 @@
 main:
-  seed: DBCG6L4ZYA
+  # seed: DBCG6L4ZYA
   output_path: output/
   history_config:
-    content: "Olá a todos, preciso compartilhar algo que tem me consumido por dentro. Hoje, recebi uma ligação\
-        \ do meu irmão, só que não era uma conversa qualquer. Ele me ligou PARA ME PARABENIZAR PELO MEU ANIVERSÁRIO.\
-        \ Sim, pelos meus 30 anos! Mas o que ele não sabe, ou talvez não se importe, é que estou vivendo em\
-        \ um abrigo há seis meses.\n\nPara quem não sabe, a vida tem sido uma luta. Depois de uma separação\
-        \ conturbada, perdi minha casa e meus sonhos de uma vida estável. O engraçado (ou triste) é que ele\
-        \ mora a apenas 15 minutos de onde estou, em uma casa enorme, com um lindo jardim e espaço de sobra.\
-        \ Quando pedi para ficar lá só por um tempo, a resposta dele foi \"NÃO, ESTOU OCUPADO\", mesmo tendo\
-        \ um quarto vago. \n\nEnquanto ele festejou o meu aniversário, eu estava em uma pequena cama em um\
-        \ lugar frio, cercado por estranhos. Não consegui entender como ele pode simplesmente ignorar minha\
-        \ situação e ainda assim ligar para dizer \"Feliz Aniversário!\". Onde está a compaixão? O que eu\
-        \ fiz para merecer isso? Se a vida está difícil para mim, que ele tenha ao menos o bom senso de não\
-        \ fazer questão de me lembrar disso na data em que deveria ser uma celebração. \n\nAcho que o que\
-        \ mais me dói é a indiferença. Eu gostaria de ser ouvido, de encontrar alguém que se importasse, não\
-        \ só em datas festivas. Na verdade, gostaria de ter a chance de ouvir dele que tudo ficaria bem, que\
-        \ ele estaria ali por mim. Mas não... ele só aparece em momentos festivos. Então, eu me pergunto,\
-        \ o que eu sou para ele? Um número? Um dia no calendário? \n\nEnfim, decidi compartilhar isso para\
-        \ que outros que estejam passando por algo assim saibam que não estão sozinhos. Vamos lembrar que\
-        \ as palavras têm poder e que, às vezes, um simples gesto pode mudar a vida de alguém. Obrigado por\
-        \ me ouvirem e Feliz Aniversário para mim, eu apenas espero um dia ter a mesma felicidade."
-    file_name: a_ligacao_do_silencio
-    title: A ligação do silêncio
+    content: "Alguns meses atrás, minha vida virou de cabeça para baixo quando descobri que meu namorado estava\
+        \ me traindo com uma mulher que se achava a última bolacha do pacote. Ao tentar entender a situação,\
+        \ entrei em contato com as mulheres com quem ele estava se envolvendo. A maioria foi compreensiva\
+        \ e se desculpou, mas essa garota... Ela foi completamente diferente. Ela se achava tão especial e\
+        \ teve a audácia de me mandar mensagens rudes e abusivas, me chamando de imatura, insegura e, claro,\
+        \ a clássica ‘desesperada’. Não sei como ela fez isso sem ao menos me conhecer!  \n\nNa época, eu\
+        \ estava tão chocado com a situação que não consegui confrontá-la pessoalmente. A única coisa que\
+        \ me restou foi a Internet, onde eu podia ver tudo o que ela postava. Descobri então que a mulher\
+        \ era obcecada por um programa de viagens chamado \"Are We There Yet?\". Ela viajava pelo mundo e\
+        \ postava sobre cada um de seus destinos, como se fosse uma celebridade. Sabia que a única coisa que\
+        \ ela amava mais do que viajar era se exibir nas redes sociais.  \n\nNão consegui tirar os insultos\
+        \ da minha cabeça, e em vez de ficar chorando em um canto, decidi que merecia uma dose de vingança.\
+        \ Pensei: ‘Se ela ama tanto esse programa, porque não arruinar um pouquinho dessa felicidade?’ Então,\
+        \ me aprofundei e encontrei as informações sobre os episódios da temporada seguinte.  \n\nNo dia da\
+        \ estreia, fiz um tweet revelando os spoilers de cada destino antes mesmo que ela pudesse assistir.\
+        \ Eu mencionei todos os detalhes, incluindo algumas reviravoltas que ocorreriam nos episódios posteriores.\
+        \ Depois da primeira vez, eu não consegui conter meu riso ao ver que, um dia depois, ela havia tornado\
+        \ sua conta privada. Mas eu não parei por aí.  \n\nNo ano seguinte, fiz exatamente a mesma coisa.\
+        \ Eu me posicionei bem na frente do Twitter, ansiosa, esperando o momento certo para atacar. Novamente,\
+        \ usei todos os meus conhecimentos sobre os destinos que ela estava prestes a ver e joguei na timeline\
+        \ dela, revelando tudo. A reação dela foi hilária.  \n\nAssim que ela fechou a conta novamente, eu\
+        \ dei um sorriso de satisfação. Não precisei de mais nada para me sentir melhor. Às vezes, a melhor\
+        \ forma de vingança é usar a própria paixão da pessoa contra ela. Ela arruinou meses da minha vida,\
+        \ e eu apenas devolvi a gentileza com uma dose de spoilers."
+    file_name: arruinei-o-are-we-there-yet-para-ela
+    title: O Dia em Que Arruinei o Are We There Yet? Para Ela
   video_config:
-    low_quality: false
+    low_quality: true
     youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
     watermark_path: assets/watermark.png
     cover_duration: 5
@@ -34,13 +39,13 @@ main:
     width: 1080
     height: 1920
   cover_config:
-    subtitle: "Desabafo"
+    subtitle: "Vingança"
     title_font_family: Sigmar
     subtitle_font_family: Sigmar
     title_font_size: 60
     subtitle_font_size: 50
     title_font_color: "#F5F5F5"
     subtitle_font_color: "#EEDE2F"
-    background_color: "#0049B7"
+    background_color: "#E3371E"
     rounding_radius: 30
     padding: 50

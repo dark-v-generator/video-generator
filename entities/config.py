@@ -1,13 +1,22 @@
 import random
 from pydantic import BaseModel, Field
+from enum import Enum
+
+
+# enum history source
+class HistorySource(Enum):
+    REDDIT = "reddit"
+    CHAT_GPT = "chat_gpt"
+    CONFIG = "config"
 
 
 class HistoryConfig(BaseModel):
-    auto_generate: bool = Field(False, title="Auto generate history")
+    source: HistorySource = Field(HistorySource.config, title="Source of the history")
     prompt: str = Field(None, title="Prompt for auto generation")
     title: str = Field(None, title="Title")
     content: str = Field(None, title="Content")
     file_name: str = Field("history", title="File name")
+    reddit_url: str = Field(None, title="Reddit URL")
 
 
 class CoverConfig(BaseModel):
@@ -31,8 +40,11 @@ class VideoConfig(BaseModel):
     cover_duration: int = Field(5, title="Cover duration")
     width: int = Field(720, title="Width of the video")
     height: int = Field(1280, title="Height of the video")
-    youtube_channel_id: str = Field("UCCZIevhN62jJ2gb-u__M95g", title="Youtube channel id")
+    youtube_channel_id: str = Field(
+        "UCCZIevhN62jJ2gb-u__M95g", title="Youtube channel id"
+    )
     low_quality: bool = Field(False, title="Low quality")
+
 
 class MainConfig(BaseModel):
     @staticmethod
@@ -46,6 +58,6 @@ class MainConfig(BaseModel):
         HistoryConfig(), title="History configuration"
     )
     seed: str = Field(__generate_random_seed(), title="Seed")
-    
+
     def int_seed(self) -> int:
-        return int.from_bytes(self.seed.encode(), 'little')
+        return int.from_bytes(self.seed.encode(), "little")

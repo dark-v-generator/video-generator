@@ -52,7 +52,10 @@ HTML_TEMPLATE = """
 </html>
 """
 
-def __generate_html_cover(title: str, output_path: str, config: config.CoverConfig = config.CoverConfig()):
+
+def __generate_html_cover(
+    title: str, output_path: str, config: config.CoverConfig = config.CoverConfig()
+):
     html_content = HTML_TEMPLATE.format(
         background_color=config.background_color,
         title_font_size=config.title_font_size,
@@ -68,16 +71,16 @@ def __generate_html_cover(title: str, output_path: str, config: config.CoverConf
     )
 
     tmp_html_path = f"{tempfile.mktemp()}.html"
-    with open(tmp_html_path, 'w', encoding='utf-8') as f:
+    with open(tmp_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    options = {
-        'format': 'png',
-        'transparent': ''
-    }
+    options = {"format": "png", "transparent": ""}
     imgkit.from_file(tmp_html_path, output_path, options=options)
 
-def generate_cover(title: str, config: config.CoverConfig = config.CoverConfig()) -> image_clip.ImageClip:
+
+def generate_cover(
+    title: str, config: config.CoverConfig = config.CoverConfig()
+) -> image_clip.ImageClip:
     output_path = f"{tempfile.mktemp()}.png"
     __generate_html_cover(title, output_path, config)
     return image_clip.ImageClip(output_path)
