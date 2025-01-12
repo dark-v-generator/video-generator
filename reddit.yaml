@@ -2,7 +2,7 @@ main:
   output_path: output/
   history_config:
     source: reddit
-    reddit_url: https://www.reddit.com/r/pettyrevenge/comments/1gb0xay/husbands_mistress_was_rude_to_me_so_i_ruined_her/
+    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1hlcbou/minha_esposa_alagou_o_apartamento/
   video_config:
     low_quality: true
     youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
@@ -14,3 +14,4 @@ main:
     height: 1920
   cover_config:
     title_font_size: 110
+    cover_type: reddit

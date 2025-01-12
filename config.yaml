@@ -1,5 +1,5 @@
 main:
-  # seed: DBCG6L4ZYA
+  seed: 48B4LJV2SI
   output_path: output/
   history_config:
     source: config
@@ -23,8 +23,8 @@ main:
     reddit_post_author: nelinthemirror
     title: A amante do meu marido foi rude comigo, então eu arruinei sua coisa favorita, duas vezes
   video_config:
-    low_quality: true
-    youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
+    low_quality: false
+    youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
     watermark_path: assets/watermark.png
     cover_duration: 5
     end_silece_seconds: 3

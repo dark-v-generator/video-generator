@@ -83,8 +83,8 @@ REDDIT_COVER_HTML = """
     <div class="title-container">
         <img src="{community_url_photo}" alt="Community photo">
         <div class="text-container">
-        <h1>{post_author}</h1>
-        <h2>{community}</h2>
+        <h1>{community}</h1>
+        <h2>{post_author}</h2>
         </div>
     </div>
     <div class="history-title">
