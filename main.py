@@ -9,21 +9,15 @@ from services import video_service
 import sys
 
 
-def generate_cover(config: MainConfig):
-    history = history_service.load_history(config.history_config)
-    cover_service.__generate_html_cover(history.title, "cover.png", config.cover_config)
-
-
-def generate_reddit_history(config: MainConfig):
+def generate_reddit_history(config: MainConfig) -> None:
     reddit_post = reddit_proxy.get_reddit_post(config.history_config.reddit_url)
     history = history_service.generate_history_from_reddit(reddit_post)
-    cover = cover_service.generate_cover(
-        history.title,
-        config.cover_config,
+    history_service.save_history(
+        history, f"{config.output_path}/{history.file_name}.yaml"
     )
     print("Generating cover...")
     cover = cover_service.generate_cover(
-        history.title,
+        history,
         config.cover_config,
     )
     print("Generating speech...")
@@ -65,7 +59,7 @@ def generate_history(config: MainConfig):
     )
     print("Generating cover...")
     cover = cover_service.generate_cover(
-        history.title,
+        history,
         config.cover_config,
     )
     print("Generating speech...")

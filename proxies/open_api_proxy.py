@@ -62,10 +62,16 @@ def generate_history(prompt: str) -> History:
 
 def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
     prompt = """
-        Você vai corrigir e se precisar traduzir uma história que foi postada em um fórum online. Corriga os 
-        erros de escrita e concordância mais graves, mas mantenha ao máximo a estrutura original da história.
+        Eu vou te passar uma história que foi postada em um fórum online. Prepare ela para narração
+        substituindo abreviaçãos pelas palavras originais e pegando trechos de entonação como "??????" e 
+        deixando em caixa alta.
+        Se a história estiver em ingês traduza mantendo o mais fiel possível.
+        O título da história vai ser passado na primeira linha, não precisa
+        adaptar ou criar um novo, apenas traduzir caso precise. 
+        Os demais campos, além de title e content podem ser gerados.
         Aqui está a história que você deve corrigir e traduzir:
-        {title}
+        
+        Título: {title}
 
         {content}
     """.format(
@@ -73,4 +79,9 @@ def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
         content=reddit_post.content,
     )
     response = __chat_history_teller(prompt, HISTORY_SCHEMA)
-    return History(**response)
+    return History(
+        **response,
+        reddit_community=reddit_post.community,
+        reddit_post_author=reddit_post.author,
+        reddit_community_url_photo=reddit_post.community_url_photo,
+    )

@@ -22,7 +22,3 @@ def get_reddit_post(url) -> RedditPost:
         post.find("div", class_="text-neutral-content").find("p").text.strip()
     )
     return RedditPost(**reddit_post_params)
-
-
-url = "https://www.reddit.com/r/pettyrevenge/comments/1gb0xay/husbands_mistress_was_rude_to_me_so_i_ruined_her/"
-get_reddit_post(url)

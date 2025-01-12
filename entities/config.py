@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 
-# enum history source
 class HistorySource(Enum):
     REDDIT = "reddit"
     CHAT_GPT = "chat_gpt"
@@ -11,13 +10,22 @@ class HistorySource(Enum):
 
 
 class HistoryConfig(BaseModel):
-    source: HistorySource = Field(HistorySource.config, title="Source of the history")
+    source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")
     prompt: str = Field(None, title="Prompt for auto generation")
-    title: str = Field(None, title="Title")
-    content: str = Field(None, title="Content")
-    file_name: str = Field("history", title="File name")
     reddit_url: str = Field(None, title="Reddit URL")
+    # History
+    title: str = Field("", title="Title of the history")
+    description: str = Field("", title="Description of the history")
+    content: str = Field("", title="Content of the history")
+    file_name: str = Field("", title="File name of the history")
+    reddit_community: str = Field(None, title="Reddit community")
+    reddit_post_author: str = Field(None, title="Reddit post author")
+    reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
 
+
+class CoverType(Enum):
+    REGULAR = "regular"
+    REDDIT = "reddit"
 
 class CoverConfig(BaseModel):
     subtitle: str = Field(None, title="Subtitle")
@@ -30,6 +38,7 @@ class CoverConfig(BaseModel):
     background_color: str = Field("#FFFFFF", title="Background color")
     rounding_radius: int = Field(30, title="Rounding radius")
     padding: int = Field(50, title="Padding")
+    cover_type: CoverType = Field(CoverType.REDDIT, title="Cover type")
 
 
 class VideoConfig(BaseModel):
