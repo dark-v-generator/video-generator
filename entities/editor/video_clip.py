@@ -3,6 +3,8 @@ import random
 
 
 class VideoClip:
+    clip: editor.VideoClip
+
     def __init__(self, file_path=None, audio_clip=None):
         self.clip = None if file_path == None else editor.VideoFileClip(file_path)
         if audio_clip:

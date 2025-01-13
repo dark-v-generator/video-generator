@@ -2,9 +2,14 @@ import random
 from entities import config
 from proxies import youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
+from entities.history import History
+from entities.config import MainConfig
+from os import path
+
+from services import cover_service, speech_service
 
 
-def create_video_compilation(
+def __create_video_compilation(
     min_duration: int, config: config.VideoConfig = config.VideoConfig()
 ) -> video_clip.VideoClip:
     video_ids = youtube_proxy.get_video_ids(config.youtube_channel_id, max_results=500)
@@ -23,7 +28,7 @@ def create_video_compilation(
     return video
 
 
-def generate_video(
+def __generate_video(
     audio: audio_clip.AudioClip,
     background_video: video_clip.VideoClip,
     cover: image_clip.ImageClip = None,
@@ -60,3 +65,40 @@ def generate_video(
         water_mark.set_duration(audio.clip.duration)
         background_video.merge(water_mark)
     return background_video
+
+
+def generate_history_video(history: History, config: MainConfig) -> None:
+    print("Generating cover...")
+    cover = cover_service.generate_cover(
+        history,
+        config.cover_config,
+    )
+    print("Generating speech...")
+    speech = speech_service.synthesize_speech(
+        history.title + "\n\n" + history.content,
+    )
+    print("Generating video compilation...")
+    background_video = __create_video_compilation(
+        speech.clip.duration,
+        config.video_config,
+    )
+
+    final_video = __generate_video(
+        audio=speech,
+        background_video=background_video,
+        cover=cover,
+        config=config.video_config,
+    )
+    file_name = path.join(config.output_path, "{history.file_name}.mp4")
+    if config.video_config.low_quality:
+        final_video.clip.write_videofile(
+            file_name,
+            threads=16,
+            preset="ultrafast",
+            fps=15,
+        )
+    else:
+        final_video.clip.write_videofile(
+            file_name,
+            threads=16,
+        )

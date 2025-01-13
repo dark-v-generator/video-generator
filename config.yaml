@@ -29,9 +29,7 @@ main:
     cover_duration: 5
     end_silece_seconds: 3
     padding: 50
-    cover_duration: 5
     width: 1080
     height: 1920
   cover_config:
     title_font_size: 110
-    cover_type: reddit

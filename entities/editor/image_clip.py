@@ -2,6 +2,8 @@ from moviepy import editor
 
 
 class ImageClip:
+    clip: editor.ImageClip
+
     def __init__(self, file_path, clip_width=0, clip_height=0, padding=0):
         self.clip = editor.ImageClip(file_path)
 

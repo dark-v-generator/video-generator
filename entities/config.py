@@ -23,10 +23,6 @@ class HistoryConfig(BaseModel):
     reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
 
 
-class CoverType(Enum):
-    REGULAR = "regular"
-    REDDIT = "reddit"
-
 class CoverConfig(BaseModel):
     subtitle: str = Field(None, title="Subtitle")
     title_font_family: str = Field("Arial", title="Font family")
@@ -38,7 +34,6 @@ class CoverConfig(BaseModel):
     background_color: str = Field("#FFFFFF", title="Background color")
     rounding_radius: int = Field(30, title="Rounding radius")
     padding: int = Field(50, title="Padding")
-    cover_type: CoverType = Field(CoverType.REDDIT, title="Cover type")
 
 
 class VideoConfig(BaseModel):

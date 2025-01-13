@@ -29,7 +29,7 @@ def generate_history(prompt: str) -> History:
         },
     }
     full_message = f"${initial_context}\n"
-    full_message += "${prompt}\n"
+    full_message += f"${prompt}\n"
     full_message += "O resultado deve seguir o seguinte esquema:\n\n"
     full_message += json_schema
     response = __chat(full_message)
