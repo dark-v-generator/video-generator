@@ -1,5 +1,7 @@
+from os import path
 import random
 from entities import config
+from entities.history import History
 from proxies import youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 from entities.history import History

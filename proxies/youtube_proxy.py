@@ -1,4 +1,5 @@
 import os
+import tempfile
 from googleapiclient.discovery import build
 from pytubefix import YouTube
 from tqdm import tqdm
@@ -41,14 +42,14 @@ def __download_youtube_stream(
 
 
 def download_youtube_video(video_id, low_quality=False):
-    filename = f"{video_id}_low.mp4" if low_quality else f"{video_id}.mp4"
-    output_folder = "/tmp"
-    output_path = os.path.join(output_folder, filename)
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmpfile:
+        filename = os.path.basename(tmpfile.name)
+        directory = os.path.dirname(tmpfile.name)
 
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    yt = YouTube(url, "WEB_CREATOR", use_oauth=True)
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        yt = YouTube(url, "WEB_CREATOR", use_oauth=True)
 
-    # Check if file already exists
-    if not os.path.exists(output_path):
-        __download_youtube_stream(yt, output_folder, filename, low_quality)
-    return output_path, yt.length
+        # Check if file already exists
+        if not os.path.exists(tmpfile.name):
+            __download_youtube_stream(yt, directory, filename, low_quality)
+        return tmpfile.name, yt.length

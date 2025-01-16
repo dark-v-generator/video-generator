@@ -5,6 +5,8 @@ from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
 import yaml
 
+def __generate_history_from_reddit(reddit_post: RedditPost) -> History:
+    return open_api_proxy.convert_reddit_post_to_history(reddit_post)
 
 def __generate_history_from_reddit(reddit_post: RedditPost) -> History:
     return open_api_proxy.convert_reddit_post_to_history(reddit_post)
@@ -20,7 +22,6 @@ def load_history(cfg: config.MainConfig = config.MainConfig()) -> History:
     elif cfg.history_config.source == config.HistorySource.REDDIT:
         reddit_post = reddit_proxy.get_reddit_post(cfg.history_config.reddit_url)
         return __generate_history_from_reddit(reddit_post)
-
 
 def save_history(history: History, output_path: str):
     with open(output_path, "w") as file:

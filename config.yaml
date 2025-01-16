@@ -1,30 +1,32 @@
 main:
-  seed: 48B4LJV2SI
+  # seed: 48B4LJV2SI
   output_path: output/
   history_config:
     source: config
     history:
-      content: 'Há alguns anos, descobri que meu (agora ex) marido estava tendo múltiplos casos extraconjugais.
-          Entrei em contato com as mulheres na tentativa de descobrir o que estava acontecendo, cronogramas,
-          etc. A maioria das mulheres era adorável e eu não sentia desprezo ou raiva por elas; eram vítimas
-          de mentiras e enganos também. MAS, uma mulher adotou uma abordagem diferente: ela foi rude e abusiva,
-          me acusando de ser controladora, fria, gorda (sou apenas uma dessas coisas e não sou fria), etc. Infelizmente,
-          ela estava na Irlanda e nós estávamos na Austrália, então não havia chance de confrontá-la. Tentei
-          apenas seguir em frente e lidar com meus problemas reais. MAS, não consegui me livrar da audácia.
-          Então eu procurei as redes sociais dela. Ela era OBSECADA por "Australian MasterChef". Obcecada! Sendo
-          fã eu mesma, sabia que o show era exibido e concluído na Austrália antes de ser transmitido na Irlanda.
-          Então eu fiz uma captura de tela do prato vencedor e mencionei ela em um tweet contendo os detalhes
-          do vencedor, do segundo colocado e a foto do prato vencedor. Depois, coloquei um alarme no meu celular
-          e fiz exatamente a mesma coisa um ano depois. Após o segundo spoiler, ela colocou a conta do Twitter
-          dela em privado.'
-      description: Uma mulher decide se vingar da amante do ex-marido após ser insultada.
-      file_name: a_amante_do_meu_marido
-      reddit_community: r/pettyrevenge
-      reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
-      reddit_post_author: nelinthemirror
-      title: A amante do meu marido foi rude comigo, então eu arruinei sua coisa favorita, duas vezes
+      content: 'É exatamente isso, essa história maluca ocorreu ontem. Ela foi tomar banho, ligou o chuveirinho
+          da privada e deixou o registro aberto. Em uma situação normal ele não vazaria mesmo aberto, MAS a
+          torneira se soltou e começou a derramar MUITA água. Mesmo assim a gente não ouviu, acabamos dormindo.
+          Até que, por eu ter um sono extremamente leve, senti a água se movendo perto da cama. Eu me levantei
+          ASSUSTADO, achando que era um pesadelo kkkkk.
+
+
+          Acabou que eu vi a água chegando quase na canela! Eu desci rapidamente pra desligar os eletrônicos,
+          minha esposa acordou e começou a ficar NERVOSA. Eu peguei um rodo e comecei a jogar água pro ÚNICO
+          ralo desse AP feito por IA (AP todo sem nexo). Ela começou a passar MAL por causa do susto e também
+          por receio de ter queimado meu Steam Deck + TV recém-comprada.
+
+
+          No final, eu consegui secar o AP depois de 2 horas passando o rodo e voltamos a dormir. Hoje, dia
+          24 de dezembro, vi que nada queimou e, de quebra, a casa ficou limpinha. É GAIN ou LOSS?'
+      description: Uma história de um banho descuidado que quase virou um desastre em casa.
+      file_name: minha_esposa_alagou_o_apartamento
+      reddit_community: r/RelatosDoReddit
+      reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+      reddit_post_author: Funny-Ad-9414
+      title: Minha esposa alagou o apartamento
   video_config:
-    low_quality: false
+    low_quality: true
     youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
     watermark_path: assets/watermark.png
     cover_duration: 5
