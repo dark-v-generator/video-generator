@@ -26,7 +26,7 @@ main:
       reddit_post_author: Funny-Ad-9414
       title: Minha esposa alagou o apartamento
   video_config:
-    low_quality: true
+    low_quality: false
     youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
     watermark_path: assets/watermark.png
     cover_duration: 5
