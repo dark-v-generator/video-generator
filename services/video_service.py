@@ -19,12 +19,9 @@ def __create_video_compilation(
     video = video_clip.VideoClip()
     total_duration = 0
     for video_id in video_ids:
-        video_path, duration = youtube_proxy.download_youtube_video(
-            video_id, config.low_quality
-        )
-        new_video = video_clip.VideoClip(video_path)
+        new_video = youtube_proxy.download_youtube_video(video_id, config.low_quality)
         video.concat(new_video)
-        total_duration += duration
+        total_duration += new_video.clip.duration
         if total_duration > min_duration:
             break
     return video
@@ -56,12 +53,7 @@ def __generate_video(
         cover.apply_fadeout(1)
         background_video.merge(cover)
     if config.watermark_path is not None:
-        water_mark = image_clip.ImageClip(
-            config.watermark_path,
-            clip_width=width,
-            clip_height=height,
-            padding=config.padding,
-        )
+        water_mark = image_clip.ImageClip(config.watermark_path)
         water_mark.fit_width(width, config.padding)
         water_mark.center(width, height)
         water_mark.set_duration(audio.clip.duration)
@@ -91,7 +83,7 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         cover=cover,
         config=config.video_config,
     )
-    file_name = path.join(config.output_path, "{history.file_name}.mp4")
+    file_name = path.join(config.output_path, f"{history.file_name}.mp4")
     if config.video_config.low_quality:
         final_video.clip.write_videofile(
             file_name,

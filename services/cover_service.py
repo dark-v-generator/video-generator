@@ -17,7 +17,6 @@ REDDIT_COVER_HTML = """
       width: 1950px;
       height: 650px;
       padding: 50px;
-      display: flex;
       flex-direction: column;
       background-color: #FFFFFF;
       border-radius: 50px;
@@ -26,13 +25,14 @@ REDDIT_COVER_HTML = """
     }}
 
     .title-container {{
-      display: flex;
+      display: -webkit-box;
       align-items: top;
       gap: 10px;
+      flex-direction: row;
     }}
 
     .text-container {{
-      display: flex;
+      display: -webkit-box;
       flex-direction: row;
       gap: 50px;
       align-items: center;
@@ -65,9 +65,9 @@ REDDIT_COVER_HTML = """
     }}
 
     .history-title {{
-        display: flex;
+        display: -webkit-box;
         align-items: center;
-        justify-content: center;
+        -webkit-box-pack: center;
         height: 100%;
     }}
     .history-title h1 {{
@@ -82,8 +82,8 @@ REDDIT_COVER_HTML = """
     <div class="title-container">
         <img src="{community_url_photo}" alt="Community photo">
         <div class="text-container">
-        <h1>{community}</h1>
-        <h2>{post_author}</h2>
+          <h1>{community}</h1>
+          <h2>{post_author}</h2>
         </div>
     </div>
     <div class="history-title">
@@ -92,6 +92,7 @@ REDDIT_COVER_HTML = """
 </div>
 </html>
 """
+
 
 def __generate_reddit_cover(
     title: str,
@@ -108,21 +109,26 @@ def __generate_reddit_cover(
         community_url_photo=community_url_photo,
         title_font_size=config.title_font_size,
     )
-    with tempfile.NamedTemporaryFile(suffix=".html") as temp_file:
-        temp_file.write(bytes(html_content, 'UTF-8'))
-        options = {"format": "png", "transparent": ""}
-        imgkit.from_file(temp_file.name, output_path, options=options)
+
+    tmp_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
+    tmp_file.write(bytes(html_content, "UTF-8"))
+    file_name = tmp_file.name
+    tmp_file.close()
+
+    options = {"--format": "png", "--transparent": ""}
+    imgkit.from_file(file_name, output_path, options=options)
 
 
-def generate_cover(history: History, cfg: config.CoverConfig = config.CoverConfig()) -> image_clip.ImageClip:
-    # return None
-    output_path = f"{tempfile.mktemp()}.png"
-    __generate_reddit_cover(
-        title=history.title,
-        community=history.reddit_community,
-        author=history.reddit_post_author,
-        community_url_photo=history.reddit_community_url_photo,
-        config=cfg,
-        output_path=output_path,
-    )
-    return image_clip.ImageClip(output_path)
+def generate_cover(
+    history: History, cfg: config.CoverConfig = config.CoverConfig()
+) -> image_clip.ImageClip:
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+        __generate_reddit_cover(
+            title=history.title,
+            community=history.reddit_community,
+            author=history.reddit_post_author,
+            community_url_photo=history.reddit_community_url_photo,
+            config=cfg,
+            output_path=temp_file.name,
+        )
+        return image_clip.ImageClip(temp_file.name)

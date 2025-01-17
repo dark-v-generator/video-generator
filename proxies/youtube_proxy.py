@@ -4,6 +4,8 @@ from googleapiclient.discovery import build
 from pytubefix import YouTube
 from tqdm import tqdm
 
+from entities.editor.video_clip import VideoClip
+
 
 def __get_youtube_service():
     return build("youtube", "v3", developerKey=os.environ.get("YOUTUBE_API_KEY"))
@@ -41,8 +43,8 @@ def __download_youtube_stream(
         stream.download(output_path=output_path, filename=filename)
 
 
-def download_youtube_video(video_id, low_quality=False):
-    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmpfile:
+def download_youtube_video(video_id, low_quality=False) -> VideoClip:
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
         filename = os.path.basename(tmpfile.name)
         directory = os.path.dirname(tmpfile.name)
 
@@ -50,6 +52,5 @@ def download_youtube_video(video_id, low_quality=False):
         yt = YouTube(url, "WEB_CREATOR", use_oauth=True)
 
         # Check if file already exists
-        if not os.path.exists(tmpfile.name):
-            __download_youtube_stream(yt, directory, filename, low_quality)
-        return tmpfile.name, yt.length
+        __download_youtube_stream(yt, directory, filename, low_quality)
+        return VideoClip(tmpfile.name)

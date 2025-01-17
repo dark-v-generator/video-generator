@@ -18,7 +18,7 @@ def load_history(cfg: config.MainConfig = config.MainConfig()) -> History:
         return open_api_proxy.generate_history(cfg.history_config.prompt)
     elif cfg.history_config.source == config.HistorySource.CONFIG:
         print("Loading history...")
-        return History(**cfg.model_dump())
+        return History(**cfg.history_config.history.model_dump())
     elif cfg.history_config.source == config.HistorySource.REDDIT:
         reddit_post = reddit_proxy.get_reddit_post(cfg.history_config.reddit_url)
         return __generate_history_from_reddit(reddit_post)
