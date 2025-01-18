@@ -49,7 +49,7 @@ MULTIPLE_PART_HISTORY_SCHEMA = {
             "parts": {
                 "description": "Lista de partes da história",
                 "type": "array",
-                "items": "string",
+                "items": {"type": "string"},
             },
             "file_name": {
                 "description": "Nome do arquivo da história sem extensão",
@@ -139,6 +139,7 @@ def convert_reddit_post_to_multiple_part_history(
     """.format(
         title=reddit_post.title,
         content=reddit_post.content,
+        number_of_parts=number_of_parts
     )
     response = __chat_history_teller(prompt, MULTIPLE_PART_HISTORY_SCHEMA)
     return MultiplePartHistory(

@@ -2,7 +2,8 @@ main:
   output_path: output/
   history_config:
     source: reddit
-    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1hlcbou/minha_esposa_alagou_o_apartamento/
+    reddit_url: https://www.reddit.com/r/pettyrevenge/comments/1i42ya6/the_reason_why_my_ex_is_my_ex/
+    number_of_parts: 2
   video_config:
     low_quality: true
     youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ

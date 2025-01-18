@@ -1,7 +1,8 @@
 import random
+from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
-from entities.history import History
+from entities.history import History, MultiplePartHistory
 
 
 class HistorySource(Enum):
@@ -14,8 +15,8 @@ class HistoryConfig(BaseModel):
     source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")
     prompt: str = Field(None, title="Prompt for auto generation")
     reddit_url: str = Field(None, title="Reddit URL")
-    history: History = Field(History(), title="History fields")
-
+    histories: List[History] = Field(None, title="Histories fields")
+    number_of_parts: int = Field(1, title="Number of parts")
 
 class CoverConfig(BaseModel):
     subtitle: str = Field(None, title="Subtitle")

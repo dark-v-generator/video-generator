@@ -26,8 +26,9 @@ if __name__ == "__main__":
     random.seed(config.int_seed())
     print("Seed:", config.seed)
 
-    history = history_service.load_history(config)
+    histories = history_service.load_history(config)
     history_service.save_history(
-        history, f"{config.output_path}/{history.file_name}.yaml"
+        histories, f"{config.output_path}/{config.seed}.yaml"
     )
-    video_service.generate_history_video(history, config)
+    for history in histories:
+        video_service.generate_history_video(history, config)

@@ -1,30 +1,32 @@
 main:
-  # seed: 48B4LJV2SI
+  # seed: KTEX8MJIOH
   output_path: output/
   history_config:
     source: config
-    history:
-      content: 'É exatamente isso, essa história maluca ocorreu ontem. Ela foi tomar banho, ligou o chuveirinho
-          da privada e deixou o registro aberto. Em uma situação normal ele não vazaria mesmo aberto, MAS a
-          torneira se soltou e começou a derramar MUITA água. Mesmo assim a gente não ouviu, acabamos dormindo.
-          Até que, por eu ter um sono extremamente leve, senti a água se movendo perto da cama. Eu me levantei
-          ASSUSTADO, achando que era um pesadelo kkkkk.
+    histories:
+    -   content: 'Há muitos anos, após o nascimento do meu filho mais velho, eu precisava desesperadamente
+            de um emprego. Eu estava vasculhando a seção de empregos de tantos jornais quanto podia encontrar.
+            As opções eram escassas, pois a minha maior qualificação era ter terminado o Ensino Médio. Eu
+            tive que ignorar os empregos de salário mínimo, pois custaria mais do que o salário que recebia.
 
-
-          Acabou que eu vi a água chegando quase na canela! Eu desci rapidamente pra desligar os eletrônicos,
-          minha esposa acordou e começou a ficar NERVOSA. Eu peguei um rodo e comecei a jogar água pro ÚNICO
-          ralo desse AP feito por IA (AP todo sem nexo). Ela começou a passar MAL por causa do susto e também
-          por receio de ter queimado meu Steam Deck + TV recém-comprada.
-
-
-          No final, eu consegui secar o AP depois de 2 horas passando o rodo e voltamos a dormir. Hoje, dia
-          24 de dezembro, vi que nada queimou e, de quebra, a casa ficou limpinha. É GAIN ou LOSS?'
-      description: Uma história de um banho descuidado que quase virou um desastre em casa.
-      file_name: minha_esposa_alagou_o_apartamento
-      reddit_community: r/RelatosDoReddit
-      reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-      reddit_post_author: Funny-Ad-9414
-      title: Minha esposa alagou o apartamento
+            Curta e me siga para parte 2'
+        description: ''
+        file_name: a_razao_pela_qual_meu_ex_e_meu_ex_1
+        reddit_community: r/pettyrevenge
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
+        reddit_post_author: TwirlyShirley8
+        title: A razão pela qual meu ex é meu ex - Parte 1
+    -   content: Foi então que recebi uma ligação que mudaria tudo. Uma empresa estava procurando por alguém
+            para uma posição que parecia ideal, embora eu não tivesse certeza se era qualificado. Decidi me
+            inscrever e, mesmo sem grandes esperanças, fui chamado para uma entrevista. Minha mente estava
+            a mil, e eu me perguntava se essa poderia ser a oportunidade que eu tanto precisava. O que eu
+            não sabia era que essa decisão me levaria a um caminho inesperado e cheio de reviravoltas.
+        description: ''
+        file_name: a_razao_pela_qual_meu_ex_e_meu_ex_2
+        reddit_community: r/pettyrevenge
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
+        reddit_post_author: TwirlyShirley8
+        title: A razão pela qual meu ex é meu ex - Parte 2
   video_config:
     low_quality: false
     youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
