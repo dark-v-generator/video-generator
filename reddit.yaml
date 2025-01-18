@@ -6,7 +6,7 @@ main:
     number_of_parts: 2
   video_config:
     low_quality: true
-    youtube_channel_id: UC4r6nalq_1-9rc80qdVLatQ
+    youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
     watermark_path: assets/watermark.png
     cover_duration: 5
     end_silece_seconds: 3

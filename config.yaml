@@ -1,13 +1,23 @@
 main:
-  # seed: KTEX8MJIOH
+  seed: G5YWGZS3F0
   output_path: output/
   history_config:
     source: config
     histories:
-    -   content: 'Há muitos anos, após o nascimento do meu filho mais velho, eu precisava desesperadamente
-            de um emprego. Eu estava vasculhando a seção de empregos de tantos jornais quanto podia encontrar.
-            As opções eram escassas, pois a minha maior qualificação era ter terminado o Ensino Médio. Eu
-            tive que ignorar os empregos de salário mínimo, pois custaria mais do que o salário que recebia.
+    -   content: 'Muitos anos atrás, após o nascimento do meu filho mais velho, eu precisava desesperadamente
+            de um emprego. Eu estava vasculhando a seção de empregos de quantos jornais eu conseguia encontrar.
+            As opções eram escassas, já que minha maior qualificação era ter terminado o ensino médio. Eu
+            tive que ignorar empregos com salário mínimo, porque custaria mais do que pagava. Então, meu ex
+            disse algumas palavras mágicas - "Pare de ser tão exigente. Você nunca vai ganhar mais que o salário
+            mínimo". Eu fiquei FURIOSO. Então encontrei O ANÚNCIO. Eles anunciavam treinamento gratuito para
+            se tornar um engenheiro de software, certificação profissional E conseguir um emprego depois.
+            A única exigência era ter um diploma de ensino médio com nota suficiente em matemática. No começo,
+            eu estava muito cético, porque definitivamente parecia bom demais para ser verdade e possivelmente
+            uma fraude. Mas eu não tinha nada a perder ao apenas conferir. Então lá fui eu. O primeiro dia
+            do processo de aceitação foi desgastante. Vários testes de aptidão cronometrados que levaram horas.
+            Aqueles que passaram foram convidados para uma segunda rodada de testes. Desta vez havia muito
+            menos pessoas. Das 30 pessoas do primeiro dia, apenas 2 de nós foram aceitos no final. E não era
+            uma fraude. A razão pela qual era gratuito, era porque os empregadores pagariam pelo treinamento.
 
             Curta e me siga para parte 2'
         description: ''
@@ -16,11 +26,19 @@ main:
         reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
         reddit_post_author: TwirlyShirley8
         title: A razão pela qual meu ex é meu ex - Parte 1
-    -   content: Foi então que recebi uma ligação que mudaria tudo. Uma empresa estava procurando por alguém
-            para uma posição que parecia ideal, embora eu não tivesse certeza se era qualificado. Decidi me
-            inscrever e, mesmo sem grandes esperanças, fui chamado para uma entrevista. Minha mente estava
-            a mil, e eu me perguntava se essa poderia ser a oportunidade que eu tanto precisava. O que eu
-            não sabia era que essa decisão me levaria a um caminho inesperado e cheio de reviravoltas.
+    -   content: 'Então eu estava empolgado. Então vieram os quatro meses mais intensos da minha vida. Eu
+            estava determinado a provar que meu ex estava errado. Oito horas de aula todos os dias da semana.
+            Mais 6 para lições de casa e estudo. Depois estudando e fazendo um projeto de fim de semana por
+            mais 20 horas no fim de semana. Eu só consegui cerca de 6 horas de sono cada noite. Felizmente,
+            meu filho estava dormindo a noite toda até então. E eu consegui. Fui muito bem nos meus exames
+            finais também. A busca por emprego foi rápida e agradável. E como faltavam apenas 3 anos para
+            o Y2K, até mesmo engenheiros iniciantes estavam ganhando bons salários. Quando eu recebi minha
+            oferta, meu salário era maior do que o do meu ex! Internamente, eu estava exultante e pensei:
+            "Toma essa, seu insuportável idiota". Não disse isso em voz alta, porém... Com o tempo, eu continuei
+            recebendo aumentos e promoções muito bons. Meu ex finalmente se cansou da ''humilhação'' e quis
+            o divórcio. Eu aproveitei a oportunidade para escapar. E é assim que meu ex se tornou meu ex.
+            A maioria das vezes que estudei, minha mãe cuidou do meu filho e meus sogros ajudaram com as compras
+            e contas. Meu ex só conseguia pagar o aluguel e o gás.'
         description: ''
         file_name: a_razao_pela_qual_meu_ex_e_meu_ex_2
         reddit_community: r/pettyrevenge

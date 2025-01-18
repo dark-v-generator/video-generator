@@ -124,14 +124,12 @@ def convert_reddit_post_to_multiple_part_history(
         "Eu H20" -> "Eu sou um homem de 20 anos"
         "Eu M24" -> "Eu sou um homem de 24 anos"
 
-        Além disso, você deve dividir a história em {number_of_parts} partes, mantendo a ordem original. E o 
-        final de cada parte deve conter um gancho para a próxima parte, alguma parte da história que deixe o
-        leitor curioso para saber o que acontece em seguida.
+        Além disso, você deve dividir a história completa em {number_of_parts} partes, mantendo a ordem original. 
 
-        Se estiver em ingês traduza mantendo o mais fiel possível, 
-        substituindo apenas as abreviações.
-        Os demais campos, além de title e content podem ser gerados.
-        Aqui está a história que você deve corrigir e traduzir:
+        Se estiver em ingês traduza mantendo o mais fiel possível, não mude nem adapte a história, apenas 
+        substitua as abreviações listadas acima e traduza a história se preciso.
+        Os demais campos, além de title e parts podem ser gerados.
+        Aqui está a história que você deve adaptar, traduzir e dividir em {number_of_parts} partes:
         
         Título: {title}
 

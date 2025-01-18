@@ -18,7 +18,9 @@ def get_reddit_post(url) -> RedditPost:
     reddit_post_params["community_url_photo"] = post.find("faceplate-tracker").find(
         "img"
     )["src"]
-    reddit_post_params["content"] = (
-        post.find("div", class_="text-neutral-content").find("p").text.strip()
-    )
+    lines = post.find("div", class_="text-neutral-content").find_all("p")
+    content = ''
+    for line in lines:
+        content += line.text.strip() + '\n' 
+    reddit_post_params["content"] = content
     return RedditPost(**reddit_post_params)

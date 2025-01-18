@@ -1,6 +1,6 @@
 from typing import List
 from entities import config
-from entities.history import History, MultiplePartHistory
+from entities.history import History
 from entities.reddit import RedditPost
 from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
