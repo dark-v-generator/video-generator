@@ -30,9 +30,12 @@ def load_history(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
         return __load_histories_from_config(cfg.history_config)
     elif cfg.history_config.source == config.HistorySource.REDDIT:
         reddit_post = reddit_proxy.get_reddit_post(cfg.history_config.reddit_url)
-        return __generate_histories_from_reddit(reddit_post, cfg.history_config)
+        histories =  __generate_histories_from_reddit(reddit_post, cfg.history_config)
+        __save_histories(
+            histories, f"{cfg.output_path}/{reddit_post.title.lower().replace(' ', '_')}.yaml"
+        )
 
-def save_history(histories: List[History], output_path: str):
+def __save_histories(histories: List[History], output_path: str):
     data = { 'histories': [] }
     for history in histories:
         data['histories'].append(history.model_dump())

@@ -27,8 +27,5 @@ if __name__ == "__main__":
     print("Seed:", config.seed)
 
     histories = history_service.load_history(config)
-    history_service.save_history(
-        histories, f"{config.output_path}/{config.seed}.yaml"
-    )
     for history in histories:
         video_service.generate_history_video(history, config)
