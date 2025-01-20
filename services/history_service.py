@@ -34,6 +34,7 @@ def load_history(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
         __save_histories(
             histories, f"{cfg.output_path}/{reddit_post.title.lower().replace(' ', '_')}.yaml"
         )
+        return histories
 
 def __save_histories(histories: List[History], output_path: str):
     data = { 'histories': [] }
