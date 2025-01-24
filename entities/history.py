@@ -12,6 +12,7 @@ class History(BaseModel):
     reddit_community: str = Field(None, title="Reddit community")
     reddit_post_author: str = Field(None, title="Reddit post author")
     reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
+    gender: str = Field('male', title="History teller gender, can be male or female")
 
 
 class MultiplePartHistory(BaseModel):
@@ -21,6 +22,7 @@ class MultiplePartHistory(BaseModel):
     reddit_community: str = Field(None, title="Reddit community")
     reddit_post_author: str = Field(None, title="Reddit post author")
     reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
+    gender: str = Field('male', title="History teller gender, can be male or female")
 
     def __get_part(self, index) -> History:
         title = self.title + f" - Parte {index + 1}"
@@ -35,6 +37,7 @@ class MultiplePartHistory(BaseModel):
             reddit_community=self.reddit_community,
             reddit_post_author=self.reddit_post_author,
             reddit_community_url_photo=self.reddit_community_url_photo,
+            gender=self.gender,
         )
 
     def get_histories(self) -> List[History]:

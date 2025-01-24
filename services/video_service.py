@@ -68,8 +68,10 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         config.cover_config,
     )
     print("Generating speech...")
+    gender = speech_service.VoiceGender(history.gender)
     speech = speech_service.synthesize_speech(
         history.title + "\n\n" + history.content,
+        gender,
     )
     print("Generating video compilation...")
     background_video = __create_video_compilation(
@@ -95,4 +97,5 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         final_video.clip.write_videofile(
             file_name,
             threads=16,
+            preset='veryfast'
         )

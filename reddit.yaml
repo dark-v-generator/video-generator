@@ -2,11 +2,11 @@ main:
   output_path: output/
   history_config:
     source: reddit
-    reddit_url: https://www.reddit.com/r/pettyrevenge/comments/1i42ya6/the_reason_why_my_ex_is_my_ex/
+    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1i8bvyu/fugi_no_meio_do_encontro_com_a_garota/
     number_of_parts: 2
   video_config:
     low_quality: true
-    youtube_channel_id: UCTGjE7hWuBRNqU-OnVSzq3Q
+    youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
     watermark_path: assets/watermark.png
     cover_duration: 5
     end_silece_seconds: 3

@@ -33,6 +33,10 @@ HISTORY_SCHEMA = {
                 "description": "Nome do arquivo da história sem extensão",
                 "type": "string",
             },
+            "gender": {
+                "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
+                "type": "string"
+            }
         },
     },
 }
@@ -55,6 +59,10 @@ MULTIPLE_PART_HISTORY_SCHEMA = {
                 "description": "Nome do arquivo da história sem extensão",
                 "type": "string",
             },
+            "gender": {
+                "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
+                "type": "string"
+            }
         },
     },
 }
@@ -86,10 +94,10 @@ def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
     prompt = """
         Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
         narração. Pode substituir abreviações em ingles e português como as seguintes:
-        "I M24" -> "Eu sou um homem de 24 anos"
-        "I F20" -> "Eu sou uma mulher de 20 anos"
-        "Eu H20" -> "Eu sou um homem de 20 anos"
-        "Eu M24" -> "Eu sou um homem de 24 anos"
+        (ingles)"I M24" -> "Eu sou um homem de 24 anos"
+        (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
+        (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
+        (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
         Faça isso com o título e a história, se estiver em ingês traduza mantendo o mais fiel possível, 
         substituindo apenas as abreviações.

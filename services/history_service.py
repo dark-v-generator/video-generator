@@ -22,7 +22,7 @@ def __generate_histories_from_reddit(reddit_post: RedditPost, cfg: config.Histor
 def __load_histories_from_config(cfg: config.HistoryConfig) -> List[History]:
     histories = []
     for data in cfg.histories:
-        return [History(**data.model_dump())]
+        histories.append(History(**data.model_dump()))
     return histories
 
 def load_history(cfg: config.MainConfig = config.MainConfig()) -> List[History]:

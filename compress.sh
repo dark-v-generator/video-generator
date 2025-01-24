@@ -1,7 +1,7 @@
 #!/bin/bash
 
 path=$1
-output_folder="output"
+output_folder="output_compressed"
 mkdir -p "$output_folder"
 
 for filepath in $path/*.mp4; do
