@@ -23,7 +23,7 @@ def synthesize_speech(
     )
     audio_config = texttospeech.AudioConfig(
         audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=1.0
+        speaking_rate=1.25
     )
     response = tts.synthesize_speech(
         input=synthesis_input, voice=voice, audio_config=audio_config

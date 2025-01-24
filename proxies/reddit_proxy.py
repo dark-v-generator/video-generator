@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import requests
 
 from entities.reddit import RedditPost
@@ -14,7 +14,7 @@ def get_reddit_post(url) -> RedditPost:
     reddit_post_params["community"] = post.find(
         "a", class_="subreddit-name"
     ).text.strip()
-    reddit_post_params["author"] = post.find("a", class_="author-name").text.strip()
+    reddit_post_params["author"] = __get_author_name(post)
     reddit_post_params["community_url_photo"] = post.find("faceplate-tracker").find(
         "img"
     )["src"]
@@ -24,3 +24,9 @@ def get_reddit_post(url) -> RedditPost:
         content += line.text.strip() + '\n' 
     reddit_post_params["content"] = content
     return RedditPost(**reddit_post_params)
+
+def __get_author_name(post: Tag) -> str:
+    a = post.find("a", class_="author-name")
+    if a is None:
+        return '[usuario desconhecido]'
+    return a.text.strip()
