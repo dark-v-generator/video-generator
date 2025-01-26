@@ -75,8 +75,7 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         
         {content}
     """.format(
-        title=history.title,
-        content=history.content
+        title=history.title, content=history.content
     )
 
     speech = speech_service.synthesize_speech(speech_ssml, gender)
@@ -101,8 +100,4 @@ def generate_history_video(history: History, config: MainConfig) -> None:
             fps=15,
         )
     else:
-        final_video.clip.write_videofile(
-            file_name,
-            threads=16,
-            preset='veryfast'
-        )
+        final_video.clip.write_videofile(file_name, threads=16, preset="veryfast")

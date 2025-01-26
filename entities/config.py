@@ -18,6 +18,7 @@ class HistoryConfig(BaseModel):
     histories: List[History] = Field(None, title="Histories fields")
     number_of_parts: int = Field(1, title="Number of parts")
 
+
 class CoverConfig(BaseModel):
     subtitle: str = Field(None, title="Subtitle")
     title_font_family: str = Field("Arial", title="Font family")

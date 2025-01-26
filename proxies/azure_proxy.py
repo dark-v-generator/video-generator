@@ -4,18 +4,19 @@ import tempfile
 import azure.cognitiveservices.speech as speechsdk
 from entities.editor.audio_clip import AudioClip
 
+
 class VoiceVariation(Enum):
-    MALE = 'pt-BR-AntonioNeural'
-    FEMALE = 'pt-BR-FranciscaNeural'
-    MALE_2 = 'pt-BR-MacerioMultilingualNeural'
-    MALE_3 = 'pt-BR-MacerioMultilingualNeural'
-    FEMALE_2 = 'pt-BR-ThalitaMultilingualNeural'
-    FEMALE_3 = 'pt-BR-ThalitaNeural'
-    FEMALE_4 = 'pt-BR-BrendaNeural'
+    MALE = "pt-BR-AntonioNeural"
+    FEMALE = "pt-BR-FranciscaNeural"
+    MALE_2 = "pt-BR-MacerioMultilingualNeural"
+    MALE_3 = "pt-BR-MacerioMultilingualNeural"
+    FEMALE_2 = "pt-BR-ThalitaMultilingualNeural"
+    FEMALE_3 = "pt-BR-ThalitaNeural"
+    FEMALE_4 = "pt-BR-BrendaNeural"
 
 
 def __get_speech_config():
-    speech_key= os.environ.get("AZURE_TTS_SUBSCRIPTION_KEY")
+    speech_key = os.environ.get("AZURE_TTS_SUBSCRIPTION_KEY")
     service_region = os.environ.get("AZURE_TTS_SERVICE_REGION")
     if speech_key is None:
         raise "AZURE_TTS_SUBSCRIPTION_KEY is not set"
@@ -24,21 +25,15 @@ def __get_speech_config():
     return speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
 
 
-
-def synthesize_speech(
-        text: str, 
-        voice_variation: VoiceVariation = VoiceVariation.MALE):
+def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariation.MALE):
     speech_config = __get_speech_config()
     speech_config.speech_synthesis_voice_name = voice_variation.value
 
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-        filename=temp_file.name
-        audio_config = speechsdk.AudioConfig(
-            filename=filename
-        )
+        filename = temp_file.name
+        audio_config = speechsdk.AudioConfig(filename=filename)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
-        speech_config=speech_config,
-        audio_config=audio_config
+        speech_config=speech_config, audio_config=audio_config
     )
     result = speech_synthesizer.speak_text_async(text).get()
 

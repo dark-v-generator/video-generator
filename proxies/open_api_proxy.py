@@ -35,8 +35,8 @@ HISTORY_SCHEMA = {
             },
             "gender": {
                 "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
-                "type": "string"
-            }
+                "type": "string",
+            },
         },
     },
 }
@@ -61,8 +61,8 @@ MULTIPLE_PART_HISTORY_SCHEMA = {
             },
             "gender": {
                 "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
-                "type": "string"
-            }
+                "type": "string",
+            },
         },
     },
 }
@@ -145,7 +145,7 @@ def convert_reddit_post_to_multiple_part_history(
     """.format(
         title=reddit_post.title,
         content=reddit_post.content,
-        number_of_parts=number_of_parts
+        number_of_parts=number_of_parts,
     )
     response = __chat_history_teller(prompt, MULTIPLE_PART_HISTORY_SCHEMA)
     return MultiplePartHistory(

@@ -22,15 +22,19 @@ def get_reddit_post(url) -> RedditPost:
 
     return RedditPost(**reddit_post_params)
 
+
 def __get_post_content(post: Tag) -> str:
-    lines :ResultSet[Tag] = post.find("div", class_="text-neutral-content").find_all("p")
-    content = ''
+    lines: ResultSet[Tag] = post.find("div", class_="text-neutral-content").find_all(
+        "p"
+    )
+    content = ""
     for line in lines:
-        content += line.text.strip() + '\n'
+        content += line.text.strip() + "\n"
     return content
+
 
 def __get_author_name(post: Tag) -> str:
     a = post.find("a", class_="author-name")
     if a is None:
-        return '[usuario desconhecido]'
+        return "[usuario desconhecido]"
     return a.text.strip()

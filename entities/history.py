@@ -12,7 +12,7 @@ class History(BaseModel):
     reddit_community: str = Field(None, title="Reddit community")
     reddit_post_author: str = Field(None, title="Reddit post author")
     reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
-    gender: str = Field('male', title="History teller gender, can be male or female")
+    gender: str = Field("male", title="History teller gender, can be male or female")
 
 
 class MultiplePartHistory(BaseModel):
@@ -22,14 +22,14 @@ class MultiplePartHistory(BaseModel):
     reddit_community: str = Field(None, title="Reddit community")
     reddit_post_author: str = Field(None, title="Reddit post author")
     reddit_community_url_photo: str = Field(None, title="Reddit community url photo")
-    gender: str = Field('male', title="History teller gender, can be male or female")
+    gender: str = Field("male", title="History teller gender, can be male or female")
 
     def __get_part(self, index) -> History:
         title = self.title + f" - Parte {index + 1}"
         content = self.parts[index]
-        if index != len(self.parts) -1:
-             content += f"\nCurta e me siga para parte {index + 2}"
-        file_name = self.file_name + f'_{index + 1}' 
+        if index != len(self.parts) - 1:
+            content += f"\nCurta e me siga para parte {index + 2}"
+        file_name = self.file_name + f"_{index + 1}"
         return History(
             title=title,
             content=content,
