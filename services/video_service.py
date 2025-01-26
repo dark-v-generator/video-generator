@@ -69,10 +69,17 @@ def generate_history_video(history: History, config: MainConfig) -> None:
     )
     print("Generating speech...")
     gender = speech_service.VoiceGender(history.gender)
-    speech = speech_service.synthesize_speech(
-        history.title + "\n\n" + history.content,
-        gender,
+    speech_ssml = """
+        {title}
+
+        
+        {content}
+    """.format(
+        title=history.title,
+        content=history.content
     )
+
+    speech = speech_service.synthesize_speech(speech_ssml, gender)
     print("Generating video compilation...")
     background_video = __create_video_compilation(
         speech.clip.duration,
