@@ -7,12 +7,12 @@ from entities.editor.audio_clip import AudioClip
 
 class VoiceVariation(Enum):
     MALE = "pt-BR-AntonioNeural"
-    FEMALE = "pt-BR-FranciscaNeural"
+    FEMALE = "pt-BR-ThalitaMultilingualNeural"
     MALE_2 = "pt-BR-MacerioMultilingualNeural"
     MALE_3 = "pt-BR-MacerioMultilingualNeural"
-    FEMALE_2 = "pt-BR-ThalitaMultilingualNeural"
+    FEMALE_2 = "pt-BR-BrendaNeural"
     FEMALE_3 = "pt-BR-ThalitaNeural"
-    FEMALE_4 = "pt-BR-BrendaNeural"
+    FEMALE_4 = "pt-BR-FranciscaNeural"
 
 
 def __get_speech_config():
