@@ -1,3 +1,4 @@
+import os
 from typing import List
 from entities import config
 from entities.history import History
@@ -38,6 +39,7 @@ def load_history(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
     elif cfg.history_config.source == config.HistorySource.REDDIT:
         reddit_post = reddit_proxy.get_reddit_post(cfg.history_config.reddit_url)
         histories = __generate_histories_from_reddit(reddit_post, cfg.history_config)
+        os.makedirs(cfg.output_path, exist_ok=True)
         __save_histories(
             histories,
             f"{cfg.output_path}/{reddit_post.title.lower().replace(' ', '_')}.yaml",

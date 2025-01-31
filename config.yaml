@@ -1,67 +1,186 @@
 main:
-  seed: RME1TKW8UG
   output_path: output/
   history_config:
-    source: config
     histories:
-    -   content: 'Bom dia comunidade, espero que estejam bem. Esse é um relato que aconteceu comigo no ano
-            passado, mais especificamente em Julho de 2024. Alerta de textão! Férias da faculdade, conheci
-            uma garota indo para o caminho do trabalho, sempre ficávamos um do lado do outro no ponto de ônibus
-            mas não trocávamos uma única palavra, justamente por eu ser muito tímido. As vezes nosso olhar
-            se encontrava, mas eu simplesmente não conseguia chegar nela por ser muito atraente, até que em
-            determinado momento eu ganhei poderes divinos e puxei assunto com ela. Daí em diante começamos
-            a nos conhecer. Ela é uma garota MUITO linda, não tem corpão, mas suas roupas e seu rosto fazem
-            parecer ser uma modelo. A própria faz curso de modelo. Ficamos conversando durante 4 dias no ponto
-            de ônibus, à noite, e a madrugada inteira pelo Instagram. Ela estava dando claros sinais de interesse,
-            perguntava de mim, do meu dia, puxava assunto primeiro, me mandava selfies em casa (do nada),
-            me elogiava, me deu apelido de ''amor'', etc, etc, etc. Em resumo, estava sendo uma garota tão
-            legal quanto a beleza.
+    -   content: '
+            Quando conheci minha esposa, ela tinha acabado de sair de um relacionamento tóxico. O ex
+            dela bebia, passava dias fora sem dar notícias e, certamente, aprontava fora do casamento. O filho
+            dela tinha uns 8 anos na época. Nós nos entendíamos bem, brincávamos juntos e tínhamos interesses
+            mútuos. No entanto, quando ele cresceu e descobriu os jogos online, tudo mudou. Ele se viciou
+            e passa o dia todo jogando. O problema não é só o tempo que ele passa jogando. Ele grita, xinga,
+            fica revoltado com os amigos do jogo, faz escândalos e faz barulho o dia todo, o que me incomoda
+            profundamente. Já tentei de tudo: limitar o tempo de jogo, diminuir a velocidade da internet e
+            até invadir o quarto e desligar o pc à força. Qualquer sanção que eu aplique para ter um pouco
+            de sossego faz com que ele vá para a casa do pai por alguns dias, e aí a mãe entra em cena. Tudo
+            o que faço para ter paz em casa é visto como implicância e perseguição com o garoto, que agora
+            tem 16 anos.
+
+            Ele não ajuda em nada em casa, não limpa o próprio quarto, passa dias sem tomar banho e
+            não dá a mínima atenção ao irmão de 1 ano e meio. Há cerca de uma semana, o bebê se machucou e
+            cortou a boca enquanto ele estava vigiando. E o que ele fez com o bebê depois disso me deixou
+            furioso.
 
             Curta e me siga para parte 2'
         description: ''
-        file_name: fugi_no_meio_do_encontro_com_a_garota_1
+        file_name: meu_enteado_vai_acabar_com_meu_casamento_1
         gender: male
         reddit_community: r/RelatosDoReddit
         reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: upentakill
-        title: Fugi no meio do encontro com a garota - Parte 1
-    -   content: 'Chamei ela para jantar, ela aceitou. Minha ideia era irmos no Outback (mas não falei o local
-            que iríamos). Me arrumei bem, passei perfume, cheguei na casa dela com o carro do meu pai, um
-            Chevrolet Celta em perfeito estado, lindo, polido, interior limpo e cheiroso. O carro estava zero.
-            Saí do carro, abri a porta para ela, deixei ela colocar a playlist dela no multi-mídia que meu
-            pai pagou para instalar, e fomos pro shopping. Se trocamos 6 frases no caminho foi muito, eu realmente
-            estava tentando puxar assuntos, mas era respondido com respostas curtas como: ''Pois é'', ''aham'',
-            ''então''… Dali eu vi que iria ser um date difícil. Chegamos no shopping, estava uma noite linda.
-            Estacionei e entramos, continuei tentando puxar assunto, mas sem sucesso. Segurei na mão dela
-            para caminharmos de mãos dadas, mas percebi que ela não estava apertando minha mão, deixava a
-            palma aberta como se eu estivesse a carregando. Então, decidi soltar, pois fiquei com medo de
-            estar deixando ela desconfortável. Entramos no Outback, o garçom nos disponibilizou uma mesa e
-            ficamos ali sentados vendo o cardápio digital. Eu continuei tentando puxar assunto, mas novamente
-            sem sucesso, apenas curtas respostas. Parecia que ela não estava gostando do rolê, parecia um
-            robô. Até que cansei e decidi ir embora. Eu simplesmente não iria conseguir pagar um jantar para
-            uma pessoa assim. Disse que iria ao banheiro, no caminho encontrei-me com o garçom e expliquei
-            a situação. Pedi para ele falar a ela que eu precisei sair de urgência e lhe dei uma gorjeta.
-            O garçom entendeu meu ponto e aceitou. Por fim, peguei o carro e fui embora. Eu realmente não
-            sei se foi a melhor maneira de sair. Não sei se eu deveria ter sido direto e dito o que estava
-            me incomodando. Não mandei mais mensagem para ela, e vice-versa. Até hoje nos encontramos todo
-            dia no mesmo ponto de ônibus, mas não trocamos sequer uma única palavra. Parece até que nunca
-            nos falamos. Há pouco tempo percebi que ela parou de me seguir no Instagram, mas tudo bem. Bom,
-            esse foi o relato que eu gostaria de compartilhar com vocês. Muito obrigado a quem leu até aqui.'
+        reddit_post_author: KarayRc
+        title: Meu enteado vai acabar com meu casamento - Parte 1
+    -   content: '
+            A reação dele foi colocar o bebê para fora do quarto
+            e fechar a porta porque o choro estava atrapalhando o jogo. Isso me deixou furioso, mas tive que
+            dar atenção do meu filho. Hoje mesmo eu briguei com ela porque a cria tomou banho e conseguiu
+            derramar água do banheiro até a sala e ela reclamou de mim, do jeito que eu estava enxugando.
+            A principal reclamação da minha esposa é que eu pego no pé dele à toa. O que ela não entende é
+            que ele faz escândalo por causa desses jogos o dia todo e até durante a noite, atrapalhando até
+            meu sono. Já fiz terapia e busquei meios de mudar meu foco, mas nada funciona. Isso já dura 5
+            anos. Não consigo relaxar dentro da minha própria casa. Conversar, fazer concessões ou definir
+            horários não adianta mais. A situação já degringolou e não tem mais volta. Estou exausto, no limite,
+            e logo me vejo perdendo a paciência com ele e partindo para as vias físicas, o que sei que vai
+            acabar com meu relacionamento. Amo minha esposa, faço por ela que posso. Dou carinho, atenção
+            e sou totalmente fiel. Mas não vejo apoio dela nesse tema que tem me perturbado há tanto tempo.
+            Tudo vira perseguição contra o garoto, e se quero descansar, tenho que inventar rotinas fora de
+            casa. Mas uma hora eu tenho que voltar, e tudo está na mesma: histeria por causa de jogos no computador,
+            gritos, e eu segurando minha raiva, frustração e guardando estresse. 
+            
+            O que vocês acham dessa situação? Curta, me siga e deixe nos comentários.
+            '
         description: ''
-        file_name: fugi_no_meio_do_encontro_com_a_garota_2
+        file_name: meu_enteado_vai_acabar_com_meu_casamento_2
         gender: male
         reddit_community: r/RelatosDoReddit
         reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: upentakill
-        title: Fugi no meio do encontro com a garota - Parte 2
+        reddit_post_author: KarayRc
+        title: Meu enteado vai acabar com meu casamento - Parte 2
+    -   content: '
+            Eu sou um homem de 44 anos e, atualmente, sou proprietário de uma pequena empresa. Tenho um
+            serviço de lavanderia com retirada e entrega em uma grande cidade. Meu ganha-pão é o negócio comercial: 
+            pequenos salões, bares, restaurantes etc.
+            
+            As pessoas gostam de nós porque não exigimos um contrato longo, é uma situação do tipo: 
+            ''nos ligue se quiser'', e se você não gostar de nós, não ligue. Funciona de ambas as formas. 
+            Éramos relativamente novos no negócio, na época e estávamos super
+            animados para cuidar das toalhas e guardanapos de um restaurante com 2 estrelas Michelin. Nós só não
+            gostávamos do cara do financeiro, que eu vou chamar de Marcos. Ele sempre tentava negociar nosso preço. 
+            Mas nos dávamos muito bem com a menina da logística, que eu vou chamar de Amanda, qualquer negócio de alto 
+            nível deve ter alguém como ela na equipe. 
+            
+            A demanda era bem alta, e nós passamos por muitos obstáculos, como nunca havíamos feito antes, 
+            até alugamos mais espaço para lidar com o negócio deles, a $3000/mês, eles eram nossos
+            maiores clientes. 
+            
+            
+            A questão é que o Marcos já havia negociado um ACORDO INCRÍVEL conosco desde o começo,
+            mas ele tinha o hábito desagradável de tentar renegociar após o fato, cada vez que eles nos deviam
+            dinheiro, ele tentava nos fazer aceitar menos, nós dizíamos a Amanda que isso não era aceitável repetidamente.
+            Marcos era um dos proprietários, mas ele era só um cara do dinheiro, o chef e os outros proprietários eram quem 
+            realmente se importavam com o negócio.
+
+            A conversa continuou por meses, eles sempre insistiam em um desconto e nós nunca cederíamos, 
+            porque já estávamos em território de descontos altos com essas pessoas, e vamos lá, a $400 por prato
+            você pode pagar $2 por toalha ou seja lá o que cobramos.
+            
+            Eventualmente, Marcos começou a nos pressionar de verdade e estava retendo cerca de $1700, dinheiro
+            que realmente precisávamos, enquanto ele tentava nos forçar a aceitar menos, acho que ele
+            pensava que estávamos provavelmente vivendo no limite como a maioria dos proprietários de pequenas
+            empresas, mas estávamos realmente cansados, cansados e fartos mais do que tudo. E checamos nosso
+            saldo de paciência, e não havia mais nada para dar. 
+            
+            Então eu elaborei um plano e consegui que meu parceiro concordasse, iríamos fazer algo para forçar
+            com que nos pagassem.
+
+            Curta e me siga para parte 2'
+        description: ''
+        file_name: voce_nao_quer_pagar_1
+        gender: male
+        reddit_community: r/pettyrevenge
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
+        reddit_post_author: Altruistic-Slide-512
+        title: Você não quer pagar? Eu vou segurar suas toalhas como refém - Parte 1
+    -   content: '
+            Colocamos o plano em prática, esperamos até o fim de semana e tínhamos quase todas as toalhas e guardanapos
+            limpos deles, e aqui eu imagino que você já sabe o que vai acontecer. Na segunda-feira liguei para Amanda 
+            e disse a ela que Marcos poderia se danar, estavamos com todas as toalhas e guardanapos, tudo passado e pronto, 
+            sei que  vocês estão planejando abrir na terça, então eu só vou devolver tudo quando vocês nos pagarem integralmente
+            por esse pedido e por tudo que nos devem de pedidos anteriores EM DINHEIRO, ai você receberá suas toalhas de volta.
+            
+            Também avisei a ela que, assim que fôssemos pagos, nosso relacionamento comercial acabaria, isso foi desastroso 
+            para nós financeiramente, mas não iríamos morrer de fome, ela entendeu e estava do nosso lado na verdade, 
+            ela ADORAVA nosso serviço e ela avisou todos os proprietários que não estávamos brincando. 
+            
+            Ela nos ligou de volta e concordamos com um horário, eu fui ao restaurante, deixei meu parceiro e as toalhas e
+            guardanapos na van. Marcos não estava lá, mas o chef (que era o outro proprietário) estava presente. E, 
+            só porque era ele e não o Marcos, aceitei um cheque empresarial em vez de dinheiro (que depois foi descontado 
+            sem problema mais tarde), depois disso eu liguei para meu parceiro trazer as coisas.
+
+            A Amanda me ligou mais tarde e propôs que continuássemos trabalhando com eles e que nunca mais teríamos
+            que falar com Marcos, mas honestamente, foi um grande alívio não ter mais que lidar com eles, então eu
+            disse de jeito nenhum. 
+
+            E você, concorda com minha atitude? Curta, me siga e deixe nos comentários.
+            '
+        description: ''
+        file_name: voce_nao_quer_pagar_2
+        gender: male
+        reddit_community: r/pettyrevenge
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
+        reddit_post_author: Altruistic-Slide-512
+        title: Você não quer pagar? Eu vou segurar suas toalhas como refém - Parte 2
+    -   content: '
+            Eu moro em um apartamento e na minha porta tem um olho mágico. Sempre que alguém passa no
+            andar, uma luz acende, e eu consigo ver mesmo de dentro do apartamento. Costumo passar o tempo
+            desenhando, ouvindo música ou assistindo a vídeos aleatórios no YouTube. Isso é importante porque
+            a maior parte do meu condomínio é religiosa e anti-rock, mas liberam funk. Enfim, vai entender.
+
+            Isso começou no final da semana passada. Na quarta-feira à tarde, um garoto de uns 8 ou
+            10 anos subiu e ficou parado em frente à minha porta. Eu o observava através do olho mágico. Naquele
+            momento, estava com o rock no máximo, então desliguei o som. Com medo da criança invadir, peguei
+            um cabo de vassoura e conferi se a porta estava trancada. Logo depois, quando voltei a olhar pelo
+            olho mágico, ele ainda estava parado, mas deu meia-volta e desceu. Isso se repetiu até sábado,
+            quando eu colocava música e o garoto aparecia. Quando desligava, ele sumia. Lembro de um dia em
+            que ele ficou subindo e descendo as escadas para ouvir as músicas. Parou só quando se cansou,
+            trocando as músicas sem parar, era meia hora de música e meia hora de silêncio.
+
+            Mas depois de um tempo eu descobri o por que isso acontecia.
+
+            Curta e me siga para parte 2'
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta-descobri-o-motivo-hoje_1
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 1
+    -   content: '
+            Agora vamos à descoberta sobre as músicas. Antes, eu pensava que ele estava perto da minha
+            porta para tentar invadir minha casa. No sábado, o garoto apareceu de novo e ficou parado na porta.
+            Uma hora depois, meu pai chegou mais cedo do trabalho por ser sábado e sugeriu colocar as músicas
+            que eu estava ouvindo quando a criança apareceu, para ver se ele voltava e podíamos perguntar
+            por que ele ficava parado na frente do apartamento. Coloquei, mas ele não apareceu. Ficamos nisso
+            até umas 6 horas da noite, e depois percebemos que ele não voltaria, então paramos. Achei meio
+            estranho, mas lembrei que me disseram que talvez o garoto não fosse daqui e que provavelmente
+            estava visitando alguém, então ignorei o sumiço dele por dias.
+
+            Hoje, como sempre, coloquei música enquanto fazia meus desenhos. Hoje, ouvi os passos e
+            a luz do corredor acendendo de novo. Quando me aproximei da porta, ouvi uma mulher gritando no
+            corredor de baixo: ''OH! Volta aqui!'' Quando olhei pelo olho mágico, era o mesmo garoto de sempre,
+            dando meia-volta na escada e descendo. Agora, acho que está confirmado: ele estava perto da minha
+            porta para ouvir música escondido. Acho que os pais dele provavelmente não permitem que ele ouça
+            esse estilo de música, e ele encontrou uma maneira de escutá-la às escondidas. Mas parece que
+            os pais descobriram e o colocaram de castigo. Estou pensando em chamá-lo para ouvir
+            música aqui e trocar uma ideia sobre isso de ficar na minha porta. O que acham da ideia?
+            Curta, me siga e deixe nos comentários.
+            '
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta-descobri-o-motivo-hoje_2
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 2
   video_config:
     low_quality: false
-    youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
-    watermark_path: assets/watermark.png
-    cover_duration: 5
-    end_silece_seconds: 3
-    padding: 60
-    width: 1080
-    height: 1920
   cover_config:
     title_font_size: 100

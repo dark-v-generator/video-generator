@@ -62,11 +62,6 @@ def __generate_video(
 
 
 def generate_history_video(history: History, config: MainConfig) -> None:
-    print("Generating cover...")
-    cover = cover_service.generate_cover(
-        history,
-        config.cover_config,
-    )
     print("Generating speech...")
     gender = speech_service.VoiceGender(history.gender)
     speech_ssml = """
@@ -79,6 +74,15 @@ def generate_history_video(history: History, config: MainConfig) -> None:
     )
 
     speech = speech_service.synthesize_speech(speech_ssml, gender)
+    if config.video_config.audio_preview:
+        speech.clip.audiopreview()
+        return
+
+    print("Generating cover...")
+    cover = cover_service.generate_cover(
+        history,
+        config.cover_config,
+    )
     print("Generating video compilation...")
     background_video = __create_video_compilation(
         speech.clip.duration,

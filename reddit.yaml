@@ -1,18 +1,8 @@
 main:
-  output_path: output/
+  output_path: preview/
   history_config:
     source: reddit
-    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1i8bvyu/fugi_no_meio_do_encontro_com_a_garota/
+    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1i7aucg/todo_dia_aparecia_um_garoto_na_minha_porta/
     number_of_parts: 2
   video_config:
-    low_quality: true
-    youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
-    watermark_path: assets/watermark.png
-    cover_duration: 5
-    end_silece_seconds: 3
-    padding: 50
-    width: 1080
-    height: 1920
-  cover_config:
-    title_font_size: 110
-    cover_type: reddit
+    audio_preview: true

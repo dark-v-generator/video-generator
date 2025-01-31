@@ -7,7 +7,6 @@ from entities.history import History, MultiplePartHistory
 
 class HistorySource(Enum):
     REDDIT = "reddit"
-    CHAT_GPT = "chat_gpt"
     CONFIG = "config"
 
 
@@ -23,7 +22,7 @@ class CoverConfig(BaseModel):
     subtitle: str = Field(None, title="Subtitle")
     title_font_family: str = Field("Arial", title="Font family")
     subtitle_font_family: str = Field("Arial", title="Subtitle font family")
-    title_font_size: int = Field(80, title="Title font size")
+    title_font_size: int = Field(110, title="Title font size")
     subtitle_font_size: int = Field(50, title="Subtitle font size")
     title_font_color: str = Field("#000000", title="Font color")
     subtitle_font_color: str = Field("#808080", title="Subtitle font color")
@@ -36,14 +35,15 @@ class VideoConfig(BaseModel):
     watermark_path: str = Field(None, title="Path to the water mark image")
     background_audio_path: str = Field(None, title="Path to the background audio file")
     end_silece_seconds: int = Field(3, title="End silence seconds")
-    padding: int = Field(50, title="Padding")
+    padding: int = Field(60, title="Padding")
     cover_duration: int = Field(5, title="Cover duration")
-    width: int = Field(720, title="Width of the video")
-    height: int = Field(1280, title="Height of the video")
+    width: int = Field(1080, title="Width of the video")
+    height: int = Field(1920, title="Height of the video")
     youtube_channel_id: str = Field(
-        "UCCZIevhN62jJ2gb-u__M95g", title="Youtube channel id"
+        "UCIXTGJvqvxWoWWstA66a2JQ", title="Youtube channel id"
     )
     low_quality: bool = Field(False, title="Low quality")
+    audio_preview: bool = Field(False, title="If true will render only the audio")
 
 
 class MainConfig(BaseModel):

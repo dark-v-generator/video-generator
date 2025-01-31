@@ -13,3 +13,4 @@ output/*
 .yb_cache/*
 .polly_cache/*
 .DS_Store
+preview/
