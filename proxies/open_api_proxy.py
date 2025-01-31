@@ -12,48 +12,9 @@ HISTORY_SCHEMA = {
                 "description": "Título da história",
                 "type": "string",
             },
-            "subtitle": {
-                "description": "Subtítulo da história",
-                "type": "string",
-            },
-            "description": {
-                "description": "Breve descrição da história",
-                "type": "string",
-            },
             "content": {
                 "description": "Conteúdo da história",
                 "type": "string",
-            },
-            "hashtags": {
-                "description": "Lista de hashtags para as redes sociais",
-                "type": "array",
-                "items": {"type": "string"},
-            },
-            "file_name": {
-                "description": "Nome do arquivo da história sem extensão",
-                "type": "string",
-            },
-            "gender": {
-                "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
-                "type": "string",
-            },
-        },
-    },
-}
-
-MULTIPLE_PART_HISTORY_SCHEMA = {
-    "name": "multiple_part_history_schema",
-    "schema": {
-        "type": "object",
-        "properties": {
-            "title": {
-                "description": "Título da história",
-                "type": "string",
-            },
-            "parts": {
-                "description": "Lista de partes da história",
-                "type": "array",
-                "items": {"type": "string"},
             },
             "file_name": {
                 "description": "Nome do arquivo da história sem extensão",
@@ -95,20 +56,25 @@ def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
         Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
         narração seguindo o seguinte:
         
-        1. Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
+        - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
         (ingles)"I M24" -> "Eu sou um homem de 24 anos"
         (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
         (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
         (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
-        2. Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
+        - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
         pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
         traduzido para "escola" por exemplo, pois esse termo é mais comum
 
-        3. Corriga as pontuações do texto e adapte trechos para que a leitura fique mais flúida e com sentido. 
-        Removendo excessos de pontuação, inserindo virgualas onde necessários e corrigindo as pausas adequadamente.
+        - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
+        como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
+        e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
 
-        4. Mantenha a história o mais fiel possível, não crie nada a mais, não mude a história, apenas traduza (se 
+        - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
+        caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
+        e corrigindo as pausas adequadamente.
+
+        - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
         necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
 
         Aqui está a história:
@@ -133,31 +99,68 @@ def convert_reddit_post_to_multiple_part_history(
     reddit_post: RedditPost,
     number_of_parts: int,
 ) -> MultiplePartHistory:
-    prompt = """
+    system_message = """
+        Você é um assistente de revisão de histórias.
         Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-        narração seguindo o seguinte:
+        narração e dividila em partes, seguindo o seguinte:
         
-        1. Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
+        - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
         (ingles)"I M24" -> "Eu sou um homem de 24 anos"
         (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
         (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
         (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
-        2. Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
+        - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
         pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
         traduzido para "escola" por exemplo, pois esse termo é mais comum
 
-        3. Corriga as pontuações do texto e adapte trechos para que a leitura fique mais flúida e com sentido. 
-        Removendo excessos de pontuação, inserindo virgualas onde necessários e corrigindo as pausas adequadamente.
+        - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
+        como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
+        e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
 
-        4. Divida a história em exatamente {number_of_parts} partes, onde cada parte deve terminar em um momento 
-        que disperte a curiosidade do leitor para a próxima parte.
+        - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
+        caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
+        e corrigindo as pausas adequadamente.
 
-        5. Mantenha a história o mais fiel possível, não crie nada a mais, não mude a história, apenas traduza (se 
+        - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
         necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
+
+        - A história deve ser dividida em algumas partes, o número exato será passado. As partes serão vídeos diferentes, 
+        portanto de uma parte para outra tente finalizar em um ponto alto da história, despertando o interesse para 
+        a próxima parte. Caso não seja possível, apenas divida a história.
 
         Aqui está a história:
         
+    """
+
+    schema = {
+        "name": "multiple_part_history_schema",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "description": "Título da história",
+                    "type": "string",
+                },
+                "parts": {
+                    "description": f"Lista de partes da história, deve ter tamanho {number_of_parts}",
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "file_name": {
+                    "description": "Nome do arquivo da história sem extensão",
+                    "type": "string",
+                },
+                "gender": {
+                    "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
+                    "type": "string",
+                },
+            },
+        },
+    }
+
+    user_message = """
+        Essa história deve ter {number_of_parts} partes
         Título: {title}
 
         {content}
@@ -166,7 +169,22 @@ def convert_reddit_post_to_multiple_part_history(
         content=reddit_post.content,
         number_of_parts=number_of_parts,
     )
-    response = __chat_history_teller(prompt, MULTIPLE_PART_HISTORY_SCHEMA)
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": schema,
+        },
+    )
+    raw_data = response.choices[0].message.content
+    response = json.loads(raw_data)
+
     return MultiplePartHistory(
         **response,
         reddit_community=reddit_post.community,
