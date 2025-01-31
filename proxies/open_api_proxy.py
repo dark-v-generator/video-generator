@@ -93,16 +93,25 @@ def generate_history(prompt: str) -> History:
 def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
     prompt = """
         Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-        narração. Pode substituir abreviações em ingles e português como as seguintes:
+        narração seguindo o seguinte:
+        
+        1. Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
         (ingles)"I M24" -> "Eu sou um homem de 24 anos"
         (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
         (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
         (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
-        Faça isso com o título e a história, se estiver em ingês traduza mantendo o mais fiel possível, 
-        substituindo apenas as abreviações.
-        Os demais campos, além de title e content podem ser gerados.
-        Aqui está a história que você deve corrigir e traduzir:
+        2. Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
+        pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
+        traduzido para "escola" por exemplo, pois esse termo é mais comum
+
+        3. Corriga as pontuações do texto e adapte trechos para que a leitura fique mais flúida e com sentido. 
+        Removendo excessos de pontuação, inserindo virgualas onde necessários e corrigindo as pausas adequadamente.
+
+        4. Mantenha a história o mais fiel possível, não crie nada a mais, não mude a história, apenas traduza (se 
+        necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
+
+        Aqui está a história:
         
         Título: {title}
 
@@ -126,18 +135,28 @@ def convert_reddit_post_to_multiple_part_history(
 ) -> MultiplePartHistory:
     prompt = """
         Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-        narração, substituindo abreviações em ingles e português como as seguintes:
-        "I M24" -> "Eu sou um homem de 24 anos"
-        "I F20" -> "Eu sou uma mulher de 20 anos"
-        "Eu H20" -> "Eu sou um homem de 20 anos"
-        "Eu M24" -> "Eu sou um homem de 24 anos"
+        narração seguindo o seguinte:
+        
+        1. Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
+        (ingles)"I M24" -> "Eu sou um homem de 24 anos"
+        (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
+        (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
+        (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
-        Além disso, você deve dividir a história completa em {number_of_parts} partes, mantendo a ordem original. 
+        2. Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
+        pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
+        traduzido para "escola" por exemplo, pois esse termo é mais comum
 
-        Se estiver em ingês traduza mantendo o mais fiel possível, não mude nem adapte a história, apenas 
-        substitua as abreviações listadas acima e traduza a história se preciso.
-        Os demais campos, além de title e parts podem ser gerados.
-        Aqui está a história que você deve adaptar, traduzir e dividir em {number_of_parts} partes:
+        3. Corriga as pontuações do texto e adapte trechos para que a leitura fique mais flúida e com sentido. 
+        Removendo excessos de pontuação, inserindo virgualas onde necessários e corrigindo as pausas adequadamente.
+
+        4. Divida a história em exatamente {number_of_parts} partes, onde cada parte deve terminar em um momento 
+        que disperte a curiosidade do leitor para a próxima parte.
+
+        5. Mantenha a história o mais fiel possível, não crie nada a mais, não mude a história, apenas traduza (se 
+        necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
+
+        Aqui está a história:
         
         Título: {title}
 

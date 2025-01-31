@@ -1,13 +1,14 @@
-from enum import Enum
 import os
+import re
 import tempfile
 import azure.cognitiveservices.speech as speechsdk
 from entities.editor.audio_clip import AudioClip
+from enum import Enum
 
 
 class VoiceVariation(Enum):
     MALE = "pt-BR-AntonioNeural"
-    FEMALE = "pt-BR-ThalitaMultilingualNeural"
+    FEMALE = "pt-BR-ThalitaNeural"
     MALE_2 = "pt-BR-MacerioMultilingualNeural"
     MALE_3 = "pt-BR-MacerioMultilingualNeural"
     FEMALE_2 = "pt-BR-BrendaNeural"
@@ -24,6 +25,24 @@ def __get_speech_config():
         raise "AZURE_TTS_SERVICE_REGION is not set"
     return speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
 
+def __text_to_ssml(text: str, voice: str, rate: float=1.0, break_time="1s"):
+    text = re.sub(r'\n\s*\n+', f'\n<break time="{break_time}" />\n', text)
+    text = re.sub(r'[A-ZÀ-Ý][A-ZÀ-Ý]+(?:\s*[A-ZÀ-Ý]+)*', r'<emphasis level="strong">\g<0></emphasis>', text)
+    ssml_text = """
+    <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="pt-BR">
+        <voice name="{voice_name}">
+        <prosody rate="{rate}">
+        {text}
+        </prosody>
+        </voice>
+    </speak>
+    """.format(
+        text=text,
+        voice_name=voice,
+        rate=str(round(rate, 2))
+    )
+    return ssml_text
+        
 
 def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariation.MALE):
     speech_config = __get_speech_config()
@@ -33,10 +52,17 @@ def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariatio
         filename = temp_file.name
         audio_config = speechsdk.AudioConfig(filename=filename)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
-        speech_config=speech_config, audio_config=audio_config
+        speech_config=speech_config,
+        audio_config=audio_config
     )
-    result = speech_synthesizer.speak_text_async(text).get()
-
+    ssml_text = __text_to_ssml(
+        text, 
+        voice=voice_variation.value,
+        rate=1.2,
+        break_time="300ms"
+    )
+    print(ssml_text)
+    result = speech_synthesizer.speak_ssml(ssml_text)
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
         return AudioClip(filename)
     elif result.reason == speechsdk.ResultReason.Canceled:
@@ -46,3 +72,16 @@ def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariatio
             if cancellation_details.error_details:
                 print("Error details: {}".format(cancellation_details.error_details))
         raise "Unable to convert azure speech"
+
+if __name__ == "__main__":
+    synthesize_speech(
+        """
+            Você quer que nós terminemos? TUDO BEM - Parte 2
+
+
+            Então, essa mulher tem me chamado incessantemente, implorando para conversar
+            e, após apenas 8 dias, ela apareceu no meu trabalho para se desculpar completamente, com uma confissão
+            que ME DEIXOU CHOCADA. 
+        """,
+        VoiceVariation.FEMALE
+    )
