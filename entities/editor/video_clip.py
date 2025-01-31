@@ -7,6 +7,8 @@ from moviepy import (
 from moviepy.video.fx.Loop import Loop
 import random
 
+from entities.editor.captions_clip import CaptionsClip
+
 
 class VideoClip:
     clip: MoviepyVideoClip
@@ -28,6 +30,9 @@ class VideoClip:
 
     def merge(self, video_clip):
         self.clip = CompositeVideoClip([self.clip, video_clip.clip])
+
+    def insert_captions(self, captions: CaptionsClip):
+        self.clip = CompositeVideoClip([self.clip, *captions.clips])
 
     def resize(self, width, height):
         original_aspect_ratio = self.clip.size[0] / self.clip.size[1]

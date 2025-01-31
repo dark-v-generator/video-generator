@@ -2,13 +2,15 @@ import random
 from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
-from entities.history import History, MultiplePartHistory
+from entities.history import History
 
 
 class HistorySource(Enum):
     REDDIT = "reddit"
     CONFIG = "config"
 
+class CaptionsConfig(BaseModel):
+    enabled: bool = Field(False)
 
 class HistoryConfig(BaseModel):
     source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")
@@ -57,6 +59,7 @@ class MainConfig(BaseModel):
     history_config: HistoryConfig = Field(
         HistoryConfig(), title="History configuration"
     )
+    captions_config: CaptionsConfig = Field(CaptionsConfig())
     seed: str = Field(__generate_random_seed(), title="Seed")
 
     def int_seed(self) -> int:

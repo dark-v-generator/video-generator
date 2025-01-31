@@ -12,6 +12,7 @@ class AudioClip:
     clip: MoviepyAudioClip
 
     def __init__(self, file_path, volume=1):
+        self.file_path = file_path
         self.clip = AudioFileClip(file_path)
         self.clip = self.clip.with_volume_scaled(volume)
 

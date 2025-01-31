@@ -1,14 +1,16 @@
 from os import path
 import random
+import tempfile
 from entities import config
+from entities.editor import captions_clip
 from entities.history import History
 from proxies import youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 from entities.history import History
-from entities.config import MainConfig
+from entities.config import CaptionsConfig, MainConfig
 from os import path
 
-from services import cover_service, speech_service
+from services import cover_service, speech_service, caption_service
 
 
 def __create_video_compilation(
@@ -60,6 +62,24 @@ def __generate_video(
         background_video.merge(water_mark)
     return background_video
 
+def generate_captions(speech: audio_clip.AudioClip, caption_config: CaptionsConfig) -> captions_clip.CaptionsClip:
+    srt_tmp = tempfile.NamedTemporaryFile(suffix=".srt", delete=False)
+    caption_config = caption_service.CaptioningConfig(
+        input_file=speech.file_path, 
+        format='mp3',
+        profanity='raw',
+        output_file=srt_tmp.name
+    )
+    print("Generating captions...")
+    captioning = caption_service.Captioning(caption_config)
+    captioning.initialize()
+    captioning.recognize_continuous()
+    captioning.finish()
+    subtitles_config = captions_clip.CaptionsConfig(
+        
+    )
+    return captions_clip.CaptionsClip(srt_tmp.name, subtitles_config)
+
 
 def generate_history_video(history: History, config: MainConfig) -> None:
     print("Generating speech...")
@@ -75,7 +95,9 @@ def generate_history_video(history: History, config: MainConfig) -> None:
 
     speech = speech_service.synthesize_speech(speech_ssml, gender)
     if config.video_config.audio_preview:
-        speech.clip.audiopreview()
+        speech.clip.write_audiofile(
+            "sample.mp3"
+        )
         return
 
     print("Generating cover...")
@@ -95,6 +117,11 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         cover=cover,
         config=config.video_config,
     )
+
+    if config.captions_config.enabled:
+        captions = generate_captions(speech=speech, caption_config=config.captions_config)
+        final_video.insert_captions(captions=captions)
+    
     file_name = path.join(config.output_path, f"{history.file_name}.mp4")
     if config.video_config.low_quality:
         final_video.clip.write_videofile(

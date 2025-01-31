@@ -5,7 +5,7 @@ from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 from pydantic import BaseModel, Field
 
 
-class SubtitleConfig(BaseModel):
+class CaptionsConfig(BaseModel):
     font: str = Field("Arial")
     font_size: int = Field(18)
     color: str = Field("#FFEA00")
@@ -14,8 +14,8 @@ class SubtitleConfig(BaseModel):
     fade_duration: float = Field(0.05)
 
 
-class SubtitlesClip:
-    def _init_(self, srt_file: str, config: SubtitleConfig = SubtitleConfig()):
+class CaptionsClip:
+    def _init_(self, srt_file: str, config: CaptionsConfig = CaptionsConfig()):
         self.subtitles = self.__file_to_subtitles(srt_file)
         self.config = config
         self.clips = self.__generate_clips()
@@ -65,7 +65,7 @@ class SubtitlesClip:
                 times = re.findall("([0-9]:[0-9]:[0-9],[0-9])", line)
                 if times:
                     current_times = [
-                        SubtitlesClip.__convert_to_seconds(t) for t in times
+                        CaptionsClip.__convert_to_seconds(t) for t in times
                     ]
                 elif line.strip() == "":
                     times_texts.append((current_times, current_text.strip("\n")))
@@ -76,7 +76,7 @@ class SubtitlesClip:
 
 
 if __name__ == "__main__":
-    subs = SubtitlesClip("subtitles.srt", SubtitleConfig(font="assets/bangers.ttf"))
+    subs = CaptionsClip("subtitles.srt", CaptionsConfig(font="assets/bangers.ttf"))
     video = VideoFileClip("input.mp4")
     result = CompositeVideoClip([video, *subs.clips])
 
