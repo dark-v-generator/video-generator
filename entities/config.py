@@ -13,7 +13,6 @@ class HistorySource(Enum):
 class CaptionsConfig(BaseModel):
     enabled: bool = Field(False)
     auto_generate: bool = Field(True)
-    enhance: bool = Field(False)
     upper: bool = Field(True)
     one_word: bool = Field(True)
     font_path: str = Field("assets/montserrat_bold.ttf")
@@ -57,6 +56,7 @@ class VideoConfig(BaseModel):
         "UCIXTGJvqvxWoWWstA66a2JQ", title="Youtube channel id"
     )
     low_quality: bool = Field(False, title="Low quality")
+    low_resolution: bool = Field(False, title="Change resolution to low")
     audio_preview: bool = Field(False, title="If true will render only the audio")
 
 

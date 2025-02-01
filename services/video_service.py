@@ -2,6 +2,7 @@ from os import path
 import random
 import tempfile
 from entities import config
+from entities.captions import Captions
 from entities.editor import captions_clip
 from entities.history import History
 from proxies import open_api_proxy, youtube_proxy
@@ -39,7 +40,7 @@ def __generate_video(
     if config.background_audio_path is not None:
         audio.merge(audio_clip.AudioClip(config.background_audio_path, volume=0.1))
 
-    if config.low_quality:
+    if config.low_resolution:
         aspect_ratio = config.width / config.height
         background_video.resize(int(400 * aspect_ratio), 400)
     else:
@@ -67,29 +68,15 @@ def generate_captions(
     history: History, speech: audio_clip.AudioClip, config: MainConfig
 ) -> captions_clip.CaptionsClip:
     caption_config = config.captions_config
-    tmp_mp3_path = f"{tempfile.mktemp()}.mp3"
-    speech.clip.write_audiofile(tmp_mp3_path)
-    srt_path = path.join(config.output_path, f"{history.file_name}.srt")
+    captions_path = path.join(config.output_path, f"{history.file_name}.captions.yaml")
     if caption_config.auto_generate:
+        tmp_mp3_path = f"{tempfile.mktemp()}.mp3"
+        speech.clip.write_audiofile(tmp_mp3_path)
         print("Generating captions...")
-        captioning = caption_service.Captioning(
-            caption_service.CaptioningConfig(
-                input_file=tmp_mp3_path,
-                format="mp3",
-                profanity="raw",
-                output_file=srt_path,
-            )
-        )
-        captioning.initialize()
-        captioning.recognize_continuous()
-        captioning.finish()
+        captions = open_api_proxy.generate_captions(tmp_mp3_path)
+        captions.save_yaml(captions_path)
 
-    if caption_config.enhance:
-        with open(srt_path, "r") as f:
-            enhanced_captions = open_api_proxy.enhance_captions(f.read(), history)
-        with open(srt_path, "w") as f:
-            f.write(enhanced_captions)
-
+    captions = Captions.from_yaml(captions_path)
     subtitles_config = captions_clip.CaptionsConfig(
         font_path=caption_config.font_path,
         font_size=caption_config.font_size,
@@ -100,7 +87,7 @@ def generate_captions(
         one_word=caption_config.one_word,
         upper_text=caption_config.upper,
     )
-    return captions_clip.CaptionsClip(srt_file=srt_path, config=subtitles_config)
+    return captions_clip.CaptionsClip(captions=captions, config=subtitles_config)
 
 
 def generate_history_video(history: History, config: MainConfig) -> None:

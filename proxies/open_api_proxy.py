@@ -1,4 +1,5 @@
 import json
+from entities.captions import CaptionSegment, Captions
 from entities.history import History, MultiplePartHistory
 from entities.reddit import RedditPost
 from openai import OpenAI
@@ -193,63 +194,23 @@ def convert_reddit_post_to_multiple_part_history(
     )
 
 
-def enhance_captions(
-    srt_content: str,
-    history: History,
-) -> str:
-    schema = {
-        "name": "captions_schema",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "description": "Conteúdo do arquivo srt de legenda",
-                    "type": "string",
-                },
-            },
-        },
-    }
-
-    system_message = """
-        Você é um revisor e editor de legenda, eu vou te passar um texto e uma legenda para um video
-        apenas o texto passado precisa ser legendado, porem a legenda contem mais coisas. Voce deve
-        remover o que nao esta no texto e manter o tempo das demais legendas. 
-
-        Alem disso, caso exista algum trecho na legenda escrito errado, ou diferente do texto voce deve 
-        escrever igual no texto. Exemplo 
-        Legenda: Eu tenho 1 cachorro 
-        Texto: Eu tenho um cachorro
-
-        Voce deve mudar a lengenda para que fique igual ao texto
-
-        O resultado deve ser escrito em em formato SRT. 
-    """
-    user_message = """
-        Aqui está a história original:
-
-        {content}
-        
-        Aqui está o arquivo srt de legenda para ser editado.
-        {srt_content}
-    """.format(
-        title=history.title,
-        content=history.content,
-        srt_content=srt_content,
-    )
-
+def generate_captions(audio_path: str) -> Captions:
     client = OpenAI()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": schema,
-        },
+    audio_file = open(audio_path, "rb")
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1", 
+        file=audio_file, 
+        response_format="verbose_json",
+        language="pt",
+        timestamp_granularities=["word"]
     )
-    raw_data = response.choices[0].message.content
-    response = json.loads(raw_data)
-
-    return response["content"]
+    segments = []
+    for word in transcription.words:
+        segments.append(
+            CaptionSegment(
+                text=word.word,
+                start=word.start,
+                end=word.end,
+            )
+        )
+    return Captions(segments=segments)
