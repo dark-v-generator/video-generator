@@ -12,15 +12,17 @@ class HistorySource(Enum):
 
 class CaptionsConfig(BaseModel):
     enabled: bool = Field(False)
+    auto_generate: bool = Field(True)
     enhance: bool = Field(False)
-    upper: bool = Field(False)
+    upper: bool = Field(True)
     one_word: bool = Field(True)
     font_path: str = Field("assets/montserrat_bold.ttf")
-    font_size: float = Field(18)
+    font_size: int = Field(18)
     color: str = Field("#FFEA00")
     stroke_color: str = Field("#242424")
-    stroke_width: float = Field(0.5)
+    stroke_width: int = Field(1)
     fade_duration: float = Field(0.005)
+
 
 class HistoryConfig(BaseModel):
     source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")

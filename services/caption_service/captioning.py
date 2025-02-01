@@ -13,11 +13,7 @@ import services.caption_service.caption_helper as caption_helper
 import services.caption_service.helper as helper
 from pathlib import Path
 
-USAGE = """Usage: python captioning.py [...]
-
-  HELP
-    --help                           Show this help and stop.
-
+"""
   CONNECTION
     --key KEY                        Your Azure Speech service resource key.
                                      Overrides the SPEECH_KEY environment variable. You must set the environment variable (recommended) or use the `--key` option.
@@ -80,10 +76,10 @@ class CaptioningConfig(BaseModel):
     phrases: List[str] = Field([])
     output_file: str = Field(None)
     use_srt_format: bool = Field(True)
-    max_line_length: int = Field(37)
-    lines: int = Field(2)
-    delay: int = Field(1000)
-    remain_time: int = Field(1000, ge=0)
+    max_line_length: int = Field(20)
+    lines: int = Field(1)
+    delay: int = Field(0, ge=0)
+    remain_time: int = Field(0, ge=0)
     quiet: bool = Field(False)
     profanity: str = Field("")
     threshold: int = Field(3)

@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 class CaptionsConfig(BaseModel):
     font_path: str = Field("assets/kite_one.ttf")
-    font_size: float = Field(18)
+    font_size: int = Field(18)
     color: str = Field("#FFEA00")
     stroke_color: str = Field("#242424")
-    stroke_width: float = Field(1)
+    stroke_width: int = Field(1)
     fade_duration: float = Field(0.05)
     one_word: bool = Field(True)
     upper_text: bool = Field(False)
@@ -57,7 +57,9 @@ class CaptionsClip:
         return word_clip
 
     @staticmethod
-    def __split_subtitle(times: List[float], text: str) -> List[Tuple[List[float], str]]:
+    def __split_subtitle(
+        times: List[float], text: str
+    ) -> List[Tuple[List[float], str]]:
         start_time, end_time = times
         duration = end_time - start_time
         nc = len(text) - text.count(" ")
@@ -69,7 +71,7 @@ class CaptionsClip:
             curr = curr + c_time * len(word)
             subs.append((t, word))
         return subs
-    
+
     @staticmethod
     def __convert_to_seconds(time):
         factors = (1, 60, 3600)

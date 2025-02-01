@@ -211,21 +211,24 @@ def enhance_captions(
     }
 
     system_message = """
-        Você é um revisor e editor de legenda, eu vou te passar uma legenda e você
-        deve remover dela o título da história e corrigi-la com base na história escrita
-        originalmente, corrigindo qualquer erro ou palavras erradas. Após remover o título
-        as demais legendas devem permanecer com o mesmo tempo.
-        
+        Você é um revisor e editor de legenda, eu vou te passar um texto e uma legenda para um video
+        apenas o texto passado precisa ser legendado, porem a legenda contem mais coisas. Voce deve
+        remover o que nao esta no texto e manter o tempo das demais legendas. 
+
+        Alem disso, caso exista algum trecho na legenda escrito errado, ou diferente do texto voce deve 
+        escrever igual no texto. Exemplo 
+        Legenda: Eu tenho 1 cachorro 
+        Texto: Eu tenho um cachorro
+
+        Voce deve mudar a lengenda para que fique igual ao texto
+
         O resultado deve ser escrito em em formato SRT. 
     """
     user_message = """
         Aqui está a história original:
 
-        Título: {title}
-
         {content}
-
-
+        
         Aqui está o arquivo srt de legenda para ser editado.
         {srt_content}
     """.format(
