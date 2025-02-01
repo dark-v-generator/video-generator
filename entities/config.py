@@ -9,8 +9,11 @@ class HistorySource(Enum):
     REDDIT = "reddit"
     CONFIG = "config"
 
+
 class CaptionsConfig(BaseModel):
     enabled: bool = Field(False)
+    enhance: bool = Field(False)
+
 
 class HistoryConfig(BaseModel):
     source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")

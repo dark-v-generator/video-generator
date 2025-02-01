@@ -191,3 +191,62 @@ def convert_reddit_post_to_multiple_part_history(
         reddit_post_author=reddit_post.author,
         reddit_community_url_photo=reddit_post.community_url_photo,
     )
+
+
+def enhance_captions(
+    srt_content: str,
+    history: History,
+) -> str:
+    schema = {
+        "name": "captions schema",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Conteúdo do arquivo srt de legenda",
+                    "type": "string",
+                },
+            },
+        },
+    }
+
+    system_message = """
+        Você é um revisor e editor de legenda, eu vou te passar uma legenda e você
+        deve remover dela o título da história e corrigi-la com base na história escrita
+        originalmente, corrigindo qualquer erro ou palavras erradas, porém mantendo todos os
+        tempos que aparecem no arquivo iguais.
+
+        O resultado deve ser escrito em em formato SRT. 
+    """
+    user_message = """
+        Aqui está a história original:
+
+        Título: {title}
+
+        {content}
+
+
+        Aqui está o arquivo srt de legenda para ser editado.
+        {srt_content}
+    """.format(
+        title=history.title,
+        content=history.content,
+        srt_content=srt_content,
+    )
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": schema,
+        },
+    )
+    raw_data = response.choices[0].message.content
+    response = json.loads(raw_data)
+
+    return response["content"]
