@@ -69,29 +69,37 @@ def generate_captions(
     tmp_mp3_path = f"{tempfile.mktemp()}.mp3"
     speech.clip.write_audiofile(tmp_mp3_path)
 
-    with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as srt_tmp:
-        srt_tmp_path = srt_tmp.name
-        print("Generating captions...")
-        captioning = caption_service.Captioning(
-            caption_service.CaptioningConfig(
-                input_file=tmp_mp3_path,
-                format="mp3",
-                profanity="raw",
-                output_file=srt_tmp_path,
-            )
+    srt_tmp_path = f"{tempfile.mktemp()}.srt"
+    print("Generating captions...")
+    captioning = caption_service.Captioning(
+        caption_service.CaptioningConfig(
+            input_file=tmp_mp3_path,
+            format="mp3",
+            profanity="raw",
+            output_file=srt_tmp_path,
         )
-        captioning.initialize()
-        captioning.recognize_continuous()
-        captioning.finish()
+    )
+    captioning.initialize()
+    captioning.recognize_continuous()
+    captioning.finish()
 
-        if caption_config.enhance:
-            with open(srt_tmp_path, "r") as f:
-                enhanced_captions = open_api_proxy.enhance_captions(f.read(), history)
-            with open(srt_tmp_path, "w") as f:
-                f.write(enhanced_captions)
+    if caption_config.enhance:
+        with open(srt_tmp_path, "r") as f:
+            enhanced_captions = open_api_proxy.enhance_captions(f.read(), history)
+        with open(srt_tmp_path, "w") as f:
+            f.write(enhanced_captions)
 
-        subtitles_config = captions_clip.CaptionsConfig()
-        return captions_clip.CaptionsClip(srt_tmp.name, subtitles_config)
+    subtitles_config = captions_clip.CaptionsConfig(
+        font_path=caption_config.font_path,
+        font_size=caption_config.font_size,
+        color=caption_config.color,
+        stroke_color=caption_config.stroke_color,
+        stroke_width=caption_config.stroke_width,
+        fade_duration=caption_config.fade_duration,
+        one_word=caption_config.one_word,
+        upper_text=caption_config.upper_text,
+    )
+    return captions_clip.CaptionsClip(srt_file=srt_tmp_path, config=subtitles_config)
 
 
 def generate_history_video(history: History, config: MainConfig) -> None:

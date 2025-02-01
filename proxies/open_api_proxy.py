@@ -213,9 +213,9 @@ def enhance_captions(
     system_message = """
         Você é um revisor e editor de legenda, eu vou te passar uma legenda e você
         deve remover dela o título da história e corrigi-la com base na história escrita
-        originalmente, corrigindo qualquer erro ou palavras erradas, porém mantendo todos os
-        tempos que aparecem no arquivo iguais.
-
+        originalmente, corrigindo qualquer erro ou palavras erradas. Após remover o título
+        as demais legendas devem permanecer com o mesmo tempo.
+        
         O resultado deve ser escrito em em formato SRT. 
     """
     user_message = """
