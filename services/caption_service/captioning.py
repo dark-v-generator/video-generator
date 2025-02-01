@@ -420,7 +420,7 @@ class Captioning(object):
                 speechsdk.ResultReason.RecognizedSpeech == e.result.reason
                 and len(e.result.text) > 0
             ):
-                self.__write_to_console('.')
+                self.__write_to_console(".")
                 try:
                     if CaptioningMode.OFFLINE == self._config.captioning_mode:
                         self._offline_results.append(e.result)

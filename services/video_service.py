@@ -66,30 +66,32 @@ def __generate_video(
 def generate_captions(
     history: History, speech: audio_clip.AudioClip, caption_config: CaptionsConfig
 ) -> captions_clip.CaptionsClip:
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_audio:
-        audio_file = tmp_audio.name
-        speech.clip.write_audiofile(tmp_audio.name)
-    srt_tmp = tempfile.NamedTemporaryFile(suffix=".srt", delete=False)
-    srt_tmp_path = srt_tmp.name
-    srt_tmp.close()
+    tmp_mp3_path = f"{tempfile.mktemp()}.mp3"
+    speech.clip.write_audiofile(tmp_mp3_path)
 
-    caption_config = caption_service.CaptioningConfig(
-        input_file=audio_file, format="mp3", profanity="raw", output_file=srt_tmp_path
-    )
-    print("Generating captions...")
-    captioning = caption_service.Captioning(caption_config)
-    captioning.initialize()
-    captioning.recognize_continuous()
-    captioning.finish()
+    with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as srt_tmp:
+        srt_tmp_path = srt_tmp.name
+        print("Generating captions...")
+        captioning = caption_service.Captioning(
+            caption_service.CaptioningConfig(
+                input_file=tmp_mp3_path,
+                format="mp3",
+                profanity="raw",
+                output_file=srt_tmp_path,
+            )
+        )
+        captioning.initialize()
+        captioning.recognize_continuous()
+        captioning.finish()
 
-    if caption_config.enhance:
-        with open(srt_tmp_path, "r") as f:
-            enhanced_captions = open_api_proxy.enhance_captions(f.read(), history)
-        with open(srt_tmp_path, "w") as f:
-            f.write(enhanced_captions)
+        if caption_config.enhance:
+            with open(srt_tmp_path, "r") as f:
+                enhanced_captions = open_api_proxy.enhance_captions(f.read(), history)
+            with open(srt_tmp_path, "w") as f:
+                f.write(enhanced_captions)
 
-    subtitles_config = captions_clip.CaptionsConfig()
-    return captions_clip.CaptionsClip(srt_tmp.name, subtitles_config)
+        subtitles_config = captions_clip.CaptionsConfig()
+        return captions_clip.CaptionsClip(srt_tmp.name, subtitles_config)
 
 
 def generate_history_video(history: History, config: MainConfig) -> None:

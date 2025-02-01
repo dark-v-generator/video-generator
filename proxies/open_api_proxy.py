@@ -198,7 +198,7 @@ def enhance_captions(
     history: History,
 ) -> str:
     schema = {
-        "name": "captions schema",
+        "name": "captions_schema",
         "schema": {
             "type": "object",
             "properties": {
