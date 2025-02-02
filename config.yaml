@@ -2,7 +2,11 @@ main:
   captions_config:
     enabled: true
     auto_generate: false
-    upper: true
+    font_path: 'assets/bangers.ttf'
+    font_size: 110
+    color: '#FFFFFF'
+    stroke_color: '#000000'
+    stroke_width: 1
   output_path: output/
   video_config:
     low_quality: false
@@ -119,3 +123,54 @@ main:
         reddit_community_url_photo: https://styles.redditmedia.com/t5_2h1drm/styles/communityIcon_rl5tuzyrh8nb1.png
         reddit_post_author: Many-Sign3681
         title: Sou babaca por bater em um tarado? - Parte 2
+    -   content: 'Eu moro em um apartamento e na minha porta tem um olho mágico. Sempre que alguém passa no
+            andar, acende uma luz que consigo ver mesmo dentro do meu apartamento. Costumo ficar desenhando,
+            ouvindo música ou vendo vídeos aleatórios no YouTube. E isso pode ser importante: a maior parte
+            do meu condomínio é religioso, anti-rock e anime (eles liberam funk, mas não rock e desenho japonês,
+            vai entender...). Agora vamos para o que aconteceu.
+
+            Isso começou no final da semana passada, numa quarta-feira à tarde. Um garoto de uns 8 ou 10 anos
+            subiu e ficou parado em frente à minha porta. Eu fiquei encarando ele pelo olho mágico. Naquele
+            momento, eu estava ouvindo rock no último volume, então desliguei o som. Com medo da criança invadir,
+            peguei um cabo de vassoura e conferi se a porta estava trancada. Logo depois, quando voltei a
+            olhar pelo olho mágico, a criança estava parada ali em silêncio. Depois de um tempo, deu meia
+            volta e desceu para os andares de baixo. Essa situação se repetiu até sábado, quando eu colocava
+            música e o garoto aparecia. Quando desligava, ele sumia. Lembro que teve um dia em que ele ficou
+            subindo e descendo a escada para ouvir as músicas. Parou apenas quando cansou, mas naquele momento
+            não sabia o motivo e fiquei trocando as músicas sem parar. Era meia hora de música e meia hora
+            de silêncio.
+
+            Curta e me siga para parte 2'
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta_1
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 1
+    -   content: 'Sábado - Novamente, o garoto apareceu e ficou parado na porta. Uma hora depois, meu pai
+            chegou mais cedo do trabalho por ser sábado e, quando ele chegou, sugeriu colocar as mesmas músicas
+            que eu estava ouvindo na hora em que a criança apareceu, para ver se ele aparecia novamente e
+            assim pudéssemos perguntar por que ele ficava parado em frente ao apartamento. Coloquei, mas nada
+            de ele aparecer. Ficamos assim até umas 6 horas da noite, e depois disso percebemos que ele não
+            apareceria mais e paramos. Achei meio estranho, mas lembrei que me disseram que talvez o garoto
+            não fosse daqui e que provavelmente estava aqui para visitar alguém. Então, ignorei o sumiço dele
+            por dias.
+
+            Hoje - Como sempre, coloquei música enquanto fazia meus desenhos. Hoje, ouvi passos e a luz do
+            corredor acendendo novamente. Quando fui chegando perto da porta, ouvi uma mulher gritando no
+            corredor de baixo: "OH! Volta aqui!". Quando olhei pelo olho mágico, era o mesmo garoto de sempre,
+            dando meia volta na escada e descendo novamente. Agora sim, acho que já está confirmado: ele estava
+            ficando perto da minha porta para ouvir música escondido. Acho que os pais dele provavelmente
+            não permitem que ele escute o estilo de música que gosto, então ele encontrou essa forma de ouvir
+            escondido. Mas parece que os pais descobriram e o colocaram de castigo. Se ele aparecer de novo,
+            vou chamá-lo para ficar ouvindo música aqui e conversar sobre isso, sobre ele ficar na minha porta.
+            Não sei se faltou alguma informação ou algo não fez sentido, mas aí está meu relato. Vou passar
+            a tarde toda ouvindo música para ver se ele aparece. Se ele aparecer novamente, eu atualizo vocês.'
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta_2
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 2

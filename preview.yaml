@@ -1,13 +1,16 @@
 main:
   captions_config:
     enabled: true
-    auto_generate: false
-    font_size: 110
-    upper: true
-  output_path: preview/
+    auto_generate: true
+    font_path: 'assets/bangers.ttf'
+    font_size: 23 # original/4.8
+    color: '#FFFFFF'
+    stroke_color: '#000000'
+    stroke_width: 1
+  output_path: output/
   video_config:
     low_quality: true
-    low_resolution: false
+    low_resolution: true
   history_config:
     histories:
     -   content: "Nunca imaginei que me encontraria em uma situação assim. Eu sou um homem de 24 anos, e Lisa\
@@ -39,3 +42,136 @@ main:
         reddit_community_url_photo: https://styles.redditmedia.com/t5_2qi02/styles/communityIcon_05zxv6e6eq6b1.png
         reddit_post_author: NoFortune1676
         title: Minha Namorada Queria Ter Relações Comigo e Com Meu Irmão
+    -   content: 'Sim, eu sou mulher. Sim, meu marido tem amigas. Ele não é gay e não está envolvido com ninguém
+            fora do nosso relacionamento. Todo mundo fala sobre machismo, que os homens tratam as mulheres
+            mal, o que realmente é verdade. Mas quando eles tentam ser diferentes... aí o sujeito encontra
+            uma namorada ou esposa e agora precisa assinar um contrato de exclusividade feminina. É como se
+            ele não pudesse nem tratar bem outra mulher. Amizade? Nem pensar. Não pode olhar para ninguém
+            na rua. Tem que deixar de seguir todas as mulheres e se restringir a conversar, no máximo, com
+            a mãe e a irmã.
+
+
+            De onde as mulheres tiraram isso, sério? Elas agem como se fosse um preventivo para traição, mas
+            isso simplesmente não existe! E digo mais: um homem sem amizade com mulheres é um sinal vermelho,
+            afinal, um homem decente precisa saber se socializar com mulheres que não estão interessadas romanticamente
+            nele.
+
+
+            Meu marido tem amigas no trabalho também, e de vez em quando ele leva um salgado ou doce para
+            elas, porque elas também são gentis. Elas trazem lembrancinhas quando viajam, dividem o lanche,
+            livram ele de situações complicadas quando a chefe está de mau humor, etc. Eu sou super feliz
+            e descontraída porque eu escolhi uma pessoa de caráter e muito agradável. Então, é óbvio que outras
+            pessoas vão gostar da companhia dele e, para mim, isso é motivo de orgulho. E para você? Qual sua opinião 
+            sobre isso? Curta, me siga e deixe nos comentários.'
+        description: Uma mulher compartilha sua visão sobre a importância da amizade entre homens e mulheres
+            em relacionamentos.
+        file_name: homem-casado-tem-que-ter-amiga-mulher
+        gender: female
+        reddit_community: r/opiniaoimpopular
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_50qq3m/styles/communityIcon_hvv1x9e0jbi91.png
+        reddit_post_author: ImKirell
+        title: Homem casado tem que ter amiga mulher
+    -   content: 'Em janeiro de 2024, eu, um homem de 17 anos, acordei decidido a andar de bicicleta. No entanto,
+            ao me lembrar que minha bicicleta estava um pouco desalinhada, decidi levá-la para consertar em
+            uma oficina perto da minha casa. A oficina ficava a cerca de 10 minutos a pé, e como o calor estava
+            insuportável, fui sem camisa. Ao chegar, percebi que a oficina estava fechada, provavelmente estavam
+            de recesso. Então, subi na bicicleta e fui esperar o sinal abrir para atravessar uma avenida e
+            voltar para casa. Estava próximo a um ponto de ônibus, próximo a uma faixa de pedestres, quando,
+            do nada, ouvi um assobio. Quando olhei para trás, vi um homem de uns 50 ou 60 anos a poucos passos
+            de distância de mim. Só havia aquele homem e uma senhora ao nosso redor. Assim que o encarei,
+            ele lambeu os lábios e me avaliou de cima a baixo. Tive certeza absoluta de que ele estava tentando
+            me assediar. Naquele momento, o sangue ferveu dentro de mim, afinal, eu era menor de idade. Menor
+            ou não, ninguém merece que um velho se comporte daquela forma, olhando para o seu corpo e lambendo
+            os lábios. Eu fiquei paralisado, sem saber o que fazer. Como estávamos perto de uma favela, me
+            preocupei que discutir com ele pudesse trazer problemas para mim. No entanto, eu nunca o havia
+            visto antes, então resolvi confrontá-lo. Peguei a bicicleta com a mão e fui atrás dele. Começou
+            uma conversa tensa, e eu gritei: ''E aí, parceiro? Você quer arrumar para a cabeça?''. O cara
+            ficou paralisado, sem acreditar que eu estava seguindo-o.
+
+            Curta e me siga para parte 2'
+        file_name: sou_babaca_por_bater_em_um_tarado_1
+        gender: male
+        reddit_community: r/EuSouOBabaca
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2h1drm/styles/communityIcon_rl5tuzyrh8nb1.png
+        reddit_post_author: Many-Sign3681
+        title: Sou babaca por bater em um tarado? - Parte 1
+    -   content: 'Ele começou a alegar que era casado e que eu estava vendo maldade onde não havia. Mas, do
+            nada, ele entrou em uma loja de LED e começou a gritar: ''Esse menino me roubou!!'', me acusando
+            de roubo. Eu estava com uma aparência um pouco suspeita, então isso complicou minha situação.
+            Tentei gritar que ''Esse velho é um pedófilo'', mas os atendentes da loja não entenderam nada.
+            Quando o homem percebeu que ninguém acreditou nele, saiu correndo para outra loja, desesperado
+            para fugir de mim. E eu estava prestes a rebocar a cara dele. Estávamos na Avenida Anchieta em São Paulo,
+            onde há várias lojas. Deixei minha bicicleta no chão, ele entrou em um mecânico para se esconder,
+            e eu o segui. Cada um gritava o que pensava, e quando ele me lançou uma pedra, o caos aumentou.
+            Um grupo de motoboys se juntou ao redor, enquanto eu tentava explicar a situação para eles, mas
+            o velho continuava gritando que eu tinha roubado ele. Ele jogou duas pedras, mas não me atingiu.
+            Os mecânicos, percebendo a situação, meio que expulsaram o velho de lá para evitar problemas.
+            De repente, ele saiu do mecânico com um cano de ferro e veio em minha direção. Eu sai correndo
+            junto com os motoboys, e durante o tumulto, o velho se aproximou da minha bicicleta e começou
+            a bater com o cano nela. Ouvia os espectadores dizendo: ''Irmão, vai pra casa, esse tiozinho tá
+            maluco''. Quando ele parou de agredir a bicicleta e lançou o cano na minha direção, soube que
+            precisava agir. O cano caiu no chão, entre nós dois, e quando ele se abaixou para pegá-lo, eu
+            corri em sua direção, e dei uma joelhada na cara dele. O velho caiu no chão, e por
+            um momento, eu fiquei apenas observando. Mas logo os motoboys nos separaram, e eu subi na minha
+            bicicleta e fui embora.
+            
+            Na sua opinião, eu fui babaca por fazer isso tudo por um assobio? Curta, me siga e deixe nos 
+            comentários.
+            '
+        file_name: sou_babaca_por_bater_em_um_tarado_2
+        gender: male
+        reddit_community: r/EuSouOBabaca
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2h1drm/styles/communityIcon_rl5tuzyrh8nb1.png
+        reddit_post_author: Many-Sign3681
+        title: Sou babaca por bater em um tarado? - Parte 2
+    -   content: 'Eu moro em um apartamento e na minha porta tem um olho mágico. Sempre que alguém passa no
+            andar, acende uma luz que consigo ver mesmo dentro do meu apartamento. Costumo ficar desenhando,
+            ouvindo música ou vendo vídeos aleatórios no YouTube. E isso pode ser importante: a maior parte
+            do meu condomínio é religioso, anti-rock e anime (eles liberam funk, mas não rock e desenho japonês,
+            vai entender...). Agora vamos para o que aconteceu.
+
+            Isso começou no final da semana passada, numa quarta-feira à tarde. Um garoto de uns 8 ou 10 anos
+            subiu e ficou parado em frente à minha porta. Eu fiquei encarando ele pelo olho mágico. Naquele
+            momento, eu estava ouvindo rock no último volume, então desliguei o som. Com medo da criança invadir,
+            peguei um cabo de vassoura e conferi se a porta estava trancada. Logo depois, quando voltei a
+            olhar pelo olho mágico, a criança estava parada ali em silêncio. Depois de um tempo, deu meia
+            volta e desceu para os andares de baixo. Essa situação se repetiu até sábado, quando eu colocava
+            música e o garoto aparecia. Quando desligava, ele sumia. Lembro que teve um dia em que ele ficou
+            subindo e descendo a escada para ouvir as músicas. Parou apenas quando cansou, mas naquele momento
+            não sabia o motivo e fiquei trocando as músicas sem parar. Era meia hora de música e meia hora
+            de silêncio.
+
+            Curta e me siga para parte 2'
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta_1
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 1
+    -   content: 'Sábado - Novamente, o garoto apareceu e ficou parado na porta. Uma hora depois, meu pai
+            chegou mais cedo do trabalho por ser sábado e, quando ele chegou, sugeriu colocar as mesmas músicas
+            que eu estava ouvindo na hora em que a criança apareceu, para ver se ele aparecia novamente e
+            assim pudéssemos perguntar por que ele ficava parado em frente ao apartamento. Coloquei, mas nada
+            de ele aparecer. Ficamos assim até umas 6 horas da noite, e depois disso percebemos que ele não
+            apareceria mais e paramos. Achei meio estranho, mas lembrei que me disseram que talvez o garoto
+            não fosse daqui e que provavelmente estava aqui para visitar alguém. Então, ignorei o sumiço dele
+            por dias.
+
+            Hoje - Como sempre, coloquei música enquanto fazia meus desenhos. Hoje, ouvi passos e a luz do
+            corredor acendendo novamente. Quando fui chegando perto da porta, ouvi uma mulher gritando no
+            corredor de baixo: "OH! Volta aqui!". Quando olhei pelo olho mágico, era o mesmo garoto de sempre,
+            dando meia volta na escada e descendo novamente. Agora sim, acho que já está confirmado: ele estava
+            ficando perto da minha porta para ouvir música escondido. Acho que os pais dele provavelmente
+            não permitem que ele escute o estilo de música que gosto, então ele encontrou essa forma de ouvir
+            escondido. Mas parece que os pais descobriram e o colocaram de castigo. Se ele aparecer de novo,
+            vou chamá-lo para ficar ouvindo música aqui e conversar sobre isso, sobre ele ficar na minha porta.
+            Não sei se faltou alguma informação ou algo não fez sentido, mas aí está meu relato. Vou passar
+            a tarde toda ouvindo música para ver se ele aparece. Se ele aparecer novamente, eu atualizo vocês.'
+        description: ''
+        file_name: todo-dia-aparecia-um-garoto-na-minha-porta_2
+        gender: male
+        reddit_community: r/RelatosDoReddit
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
+        reddit_post_author: Emergency-Echo-3947
+        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 2
