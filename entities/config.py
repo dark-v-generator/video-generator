@@ -12,13 +12,13 @@ class HistorySource(Enum):
 
 class CaptionsConfig(BaseModel):
     enabled: bool = Field(False)
-    auto_generate: bool = Field(True)
+    auto_generate: bool = Field(False)
     upper: bool = Field(True)
     one_word: bool = Field(True)
-    font_path: str = Field("assets/montserrat_bold.ttf")
-    font_size: int = Field(18)
-    color: str = Field("#FFEA00")
-    stroke_color: str = Field("#242424")
+    font_path: str = Field("assets/bangers.ttf")
+    font_size: int = Field(110)
+    color: str = Field("#FFFFFF")
+    stroke_color: str = Field("#000000")
     stroke_width: int = Field(1)
     fade_duration: float = Field(0.005)
 
@@ -58,6 +58,9 @@ class VideoConfig(BaseModel):
     low_quality: bool = Field(False, title="Low quality")
     low_resolution: bool = Field(False, title="Change resolution to low")
     audio_preview: bool = Field(False, title="If true will render only the audio")
+
+    def get_aspect_ratio(self) -> float:
+        return self.width / self.height
 
 
 class MainConfig(BaseModel):

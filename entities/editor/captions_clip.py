@@ -8,7 +8,7 @@ from entities.captions import CaptionSegment, Captions
 
 
 class CaptionsConfig(BaseModel):
-    font_path: str = Field("assets/kite_one.ttf")
+    font_path: str = Field("assets/bangers.ttf")
     font_size: int = Field(18)
     color: str = Field("#FFEA00")
     stroke_color: str = Field("#242424")

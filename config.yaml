@@ -1,186 +1,121 @@
 main:
+  captions_config:
+    enabled: true
+    auto_generate: false
+    upper: true
   output_path: output/
-  history_config:
-    histories:
-    -   content: '
-            Quando conheci minha esposa, ela tinha acabado de sair de um relacionamento tóxico. O ex
-            dela bebia, passava dias fora sem dar notícias e, certamente, aprontava fora do casamento. O filho
-            dela tinha uns 8 anos na época. Nós nos entendíamos bem, brincávamos juntos e tínhamos interesses
-            mútuos. No entanto, quando ele cresceu e descobriu os jogos online, tudo mudou. Ele se viciou
-            e passa o dia todo jogando. O problema não é só o tempo que ele passa jogando. Ele grita, xinga,
-            fica revoltado com os amigos do jogo, faz escândalos e faz barulho o dia todo, o que me incomoda
-            profundamente. Já tentei de tudo: limitar o tempo de jogo, diminuir a velocidade da internet e
-            até invadir o quarto e desligar o pc à força. Qualquer sanção que eu aplique para ter um pouco
-            de sossego faz com que ele vá para a casa do pai por alguns dias, e aí a mãe entra em cena. Tudo
-            o que faço para ter paz em casa é visto como implicância e perseguição com o garoto, que agora
-            tem 16 anos.
-
-            Ele não ajuda em nada em casa, não limpa o próprio quarto, passa dias sem tomar banho e
-            não dá a mínima atenção ao irmão de 1 ano e meio. Há cerca de uma semana, o bebê se machucou e
-            cortou a boca enquanto ele estava vigiando. E o que ele fez com o bebê depois disso me deixou
-            furioso.
-
-            Curta e me siga para parte 2'
-        description: ''
-        file_name: meu_enteado_vai_acabar_com_meu_casamento_1
-        gender: male
-        reddit_community: r/RelatosDoReddit
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: KarayRc
-        title: Meu enteado vai acabar com meu casamento - Parte 1
-    -   content: '
-            A reação dele foi colocar o bebê para fora do quarto
-            e fechar a porta porque o choro estava atrapalhando o jogo. Isso me deixou furioso, mas tive que
-            dar atenção do meu filho. Hoje mesmo eu briguei com ela porque a cria tomou banho e conseguiu
-            derramar água do banheiro até a sala e ela reclamou de mim, do jeito que eu estava enxugando.
-            A principal reclamação da minha esposa é que eu pego no pé dele à toa. O que ela não entende é
-            que ele faz escândalo por causa desses jogos o dia todo e até durante a noite, atrapalhando até
-            meu sono. Já fiz terapia e busquei meios de mudar meu foco, mas nada funciona. Isso já dura 5
-            anos. Não consigo relaxar dentro da minha própria casa. Conversar, fazer concessões ou definir
-            horários não adianta mais. A situação já degringolou e não tem mais volta. Estou exausto, no limite,
-            e logo me vejo perdendo a paciência com ele e partindo para as vias físicas, o que sei que vai
-            acabar com meu relacionamento. Amo minha esposa, faço por ela que posso. Dou carinho, atenção
-            e sou totalmente fiel. Mas não vejo apoio dela nesse tema que tem me perturbado há tanto tempo.
-            Tudo vira perseguição contra o garoto, e se quero descansar, tenho que inventar rotinas fora de
-            casa. Mas uma hora eu tenho que voltar, e tudo está na mesma: histeria por causa de jogos no computador,
-            gritos, e eu segurando minha raiva, frustração e guardando estresse. 
-            
-            O que vocês acham dessa situação? Curta, me siga e deixe nos comentários.
-            '
-        description: ''
-        file_name: meu_enteado_vai_acabar_com_meu_casamento_2
-        gender: male
-        reddit_community: r/RelatosDoReddit
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: KarayRc
-        title: Meu enteado vai acabar com meu casamento - Parte 2
-    -   content: '
-            Eu sou um homem de 44 anos e, atualmente, sou proprietário de uma pequena empresa. Tenho um
-            serviço de lavanderia com retirada e entrega em uma grande cidade. Meu ganha-pão é o negócio comercial: 
-            pequenos salões, bares, restaurantes etc.
-            
-            As pessoas gostam de nós porque não exigimos um contrato longo, é uma situação do tipo: 
-            ''nos ligue se quiser'', e se você não gostar de nós, não ligue. Funciona de ambas as formas. 
-            Éramos relativamente novos no negócio, na época e estávamos super
-            animados para cuidar das toalhas e guardanapos de um restaurante com 2 estrelas Michelin. Nós só não
-            gostávamos do cara do financeiro, que eu vou chamar de Marcos. Ele sempre tentava negociar nosso preço. 
-            Mas nos dávamos muito bem com a menina da logística, que eu vou chamar de Amanda, qualquer negócio de alto 
-            nível deve ter alguém como ela na equipe. 
-            
-            A demanda era bem alta, e nós passamos por muitos obstáculos, como nunca havíamos feito antes, 
-            até alugamos mais espaço para lidar com o negócio deles, a $3000/mês, eles eram nossos
-            maiores clientes. 
-            
-            
-            A questão é que o Marcos já havia negociado um ACORDO INCRÍVEL conosco desde o começo,
-            mas ele tinha o hábito desagradável de tentar renegociar após o fato, cada vez que eles nos deviam
-            dinheiro, ele tentava nos fazer aceitar menos, nós dizíamos a Amanda que isso não era aceitável repetidamente.
-            Marcos era um dos proprietários, mas ele era só um cara do dinheiro, o chef e os outros proprietários eram quem 
-            realmente se importavam com o negócio.
-
-            A conversa continuou por meses, eles sempre insistiam em um desconto e nós nunca cederíamos, 
-            porque já estávamos em território de descontos altos com essas pessoas, e vamos lá, a $400 por prato
-            você pode pagar $2 por toalha ou seja lá o que cobramos.
-            
-            Eventualmente, Marcos começou a nos pressionar de verdade e estava retendo cerca de $1700, dinheiro
-            que realmente precisávamos, enquanto ele tentava nos forçar a aceitar menos, acho que ele
-            pensava que estávamos provavelmente vivendo no limite como a maioria dos proprietários de pequenas
-            empresas, mas estávamos realmente cansados, cansados e fartos mais do que tudo. E checamos nosso
-            saldo de paciência, e não havia mais nada para dar. 
-            
-            Então eu elaborei um plano e consegui que meu parceiro concordasse, iríamos fazer algo para forçar
-            com que nos pagassem.
-
-            Curta e me siga para parte 2'
-        description: ''
-        file_name: voce_nao_quer_pagar_1
-        gender: male
-        reddit_community: r/pettyrevenge
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
-        reddit_post_author: Altruistic-Slide-512
-        title: Você não quer pagar? Eu vou segurar suas toalhas como refém - Parte 1
-    -   content: '
-            Colocamos o plano em prática, esperamos até o fim de semana e tínhamos quase todas as toalhas e guardanapos
-            limpos deles, e aqui eu imagino que você já sabe o que vai acontecer. Na segunda-feira liguei para Amanda 
-            e disse a ela que Marcos poderia se danar, estavamos com todas as toalhas e guardanapos, tudo passado e pronto, 
-            sei que  vocês estão planejando abrir na terça, então eu só vou devolver tudo quando vocês nos pagarem integralmente
-            por esse pedido e por tudo que nos devem de pedidos anteriores EM DINHEIRO, ai você receberá suas toalhas de volta.
-            
-            Também avisei a ela que, assim que fôssemos pagos, nosso relacionamento comercial acabaria, isso foi desastroso 
-            para nós financeiramente, mas não iríamos morrer de fome, ela entendeu e estava do nosso lado na verdade, 
-            ela ADORAVA nosso serviço e ela avisou todos os proprietários que não estávamos brincando. 
-            
-            Ela nos ligou de volta e concordamos com um horário, eu fui ao restaurante, deixei meu parceiro e as toalhas e
-            guardanapos na van. Marcos não estava lá, mas o chef (que era o outro proprietário) estava presente. E, 
-            só porque era ele e não o Marcos, aceitei um cheque empresarial em vez de dinheiro (que depois foi descontado 
-            sem problema mais tarde), depois disso eu liguei para meu parceiro trazer as coisas.
-
-            A Amanda me ligou mais tarde e propôs que continuássemos trabalhando com eles e que nunca mais teríamos
-            que falar com Marcos, mas honestamente, foi um grande alívio não ter mais que lidar com eles, então eu
-            disse de jeito nenhum. 
-
-            E você, concorda com minha atitude? Curta, me siga e deixe nos comentários.
-            '
-        description: ''
-        file_name: voce_nao_quer_pagar_2
-        gender: male
-        reddit_community: r/pettyrevenge
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_2vg7t/styles/communityIcon_6ofkqruptzc71.png
-        reddit_post_author: Altruistic-Slide-512
-        title: Você não quer pagar? Eu vou segurar suas toalhas como refém - Parte 2
-    -   content: '
-            Eu moro em um apartamento e na minha porta tem um olho mágico. Sempre que alguém passa no
-            andar, uma luz acende, e eu consigo ver mesmo de dentro do apartamento. Costumo passar o tempo
-            desenhando, ouvindo música ou assistindo a vídeos aleatórios no YouTube. Isso é importante porque
-            a maior parte do meu condomínio é religiosa e anti-rock, mas liberam funk. Enfim, vai entender.
-
-            Isso começou no final da semana passada. Na quarta-feira à tarde, um garoto de uns 8 ou
-            10 anos subiu e ficou parado em frente à minha porta. Eu o observava através do olho mágico. Naquele
-            momento, estava com o rock no máximo, então desliguei o som. Com medo da criança invadir, peguei
-            um cabo de vassoura e conferi se a porta estava trancada. Logo depois, quando voltei a olhar pelo
-            olho mágico, ele ainda estava parado, mas deu meia-volta e desceu. Isso se repetiu até sábado,
-            quando eu colocava música e o garoto aparecia. Quando desligava, ele sumia. Lembro de um dia em
-            que ele ficou subindo e descendo as escadas para ouvir as músicas. Parou só quando se cansou,
-            trocando as músicas sem parar, era meia hora de música e meia hora de silêncio.
-
-            Mas depois de um tempo eu descobri o por que isso acontecia.
-
-            Curta e me siga para parte 2'
-        description: ''
-        file_name: todo-dia-aparecia-um-garoto-na-minha-porta-descobri-o-motivo-hoje_1
-        gender: male
-        reddit_community: r/RelatosDoReddit
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: Emergency-Echo-3947
-        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 1
-    -   content: '
-            Agora vamos à descoberta sobre as músicas. Antes, eu pensava que ele estava perto da minha
-            porta para tentar invadir minha casa. No sábado, o garoto apareceu de novo e ficou parado na porta.
-            Uma hora depois, meu pai chegou mais cedo do trabalho por ser sábado e sugeriu colocar as músicas
-            que eu estava ouvindo quando a criança apareceu, para ver se ele voltava e podíamos perguntar
-            por que ele ficava parado na frente do apartamento. Coloquei, mas ele não apareceu. Ficamos nisso
-            até umas 6 horas da noite, e depois percebemos que ele não voltaria, então paramos. Achei meio
-            estranho, mas lembrei que me disseram que talvez o garoto não fosse daqui e que provavelmente
-            estava visitando alguém, então ignorei o sumiço dele por dias.
-
-            Hoje, como sempre, coloquei música enquanto fazia meus desenhos. Hoje, ouvi os passos e
-            a luz do corredor acendendo de novo. Quando me aproximei da porta, ouvi uma mulher gritando no
-            corredor de baixo: ''OH! Volta aqui!'' Quando olhei pelo olho mágico, era o mesmo garoto de sempre,
-            dando meia-volta na escada e descendo. Agora, acho que está confirmado: ele estava perto da minha
-            porta para ouvir música escondido. Acho que os pais dele provavelmente não permitem que ele ouça
-            esse estilo de música, e ele encontrou uma maneira de escutá-la às escondidas. Mas parece que
-            os pais descobriram e o colocaram de castigo. Estou pensando em chamá-lo para ouvir
-            música aqui e trocar uma ideia sobre isso de ficar na minha porta. O que acham da ideia?
-            Curta, me siga e deixe nos comentários.
-            '
-        description: ''
-        file_name: todo-dia-aparecia-um-garoto-na-minha-porta-descobri-o-motivo-hoje_2
-        gender: male
-        reddit_community: r/RelatosDoReddit
-        reddit_community_url_photo: https://styles.redditmedia.com/t5_72ljkj/styles/communityIcon_nhey0a1kj0jc1.png
-        reddit_post_author: Emergency-Echo-3947
-        title: Todo dia aparecia um garoto na minha porta, descobri o motivo hoje - Parte 2
   video_config:
     low_quality: false
-  cover_config:
-    title_font_size: 100
+  history_config:
+    histories:
+    -   content: "Nunca imaginei que me encontraria em uma situação assim. Eu sou um homem de 24 anos, e Lisa\
+            \ e eu estávamos juntos há um ano. Tudo entre nós parecia ótimo: comunicação sólida, encontros\
+            \ emocionantes e uma conexão íntima que fluía naturalmente. Mas uma noite, ela trouxe à tona algo\
+            \ que destruiu completamente minha percepção sobre nosso relacionamento.  \nEla queria ter uma\
+            \ relação a três. A princípio, a ideia não me pareceu chocante. Afinal, as pessoas costumam experimentar,\
+            \ e fantasias são normais. Mas então ela revelou a parte que fez meu estômago revirar. A terceira\
+            \ pessoa que ela tinha em mente não era um estranho, não era um amigo—era meu irmão.  \nOuvir\
+            \ essa sugestão me deixou paralisado. Ela falava sobre isso de forma tão casual, como se fosse\
+            \ apenas uma ideia aventureira, algo emocionante, ao invés de profundamente perturbador. Para\
+            \ ela, era uma oportunidade de vivenciar algo único—dois homens que se pareciam, duas versões\
+            \ de mim ao mesmo tempo. Mas para mim, isso era impensável.  \nQuanto mais ela explicava, pior\
+            \ ficava. Ela não via problema algum, não entendia por que eu deveria me sentir desconfortável.\
+            \ Para ela, era apenas uma fantasia, algo que ao menos poderíamos discutir. Mas eu não conseguia\
+            \ nem processar a ideia. Envolver a família em algo tão íntimo ultrapassava uma linha que eu nem\
+            \ sabia que precisava ser desenhada.  \nA conversa rapidamente se transformou em frustração. Ela\
+            \ desconsiderou meu repúdio como uma reação exagerada, me rotulando como cabeça- dura por não\
+            \ cogitar a ideia. Mas não havia debate a ser feito. Algumas coisas simplesmente não estão abertas\
+            \ à discussão, e essa era uma delas.  \nSaí daquela noite, precisando de ar, precisando de distância.\
+            \ Um ano de amor e confiança se desfez em um único momento. Algumas linhas, uma vez cruzadas,\
+            \ nunca podem ser redesenhadas.
+            \ E você, qual sua opinião sobre isso? Curta, me siga e deixe nos comentários."
+        description: A história de um jovem que enfrenta um pedido inusitado de sua namorada, desafiando os
+            limites do que ele considera aceitável.
+        file_name: minha_namorada_queria_ter_relacoes
+        gender: male
+        reddit_community: r/stories
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2qi02/styles/communityIcon_05zxv6e6eq6b1.png
+        reddit_post_author: NoFortune1676
+        title: Minha Namorada Queria Ter Relações Comigo e Com Meu Irmão
+    -   content: 'Sim, eu sou mulher. Sim, meu marido tem amigas. Ele não é gay e não está envolvido com ninguém
+            fora do nosso relacionamento. Todo mundo fala sobre machismo, que os homens tratam as mulheres
+            mal, o que realmente é verdade. Mas quando eles tentam ser diferentes... aí o sujeito encontra
+            uma namorada ou esposa e agora precisa assinar um contrato de exclusividade feminina. É como se
+            ele não pudesse nem tratar bem outra mulher. Amizade? Nem pensar. Não pode olhar para ninguém
+            na rua. Tem que deixar de seguir todas as mulheres e se restringir a conversar, no máximo, com
+            a mãe e a irmã.
+
+
+            De onde as mulheres tiraram isso, sério? Elas agem como se fosse um preventivo para traição, mas
+            isso simplesmente não existe! E digo mais: um homem sem amizade com mulheres é um sinal vermelho,
+            afinal, um homem decente precisa saber se socializar com mulheres que não estão interessadas romanticamente
+            nele.
+
+
+            Meu marido tem amigas no trabalho também, e de vez em quando ele leva um salgado ou doce para
+            elas, porque elas também são gentis. Elas trazem lembrancinhas quando viajam, dividem o lanche,
+            livram ele de situações complicadas quando a chefe está de mau humor, etc. Eu sou super feliz
+            e descontraída porque eu escolhi uma pessoa de caráter e muito agradável. Então, é óbvio que outras
+            pessoas vão gostar da companhia dele e, para mim, isso é motivo de orgulho. E para você? Qual sua opinião 
+            sobre isso? Curta, me siga e deixe nos comentários.'
+        description: Uma mulher compartilha sua visão sobre a importância da amizade entre homens e mulheres
+            em relacionamentos.
+        file_name: homem-casado-tem-que-ter-amiga-mulher
+        gender: female
+        reddit_community: r/opiniaoimpopular
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_50qq3m/styles/communityIcon_hvv1x9e0jbi91.png
+        reddit_post_author: ImKirell
+        title: Homem casado tem que ter amiga mulher
+    -   content: 'Em janeiro de 2024, eu, um homem de 17 anos, acordei decidido a andar de bicicleta. No entanto,
+            ao me lembrar que minha bicicleta estava um pouco desalinhada, decidi levá-la para consertar em
+            uma oficina perto da minha casa. A oficina ficava a cerca de 10 minutos a pé, e como o calor estava
+            insuportável, fui sem camisa. Ao chegar, percebi que a oficina estava fechada, provavelmente estavam
+            de recesso. Então, subi na bicicleta e fui esperar o sinal abrir para atravessar uma avenida e
+            voltar para casa. Estava próximo a um ponto de ônibus, próximo a uma faixa de pedestres, quando,
+            do nada, ouvi um assobio. Quando olhei para trás, vi um homem de uns 50 ou 60 anos a poucos passos
+            de distância de mim. Só havia aquele homem e uma senhora ao nosso redor. Assim que o encarei,
+            ele lambeu os lábios e me avaliou de cima a baixo. Tive certeza absoluta de que ele estava tentando
+            me assediar. Naquele momento, o sangue ferveu dentro de mim, afinal, eu era menor de idade. Menor
+            ou não, ninguém merece que um velho se comporte daquela forma, olhando para o seu corpo e lambendo
+            os lábios. Eu fiquei paralisado, sem saber o que fazer. Como estávamos perto de uma favela, me
+            preocupei que discutir com ele pudesse trazer problemas para mim. No entanto, eu nunca o havia
+            visto antes, então resolvi confrontá-lo. Peguei a bicicleta com a mão e fui atrás dele. Começou
+            uma conversa tensa, e eu gritei: ''E aí, parceiro? Você quer arrumar para a cabeça?''. O cara
+            ficou paralisado, sem acreditar que eu estava seguindo-o.
+
+            Curta e me siga para parte 2'
+        file_name: sou_babaca_por_bater_em_um_tarado_1
+        gender: male
+        reddit_community: r/EuSouOBabaca
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2h1drm/styles/communityIcon_rl5tuzyrh8nb1.png
+        reddit_post_author: Many-Sign3681
+        title: Sou babaca por bater em um tarado? - Parte 1
+    -   content: 'Ele começou a alegar que era casado e que eu estava vendo maldade onde não havia. Mas, do
+            nada, ele entrou em uma loja de LED e começou a gritar: ''Esse menino me roubou!!'', me acusando
+            de roubo. Eu estava com uma aparência um pouco suspeita, então isso complicou minha situação.
+            Tentei gritar que ''Esse velho é um pedófilo'', mas os atendentes da loja não entenderam nada.
+            Quando o homem percebeu que ninguém acreditou nele, saiu correndo para outra loja, desesperado
+            para fugir de mim. E eu estava prestes a rebocar a cara dele. Estávamos na Avenida Anchieta em São Paulo,
+            onde há várias lojas. Deixei minha bicicleta no chão, ele entrou em um mecânico para se esconder,
+            e eu o segui. Cada um gritava o que pensava, e quando ele me lançou uma pedra, o caos aumentou.
+            Um grupo de motoboys se juntou ao redor, enquanto eu tentava explicar a situação para eles, mas
+            o velho continuava gritando que eu tinha roubado ele. Ele jogou duas pedras, mas não me atingiu.
+            Os mecânicos, percebendo a situação, meio que expulsaram o velho de lá para evitar problemas.
+            De repente, ele saiu do mecânico com um cano de ferro e veio em minha direção. Eu sai correndo
+            junto com os motoboys, e durante o tumulto, o velho se aproximou da minha bicicleta e começou
+            a bater com o cano nela. Ouvia os espectadores dizendo: ''Irmão, vai pra casa, esse tiozinho tá
+            maluco''. Quando ele parou de agredir a bicicleta e lançou o cano na minha direção, soube que
+            precisava agir. O cano caiu no chão, entre nós dois, e quando ele se abaixou para pegá-lo, eu
+            corri em sua direção, e dei uma joelhada na cara dele. O velho caiu no chão, e por
+            um momento, eu fiquei apenas observando. Mas logo os motoboys nos separaram, e eu subi na minha
+            bicicleta e fui embora.
+            
+            Na sua opinião, eu fui babaca por fazer isso tudo por um assobio? Curta, me siga e deixe nos 
+            comentários.
+            '
+        file_name: sou_babaca_por_bater_em_um_tarado_2
+        gender: male
+        reddit_community: r/EuSouOBabaca
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2h1drm/styles/communityIcon_rl5tuzyrh8nb1.png
+        reddit_post_author: Many-Sign3681
+        title: Sou babaca por bater em um tarado? - Parte 2

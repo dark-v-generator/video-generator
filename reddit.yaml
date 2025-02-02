@@ -1,8 +1,8 @@
 main:
   output_path: preview/
-  history_config:
-    source: reddit
-    reddit_url: https://www.reddit.com/r/RelatosDoReddit/comments/1i7aucg/todo_dia_aparecia_um_garoto_na_minha_porta/
-    number_of_parts: 2
   video_config:
     audio_preview: true
+  history_config:
+    source: reddit
+    reddit_url: https://www.reddit.com/r/EuSouOBabaca/comments/1iebyik/sou_babaca_por_bater_em_um_tarado/
+    number_of_parts: 2

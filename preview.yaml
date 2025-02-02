@@ -1,0 +1,41 @@
+main:
+  captions_config:
+    enabled: true
+    auto_generate: false
+    font_size: 110
+    upper: true
+  output_path: preview/
+  video_config:
+    low_quality: true
+    low_resolution: false
+  history_config:
+    histories:
+    -   content: "Nunca imaginei que me encontraria em uma situação assim. Eu sou um homem de 24 anos, e Lisa\
+            \ e eu estávamos juntos há um ano. Tudo entre nós parecia ótimo: comunicação sólida, encontros\
+            \ emocionantes e uma conexão íntima que fluía naturalmente. Mas uma noite, ela trouxe à tona algo\
+            \ que destruiu completamente minha percepção sobre nosso relacionamento.  \nEla queria ter uma\
+            \ relação a três. A princípio, a ideia não me pareceu chocante. Afinal, as pessoas costumam experimentar,\
+            \ e fantasias são normais. Mas então ela revelou a parte que fez meu estômago revirar. A terceira\
+            \ pessoa que ela tinha em mente não era um estranho, não era um amigo—era meu irmão.  \nOuvir\
+            \ essa sugestão me deixou paralisado. Ela falava sobre isso de forma tão casual, como se fosse\
+            \ apenas uma ideia aventureira, algo emocionante, ao invés de profundamente perturbador. Para\
+            \ ela, era uma oportunidade de vivenciar algo único—dois homens que se pareciam, duas versões\
+            \ de mim ao mesmo tempo. Mas para mim, isso era impensável.  \nQuanto mais ela explicava, pior\
+            \ ficava. Ela não via problema algum, não entendia por que eu deveria me sentir desconfortável.\
+            \ Para ela, era apenas uma fantasia, algo que ao menos poderíamos discutir. Mas eu não conseguia\
+            \ nem processar a ideia. Envolver a família em algo tão íntimo ultrapassava uma linha que eu nem\
+            \ sabia que precisava ser desenhada.  \nA conversa rapidamente se transformou em frustração. Ela\
+            \ desconsiderou meu repúdio como uma reação exagerada, me rotulando como cabeça- dura por não\
+            \ cogitar a ideia. Mas não havia debate a ser feito. Algumas coisas simplesmente não estão abertas\
+            \ à discussão, e essa era uma delas.  \nSaí daquela noite, precisando de ar, precisando de distância.\
+            \ Um ano de amor e confiança se desfez em um único momento. Algumas linhas, uma vez cruzadas,\
+            \ nunca podem ser redesenhadas.
+            \ E você, qual sua opinião sobre isso? Curta, me siga e deixe nos comentários."
+        description: A história de um jovem que enfrenta um pedido inusitado de sua namorada, desafiando os
+            limites do que ele considera aceitável.
+        file_name: minha_namorada_queria_ter_relacoes
+        gender: male
+        reddit_community: r/stories
+        reddit_community_url_photo: https://styles.redditmedia.com/t5_2qi02/styles/communityIcon_05zxv6e6eq6b1.png
+        reddit_post_author: NoFortune1676
+        title: Minha Namorada Queria Ter Relações Comigo e Com Meu Irmão
