@@ -3,10 +3,10 @@ main:
     enabled: true
     auto_generate: true
     font_path: 'assets/bangers.ttf'
-    font_size: 23 # original/4.8
+    font_size: 23 # original/4.8 because of low_resolution: true
     color: '#FFFFFF'
     stroke_color: '#000000'
-    stroke_width: 1
+    stroke_width: 2
   output_path: output/
   video_config:
     low_quality: true

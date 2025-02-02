@@ -8,12 +8,12 @@ from entities.captions import CaptionSegment, Captions
 
 
 class CaptionsConfig(BaseModel):
-    font_path: str = Field("assets/bangers.ttf")
-    font_size: int = Field(18)
-    color: str = Field("#FFEA00")
-    stroke_color: str = Field("#242424")
-    stroke_width: int = Field(1)
-    fade_duration: float = Field(0.05)
+    font_path: str = Field("")
+    font_size: int = Field(100)
+    color: str = Field("#000000")
+    stroke_color: str = Field("#000000")
+    stroke_width: int = Field(0)
+    fade_duration: float = Field(0)
     upper_text: bool = Field(False)
 
 
@@ -34,7 +34,7 @@ class CaptionsClip:
         start_time, end_time = [caption_segment.start, caption_segment.end]
         text = caption_segment.text
         show_text = text.upper() if self.config.upper_text else text
-        show_text = show_text.replace(',', '').replace('.', '').strip()
+        show_text = show_text.replace(",", "").replace(".", "").strip()
         word_clip = TextClip(
             text=show_text,
             font=self.config.font_path,
@@ -46,8 +46,11 @@ class CaptionsClip:
         ).with_start(start_time)
         word_clip = word_clip.with_duration(end_time - start_time)
 
-        word_clip = CrossFadeIn(duration=self.config.fade_duration).apply(word_clip)
-        word_clip = CrossFadeOut(duration=self.config.fade_duration).apply(word_clip)
+        if self.config.fade_duration > 0:
+            word_clip = CrossFadeIn(duration=self.config.fade_duration).apply(word_clip)
+            word_clip = CrossFadeOut(duration=self.config.fade_duration).apply(
+                word_clip
+            )
         word_clip: TextClip = word_clip.with_position(["center", "center"])
         return word_clip
 

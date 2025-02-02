@@ -20,7 +20,7 @@ class CaptionsConfig(BaseModel):
     color: str = Field("#FFFFFF")
     stroke_color: str = Field("#000000")
     stroke_width: int = Field(1)
-    fade_duration: float = Field(0.005)
+    fade_duration: float = Field(0)
 
 
 class HistoryConfig(BaseModel):

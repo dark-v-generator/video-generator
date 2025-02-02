@@ -6,10 +6,11 @@ main:
     font_size: 110
     color: '#FFFFFF'
     stroke_color: '#000000'
-    stroke_width: 1
+    stroke_width: 8
   output_path: output/
   video_config:
     low_quality: false
+    low_resolution: false
   history_config:
     histories:
     -   content: "Nunca imaginei que me encontraria em uma situação assim. Eu sou um homem de 24 anos, e Lisa\

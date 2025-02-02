@@ -10,7 +10,8 @@ from entities.history import History
 class CaptionSegment(BaseModel):
     start: float = Field(0)
     end: float = Field(0)
-    text: str = Field('')
+    text: str = Field("")
+
 
 class Captions(BaseModel):
     segments: List[CaptionSegment] = Field([])

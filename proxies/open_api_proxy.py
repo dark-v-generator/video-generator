@@ -198,11 +198,11 @@ def generate_captions(audio_path: str) -> Captions:
     client = OpenAI()
     audio_file = open(audio_path, "rb")
     transcription = client.audio.transcriptions.create(
-        model="whisper-1", 
-        file=audio_file, 
+        model="whisper-1",
+        file=audio_file,
         response_format="verbose_json",
         language="pt",
-        timestamp_granularities=["word"]
+        timestamp_granularities=["word"],
     )
     segments = []
     for word in transcription.words:

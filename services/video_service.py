@@ -8,10 +8,10 @@ from entities.history import History
 from proxies import open_api_proxy, youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 from entities.history import History
-from entities.config import CaptionsConfig, MainConfig
+from entities.config import MainConfig
 from os import path
 
-from services import cover_service, speech_service, caption_service
+from services import cover_service, speech_service
 
 
 def __create_video_compilation(
