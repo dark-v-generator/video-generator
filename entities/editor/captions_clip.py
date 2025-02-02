@@ -15,6 +15,7 @@ class CaptionsConfig(BaseModel):
     stroke_width: int = Field(0)
     fade_duration: float = Field(0)
     upper_text: bool = Field(False)
+    marging: int = Field(50)
 
 
 class CaptionsClip:
@@ -43,6 +44,7 @@ class CaptionsClip:
             stroke_color=self.config.stroke_color,
             stroke_width=self.config.stroke_width,
             text_align="center",
+            margin=(self.config.marging, self.config.marging),
         ).with_start(start_time)
         word_clip = word_clip.with_duration(end_time - start_time)
 

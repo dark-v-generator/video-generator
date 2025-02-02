@@ -126,13 +126,12 @@ def convert_reddit_post_to_multiple_part_history(
         - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
         necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
 
-        - A história deve ser dividida em algumas partes, o número exato será passado. As partes serão vídeos diferentes, 
+        - A história deve ser dividida em {number_of_parts} partes. As partes serão vídeos diferentes, 
         portanto de uma parte para outra tente finalizar em um ponto alto da história, despertando o interesse para 
         a próxima parte. Caso não seja possível, apenas divida a história.
-
-        Aqui está a história:
-        
-    """
+    """.format(
+        number_of_parts=number_of_parts,
+    )
 
     schema = {
         "name": "multiple_part_history_schema",
@@ -161,14 +160,12 @@ def convert_reddit_post_to_multiple_part_history(
     }
 
     user_message = """
-        Essa história deve ter {number_of_parts} partes
         Título: {title}
 
         {content}
     """.format(
         title=reddit_post.title,
         content=reddit_post.content,
-        number_of_parts=number_of_parts,
     )
 
     client = OpenAI()

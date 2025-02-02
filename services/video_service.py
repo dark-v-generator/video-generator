@@ -104,7 +104,8 @@ def generate_history_video(history: History, config: MainConfig) -> None:
 
     speech = speech_service.synthesize_speech(speech_ssml, gender)
     if config.video_config.audio_preview:
-        speech.clip.write_audiofile("sample.mp3")
+        print("duration:", speech.clip.duration)
+        speech.clip.audiopreview()
         return
 
     print("Generating cover...")
