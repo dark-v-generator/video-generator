@@ -1,10 +1,6 @@
-import random
 from typing import List
 from pydantic import BaseModel, Field
-from enum import Enum
-
 import yaml
-from entities.history import History
 
 
 class CaptionSegment(BaseModel):
@@ -25,3 +21,14 @@ class Captions(BaseModel):
     def save_yaml(self, output_path):
         with open(output_path, "w") as file:
             yaml.dump(self.model_dump(), file, allow_unicode=True, width=100, indent=4)
+
+    def with_speed(self, rate: float) -> "Captions":
+        new_segments = [
+            CaptionSegment(
+                start=segment.start / rate,
+                end=segment.end / rate,
+                text=segment.text
+            )
+            for segment in self.segments
+        ]
+        return Captions(segments=new_segments)

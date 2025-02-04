@@ -9,14 +9,16 @@ class VoiceGender(Enum):
 
 
 def synthesize_speech(
-    text: str, gender: VoiceGender = VoiceGender.MALE
+    text: str, 
+    gender: VoiceGender = VoiceGender.MALE,
+    rate: float = 1.0,
 ) -> audio_clip.AudioClip:
     if True:
         if gender == VoiceGender.MALE:
             gender = azure_proxy.VoiceVariation.MALE
         else:
             gender = azure_proxy.VoiceVariation.FEMALE
-        return azure_proxy.synthesize_speech(text, gender)
+        return azure_proxy.synthesize_speech(text, gender, rate)
     elif False:
         if gender == VoiceGender.MALE:
             google_tts_gender = google_proxy.VoiceVariation.MALE

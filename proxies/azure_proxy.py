@@ -47,7 +47,7 @@ def __text_to_ssml(text: str, voice: str, rate: float = 1.0, break_time="1s"):
     return ssml_text
 
 
-def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariation.MALE):
+def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariation.MALE, rate: float =1.0):
     speech_config = __get_speech_config()
     speech_config.speech_synthesis_voice_name = voice_variation.value
 
@@ -58,7 +58,7 @@ def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariatio
         speech_config=speech_config, audio_config=audio_config
     )
     ssml_text = __text_to_ssml(
-        text, voice=voice_variation.value, rate=1.2, break_time="300ms"
+        text, voice=voice_variation.value, rate=rate, break_time="300ms"
     )
     result = speech_synthesizer.speak_ssml(ssml_text)
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:

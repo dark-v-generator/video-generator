@@ -58,6 +58,7 @@ class VideoConfig(BaseModel):
     low_quality: bool = Field(False, title="Low quality")
     low_resolution: bool = Field(False, title="Change resolution to low")
     audio_preview: bool = Field(False, title="If true will render only the audio")
+    audio_speed_rate: float = Field(1.0, title="Audio speed rate")
 
     def get_aspect_ratio(self) -> float:
         return self.width / self.height

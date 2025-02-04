@@ -5,7 +5,7 @@ from entities import config
 from entities.captions import Captions
 from entities.editor import captions_clip
 from entities.history import History
-from proxies import open_api_proxy, youtube_proxy
+from proxies import whisper_proxy, youtube_proxy
 from entities.editor import image_clip, audio_clip, video_clip
 from entities.history import History
 from entities.config import MainConfig
@@ -73,10 +73,10 @@ def generate_captions(
         tmp_mp3_path = f"{tempfile.mktemp()}.mp3"
         speech.clip.write_audiofile(tmp_mp3_path)
         print("Generating captions...")
-        captions = open_api_proxy.generate_captions(tmp_mp3_path)
+        captions = whisper_proxy.generate_captions(tmp_mp3_path)
         captions.save_yaml(captions_path)
 
-    captions = Captions.from_yaml(captions_path)
+    captions = Captions.from_yaml(captions_path).with_speed(config.video_config.audio_speed_rate)
     subtitles_config = captions_clip.CaptionsConfig(
         font_path=caption_config.font_path,
         font_size=caption_config.font_size,
@@ -102,7 +102,7 @@ def generate_history_video(history: History, config: MainConfig) -> None:
         title=history.title, content=history.content
     )
 
-    speech = speech_service.synthesize_speech(speech_ssml, gender)
+    speech = speech_service.synthesize_speech(speech_ssml, gender, config.video_config.audio_speed_rate)
     if config.video_config.audio_preview:
         print("duration:", speech.clip.duration)
         speech.clip.audiopreview()
@@ -127,7 +127,8 @@ def generate_history_video(history: History, config: MainConfig) -> None:
     )
 
     if config.captions_config.enabled:
-        captions = generate_captions(history=history, speech=speech, config=config)
+        regular_speech = speech_service.synthesize_speech(speech_ssml, gender, rate=1.0)
+        captions = generate_captions(history=history, speech=regular_speech, config=config)
         final_video.insert_captions(captions=captions)
 
     file_name = path.join(config.output_path, f"{history.file_name}.mp4")
