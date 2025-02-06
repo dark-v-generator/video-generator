@@ -3,7 +3,11 @@ from entities.captions import CaptionSegment, Captions
 
 def generate_captions(audio_path: str) -> Captions:
     model = whisper.load_model("base")
-    output = model.transcribe(audio_path, word_timestamps=True)
+    output = model.transcribe(
+        audio_path, 
+        word_timestamps=True,
+        language="pt"
+    )
 
     caption_segments = []
     for segment in output["segments"]:

@@ -33,7 +33,7 @@ def __load_histories_from_config(cfg: config.HistoryConfig) -> List[History]:
     return histories
 
 
-def load_history(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
+def load_histories(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
     if cfg.history_config.source == config.HistorySource.CONFIG:
         return __load_histories_from_config(cfg.history_config)
     elif cfg.history_config.source == config.HistorySource.REDDIT:

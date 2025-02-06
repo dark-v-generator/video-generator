@@ -15,28 +15,19 @@ REDDIT_COVER_HTML = """
   <style>
     .post-cover {{
       width: 1950px;
-      height: 650px;
       padding: 50px;
-      flex-direction: column;
       background-color: #FFFFFF;
       border-radius: 50px;
       box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
-      gap: 10px;
     }}
 
     .title-container {{
       display: -webkit-box;
-      align-items: top;
-      gap: 10px;
-      flex-direction: row;
     }}
 
     .text-container {{
       display: -webkit-box;
-      flex-direction: row;
-      gap: 50px;
-      align-items: center;
-      height: fit-content;
+      -webkit-box-align: center;
     }}
 
     .title-container img {{
@@ -44,7 +35,7 @@ REDDIT_COVER_HTML = """
       height: 200px;
       border-radius: 50%;
       object-fit: cover;
-      margin-right: 10px
+      margin-right: 30px
     }}
 
     .text-container h1 {{
@@ -52,8 +43,7 @@ REDDIT_COVER_HTML = """
       font-weight: bold;
       color: #000000;
       font-family: "Inter", serif;
-      height: fit-content;
-      margin-right: 50px
+      margin-right: 30px
     }}
 
     .text-container h2 {{
@@ -61,14 +51,13 @@ REDDIT_COVER_HTML = """
       font-weight: normal;
       color: #5C5C5C;
       font-family: "Inter", serif;
-      height: fit-content;
     }}
 
     .history-title {{
         display: -webkit-box;
         align-items: center;
         -webkit-box-pack: center;
-        height: 100%;
+        padding: 50px;
     }}
     .history-title h1 {{
         text-align: center;
