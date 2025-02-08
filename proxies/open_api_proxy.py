@@ -1,213 +1,117 @@
 import json
-from entities.captions import CaptionSegment, Captions
-from entities.history import History, MultiplePartHistory
-from entities.reddit import RedditPost
+from typing import List
+from entities.history import History
 from openai import OpenAI
 
 HISTORY_SCHEMA = {
-    "name": "history_schema",
-    "schema": {
-        "type": "object",
-        "properties": {
-            "title": {
-                "description": "Título da história",
-                "type": "string",
-            },
-            "content": {
-                "description": "Conteúdo da história",
-                "type": "string",
-            },
-            "file_name": {
-                "description": "Nome do arquivo da história sem extensão",
-                "type": "string",
-            },
-            "gender": {
-                "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
-                "type": "string",
-            },
+    "type": "object",
+    "properties": {
+        "title": {
+            "description": "Título da história",
+            "type": "string",
+        },
+        "content": {
+            "description": "Conteúdo da história",
+            "type": "string",
+        },
+        "gender": {
+            "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
+            "type": "string",
         },
     },
 }
 
+ENHANCE_HISTORY_PROMPT = """
+    Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
+    narração seguindo o seguinte:
+    
+    - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
+    (ingles)"I M24" -> "Eu sou um homem de 24 anos"
+    (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
+    (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
+    (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
 
-def __chat_history_teller(input, schema):
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "Você é um contador de histórias"},
-            {"role": "user", "content": input},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": schema,
-        },
-    )
-    raw_data = response.choices[0].message.content
-    return json.loads(raw_data)
+    - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
+    pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
+    traduzido para "escola" por exemplo, pois esse termo é mais comum
 
+    - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
+    como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
+    e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
 
-def generate_history(prompt: str) -> History:
-    response = __chat_history_teller(prompt, HISTORY_SCHEMA)
-    return History(**response)
+    - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
+    caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
+    e corrigindo as pausas adequadamente.
 
+    - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
+    necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
+"""
 
-def convert_reddit_post_to_history(reddit_post: RedditPost) -> History:
-    prompt = """
-        Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-        narração seguindo o seguinte:
-        
-        - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
-        (ingles)"I M24" -> "Eu sou um homem de 24 anos"
-        (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
-        (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
-        (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
+DIVIDE_HISTORY_PROMPT = """
+    Eu vou te passar uma história grande e você deve dividila em partes, sem alterar o conteúdo, mantendo o conteúdo original.
+    As partes serão publicadas nas redes sociais, portanto divida em um momento chave da história para que a atenção do ouvinte
+    seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
+"""
 
-        - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
-        pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
-        traduzido para "escola" por exemplo, pois esse termo é mais comum
-
-        - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
-        como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
-        e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
-
-        - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
-        caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
-        e corrigindo as pausas adequadamente.
-
-        - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
-        necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
-
-        Aqui está a história:
-        
+def enhance_history(title: str, content: str) -> History:
+    user_prompt = """
         Título: {title}
 
         {content}
     """.format(
-        title=reddit_post.title,
-        content=reddit_post.content,
-    )
-    response = __chat_history_teller(prompt, HISTORY_SCHEMA)
-    return History(
-        **response,
-        reddit_community=reddit_post.community,
-        reddit_post_author=reddit_post.author,
-        reddit_community_url_photo=reddit_post.community_url_photo,
+        title=title,
+        content=content,
     )
 
-
-def convert_reddit_post_to_multiple_part_history(
-    reddit_post: RedditPost,
-    number_of_parts: int,
-) -> MultiplePartHistory:
-    system_message = """
-        Você é um assistente de revisão de histórias.
-        Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-        narração e dividila em partes, seguindo o seguinte:
-        
-        - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
-        (ingles)"I M24" -> "Eu sou um homem de 24 anos"
-        (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
-        (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
-        (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
-
-        - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
-        pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
-        traduzido para "escola" por exemplo, pois esse termo é mais comum
-
-        - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
-        como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
-        e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
-
-        - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
-        caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
-        e corrigindo as pausas adequadamente.
-
-        - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
-        necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
-
-        - A história deve ser dividida em {number_of_parts} partes. As partes serão vídeos diferentes, 
-        portanto de uma parte para outra tente finalizar em um ponto alto da história, despertando o interesse para 
-        a próxima parte. Caso não seja possível, apenas divida a história.
-    """.format(
-        number_of_parts=number_of_parts,
-    )
-
-    schema = {
-        "name": "multiple_part_history_schema",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "title": {
-                    "description": "Título da história",
-                    "type": "string",
-                },
-                "parts": {
-                    "description": f"Lista de partes da história, deve ter tamanho {number_of_parts}",
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "file_name": {
-                    "description": "Nome do arquivo da história sem extensão",
-                    "type": "string",
-                },
-                "gender": {
-                    "description": "Gênero de quem conta a história, pode ser 'male' quando homem e 'female' quando mulher",
-                    "type": "string",
-                },
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": ENHANCE_HISTORY_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "history_schema",
+                "schema": HISTORY_SCHEMA,
             },
-        },
-    }
-
-    user_message = """
-        Título: {title}
-
-        {content}
-    """.format(
-        title=reddit_post.title,
-        content=reddit_post.content,
-    )
-
-    client = OpenAI()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_message},
-        ],
-        response_format={
-            "type": "json_schema",
-            "json_schema": schema,
         },
     )
     raw_data = response.choices[0].message.content
     response = json.loads(raw_data)
-
-    return MultiplePartHistory(
+    return History(
         **response,
-        reddit_community=reddit_post.community,
-        reddit_post_author=reddit_post.author,
-        reddit_community_url_photo=reddit_post.community_url_photo,
     )
 
 
-def generate_captions(audio_path: str) -> Captions:
+def divide_history(history: History, number_of_parts: int) -> List[History]:
+    user_message = """
+        Divida essa história em {number_of_parts} partes:
+        {history_dump}
+    """.format(
+        history_dump=history.model_dump(),
+        number_of_parts=number_of_parts,
+    )
+
     client = OpenAI()
-    audio_file = open(audio_path, "rb")
-    transcription = client.audio.transcriptions.create(
-        model="whisper-1",
-        file=audio_file,
-        response_format="verbose_json",
-        language="pt",
-        timestamp_granularities=["word"],
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": DIVIDE_HISTORY_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "multiple_part_history_schema",
+                "schema": {
+                    "type": "array",
+                    "items": HISTORY_SCHEMA,
+                }
+            },
+        },
     )
-    segments = []
-    for word in transcription.words:
-        segments.append(
-            CaptionSegment(
-                text=word.word,
-                start=word.start,
-                end=word.end,
-            )
-        )
-    return Captions(segments=segments)
+    raw_data = response.choices[0].message.content
+    response = json.loads(raw_data)
+    return [History(**res) for res in response]
