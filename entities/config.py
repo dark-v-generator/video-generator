@@ -1,7 +1,8 @@
 import random
 from typing import List
-from pydantic import BaseModel, Field
+from pydantic import Field
 from enum import Enum
+from entities.base_yaml_model import BaseYAMLModel
 from entities.history import History
 
 
@@ -10,7 +11,7 @@ class HistorySource(Enum):
     CONFIG = "config"
 
 
-class CaptionsConfig(BaseModel):
+class CaptionsConfig(BaseYAMLModel):
     enabled: bool = Field(False)
     auto_generate: bool = Field(False)
     upper: bool = Field(True)
@@ -23,7 +24,7 @@ class CaptionsConfig(BaseModel):
     fade_duration: float = Field(0)
 
 
-class HistoryConfig(BaseModel):
+class HistoryConfig(BaseYAMLModel):
     source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")
     prompt: str = Field(None, title="Prompt for auto generation")
     reddit_url: str = Field(None, title="Reddit URL")
@@ -31,7 +32,7 @@ class HistoryConfig(BaseModel):
     number_of_parts: int = Field(1, title="Number of parts")
 
 
-class CoverConfig(BaseModel):
+class CoverConfig(BaseYAMLModel):
     subtitle: str = Field(None, title="Subtitle")
     title_font_family: str = Field("Arial", title="Font family")
     subtitle_font_family: str = Field("Arial", title="Subtitle font family")
@@ -44,7 +45,7 @@ class CoverConfig(BaseModel):
     padding: int = Field(50, title="Padding")
 
 
-class VideoConfig(BaseModel):
+class VideoConfig(BaseYAMLModel):
     watermark_path: str = Field(None, title="Path to the water mark image")
     background_audio_path: str = Field(None, title="Path to the background audio file")
     end_silece_seconds: int = Field(3, title="End silence seconds")
@@ -64,7 +65,7 @@ class VideoConfig(BaseModel):
         return self.width / self.height
 
 
-class MainConfig(BaseModel):
+class MainConfig(BaseYAMLModel):
     @staticmethod
     def __generate_random_seed() -> str:
         return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))

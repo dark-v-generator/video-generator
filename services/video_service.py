@@ -11,7 +11,7 @@ from os import path
 
 
 
-def __create_video_compilation(
+def create_video_compilation(
     min_duration: int, 
     config: config.VideoConfig = config.VideoConfig()
 ) -> video_clip.VideoClip:
@@ -28,7 +28,7 @@ def __create_video_compilation(
     return video
 
 
-def __generate_video(
+def generate_video(
     audio: audio_clip.AudioClip,
     background_video: video_clip.VideoClip,
     cover: image_clip.ImageClip = None,
@@ -63,33 +63,3 @@ def __generate_video(
     if captions is not None:
         background_video.insert_captions(captions)
     return background_video
-
-
-def generate_reddit_video(reddit_history: RedditHistory, config: MainConfig) -> None:
-    speech = audio_clip.AudioClip(reddit_history.speech_path)
-    captions = Captions.from_yaml(reddit_history.captions_path)
-    cover = image_clip.ImageClip(reddit_history.cover_path)
-    print("Generating video compilation...")
-    background_video = __create_video_compilation(
-        speech.clip.duration,
-        config.video_config,
-    )
-    
-    final_video = __generate_video(
-        audio=speech,
-        background_video=background_video,
-        cover=cover,
-        config=config.video_config,
-        captions=captions,
-    )
-
-    file_name = path.join(config.output_path, f"{reddit_history.file_name}.mp4")
-    if config.video_config.low_quality:
-        final_video.clip.write_videofile(
-            file_name,
-            threads=4,
-            preset="ultrafast",
-            fps=15,
-        )
-    else:
-        final_video.clip.write_videofile(file_name, threads=4, preset="veryfast")
