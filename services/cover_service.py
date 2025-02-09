@@ -1,4 +1,5 @@
 import tempfile
+from entities.cover import RedditCover
 from entities.history import History
 import imgkit
 from entities import config
@@ -83,19 +84,16 @@ REDDIT_COVER_HTML = """
 """
 
 
-def __generate_reddit_cover(
-    title: str,
-    community: str,
-    author: str,
-    community_url_photo: str,
+def generate_reddit_cover(
+    reddit_cover: RedditCover,
     output_path: str,
     config: config.CoverConfig = config.CoverConfig(),
 ):
     html_content = REDDIT_COVER_HTML.format(
-        title=title,
-        community=community,
-        post_author=author,
-        community_url_photo=community_url_photo,
+        title=reddit_cover.title,
+        community=reddit_cover.community,
+        post_author=reddit_cover.author,
+        community_url_photo=reddit_cover.image_url,
         title_font_size=config.title_font_size,
     )
 
@@ -106,18 +104,3 @@ def __generate_reddit_cover(
 
     options = {"--format": "png", "--transparent": ""}
     imgkit.from_file(file_name, output_path, options=options)
-
-
-def generate_cover(
-    history: History, cfg: config.CoverConfig = config.CoverConfig()
-) -> image_clip.ImageClip:
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-        __generate_reddit_cover(
-            title=history.title,
-            community=history.reddit_community,
-            author=history.reddit_post_author,
-            community_url_photo=history.reddit_community_url_photo,
-            config=cfg,
-            output_path=temp_file.name,
-        )
-        return image_clip.ImageClip(temp_file.name)
