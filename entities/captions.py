@@ -1,6 +1,6 @@
 from typing import List
 from pydantic import BaseModel, Field
-import yaml
+from entities.base_yaml_model import BaseYAMLModel
 
 
 class CaptionSegment(BaseModel):
@@ -9,7 +9,7 @@ class CaptionSegment(BaseModel):
     text: str = Field("")
 
 
-class Captions(BaseModel):
+class Captions(BaseYAMLModel):
     segments: List[CaptionSegment] = Field([])
 
     def with_speed(self, rate: float) -> "Captions":
