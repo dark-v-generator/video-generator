@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Histórias em Vídeo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <h1 class="logo">Reddit Histórias em Vídeo</h1>
+            <a href="https://github.com/seu-usuario" class="github-link" target="_blank">GitHub</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h2>Transforme histórias do Reddit em vídeos incríveis</h2>
+                    <p>Cole o link de uma história do Reddit abaixo e crie um vídeo automaticamente</p>
+                    
+                    <form class="story-form">
+                        <input type="url" placeholder="Cole o URL da história do Reddit aqui..." required>
+                        <button type="submit">Criar Vídeo</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2>Como funciona</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📖</div>
+                        <h3>Cole o Link</h3>
+                        <p>Encontre uma história interessante no Reddit e copie o link</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎬</div>
+                        <h3>Personalize</h3>
+                        <p>Escolha o estilo de narração e elementos visuais</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📥</div>
+                        <h3>Baixe o Vídeo</h3>
+                        <p>Gere e baixe seu vídeo pronto para compartilhar</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 Reddit Histórias em Vídeo. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>
