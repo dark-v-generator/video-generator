@@ -1,12 +1,9 @@
 from enum import Enum
-from proxies import google_proxy, polly_proxy, azure_proxy
-from entities.editor import audio_clip
-
+from proxies import google_proxy, azure_proxy
 
 class VoiceGender(Enum):
     MALE = "male"
     FEMALE = "female"
-
 
 def synthesize_speech(
     text: str, 
@@ -26,5 +23,3 @@ def synthesize_speech(
         else:
             google_tts_gender = google_proxy.VoiceVariation.FEMALE
         return google_proxy.synthesize_speech(text, google_tts_gender)
-    elif False:
-        return polly_proxy.synthesize_speech(text)
