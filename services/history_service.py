@@ -1,55 +1,27 @@
 import os
 from typing import List
 from entities import config
+from entities.cover import RedditCover
 from entities.history import History
-from entities.reddit import RedditPost
+from entities.reddit_video import RedditHistory
 from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
 import yaml
 
+def srcap_reddit_post(post_url: str) -> RedditHistory:
+    reddit_post = reddit_proxy.get_reddit_post(post_url)
+    history = open_api_proxy.enhance_history(reddit_post.title, reddit_post.content)
+    cover = RedditCover(
+        image_url=reddit_post.community_url_photo,
+        author=reddit_post.author,
+        community=reddit_post.community,
+        title=history.title,
+    )
+    return RedditHistory(
+        cover=cover,
+        history=history
+    )
 
-def __generate_histories_from_reddit(reddit_post: RedditPost) -> History:
-    return open_api_proxy.convert_reddit_post_to_history(reddit_post)
-
-
-def __generate_histories_from_reddit(
-    reddit_post: RedditPost, cfg: config.HistoryConfig
-) -> List[History]:
-    if cfg.number_of_parts == 1:
-        return [open_api_proxy.convert_reddit_post_to_history(reddit_post)]
-    else:
-        multiple_part_history = (
-            open_api_proxy.convert_reddit_post_to_multiple_part_history(
-                reddit_post=reddit_post, number_of_parts=cfg.number_of_parts
-            )
-        )
-        return multiple_part_history.get_histories()
-
-
-def __load_histories_from_config(cfg: config.HistoryConfig) -> List[History]:
-    histories = []
-    for data in cfg.histories:
-        histories.append(History(**data.model_dump()))
-    return histories
-
-
-def load_histories(cfg: config.MainConfig = config.MainConfig()) -> List[History]:
-    if cfg.history_config.source == config.HistorySource.CONFIG:
-        return __load_histories_from_config(cfg.history_config)
-    elif cfg.history_config.source == config.HistorySource.REDDIT:
-        reddit_post = reddit_proxy.get_reddit_post(cfg.history_config.reddit_url)
-        histories = __generate_histories_from_reddit(reddit_post, cfg.history_config)
-        os.makedirs(cfg.output_path, exist_ok=True)
-        __save_histories(
-            histories,
-            f"{cfg.output_path}/{reddit_post.title.lower().replace(' ', '_')}.yaml",
-        )
-        return histories
-
-
-def __save_histories(histories: List[History], output_path: str):
-    data = {"histories": []}
-    for history in histories:
-        data["histories"].append(history.model_dump())
-    with open(output_path, "w") as file:
-        yaml.dump(data, file, allow_unicode=True, width=100, indent=4)
+def divide_reddit_history(reddit_video: RedditHistory, number_of_parts) -> List[RedditHistory]:
+    histories = open_api_proxy.divide_history(reddit_video.history, number_of_parts=number_of_parts)
+    return [RedditHistory(**reddit_video.model_dump(), history=history) for history in histories]
