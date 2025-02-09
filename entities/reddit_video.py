@@ -9,8 +9,10 @@ class RedditHistory(BaseYAMLModel):
     cover: RedditCover = Field(RedditCover())
     history: History = Field(History())
     speech_path: str = Field("")
+    regular_speech_path: str = Field("")
     captions_path: str = Field("")
     cover_path: str = Field("")
+    folder_path: str = Field("")
 
     def title_normalized() -> str:
         title = unidecode.unidecode(title)

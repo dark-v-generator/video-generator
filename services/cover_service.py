@@ -88,7 +88,7 @@ def generate_reddit_cover(
     reddit_cover: RedditCover,
     output_path: str,
     config: config.CoverConfig = config.CoverConfig(),
-):
+) -> None:
     html_content = REDDIT_COVER_HTML.format(
         title=reddit_cover.title,
         community=reddit_cover.community,
