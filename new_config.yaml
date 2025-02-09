@@ -1,0 +1,23 @@
+captions_config:
+    color: '#ffffff'
+    fade_duration: 0
+    font_path: assets/bangers.ttf
+    font_size: 111
+    stroke_color: '#000000'
+    stroke_width: 1
+    upper: true
+cover_config:
+    title_font_size: 110
+histories_path: null
+seed: USSZU4F6Z9
+video_config:
+    audio_speed_rate: 1.0
+    cover_duration: 5
+    end_silece_seconds: 3
+    height: 1920
+    low_quality: false
+    low_resolution: false
+    padding: 60
+    watermark_path: null
+    width: 1080
+    youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ

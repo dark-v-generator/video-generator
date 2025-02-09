@@ -1,21 +1,9 @@
 import random
-from typing import List
 from pydantic import Field
-from enum import Enum
 from entities.base_yaml_model import BaseYAMLModel
-from entities.history import History
-
-
-class HistorySource(Enum):
-    REDDIT = "reddit"
-    CONFIG = "config"
-
 
 class CaptionsConfig(BaseYAMLModel):
-    enabled: bool = Field(False)
-    auto_generate: bool = Field(False)
     upper: bool = Field(True)
-    one_word: bool = Field(True)
     font_path: str = Field("assets/bangers.ttf")
     font_size: int = Field(110)
     color: str = Field("#FFFFFF")
@@ -23,31 +11,11 @@ class CaptionsConfig(BaseYAMLModel):
     stroke_width: int = Field(1)
     fade_duration: float = Field(0)
 
-
-class HistoryConfig(BaseYAMLModel):
-    source: HistorySource = Field(HistorySource.CONFIG, title="Source of the history")
-    prompt: str = Field(None, title="Prompt for auto generation")
-    reddit_url: str = Field(None, title="Reddit URL")
-    histories: List[History] = Field(None, title="Histories fields")
-    number_of_parts: int = Field(1, title="Number of parts")
-
-
 class CoverConfig(BaseYAMLModel):
-    subtitle: str = Field(None, title="Subtitle")
-    title_font_family: str = Field("Arial", title="Font family")
-    subtitle_font_family: str = Field("Arial", title="Subtitle font family")
     title_font_size: int = Field(110, title="Title font size")
-    subtitle_font_size: int = Field(50, title="Subtitle font size")
-    title_font_color: str = Field("#000000", title="Font color")
-    subtitle_font_color: str = Field("#808080", title="Subtitle font color")
-    background_color: str = Field("#FFFFFF", title="Background color")
-    rounding_radius: int = Field(30, title="Rounding radius")
-    padding: int = Field(50, title="Padding")
-
 
 class VideoConfig(BaseYAMLModel):
     watermark_path: str = Field(None, title="Path to the water mark image")
-    background_audio_path: str = Field(None, title="Path to the background audio file")
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
     cover_duration: int = Field(5, title="Cover duration")
@@ -58,11 +26,7 @@ class VideoConfig(BaseYAMLModel):
     )
     low_quality: bool = Field(False, title="Low quality")
     low_resolution: bool = Field(False, title="Change resolution to low")
-    audio_preview: bool = Field(False, title="If true will render only the audio")
     audio_speed_rate: float = Field(1.0, title="Audio speed rate")
-
-    def get_aspect_ratio(self) -> float:
-        return self.width / self.height
 
 
 class MainConfig(BaseYAMLModel):
@@ -70,13 +34,10 @@ class MainConfig(BaseYAMLModel):
     def __generate_random_seed() -> str:
         return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))
 
-    output_path: str = Field(None, title="Path to save the output video")
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
-    history_config: HistoryConfig = Field(
-        HistoryConfig(), title="History configuration"
-    )
     captions_config: CaptionsConfig = Field(CaptionsConfig())
+    histories_path: str = Field(None, title="Path to save the output video")
     seed: str = Field(__generate_random_seed(), title="Seed")
 
     def int_seed(self) -> int:

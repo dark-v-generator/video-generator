@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações</title>
+    <!-- Link para o CSS específico para a página de configurações -->
+    <link rel="stylesheet" href="/static/config_styles.css">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">Editor de Vídeo</div>
+            <a class="github-link" href="#">GitHub</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2>Configurações</h2>
+        <form action="/save_config" method="POST">
+            <!-- Seção de Legendas -->
+            <h3>Legendas</h3>
+            <label>Fonte:</label>
+            <input type="text" name="captions_config.font_path" value="assets/bangers.ttf">
+            
+            <label>Tamanho:</label>
+            <input type="number" name="captions_config.font_size" value="110">
+            
+            <label>Cor:</label>
+            <input type="color" name="captions_config.color" value="#FFFFFF">
+            
+            <!-- Outros campos de captions_config podem ser adicionados conforme necessário -->
+            
+            <!-- Seção de Capa -->
+            <h3>Capa</h3>
+            <label>Tamanho da fonte:</label>
+            <input type="number" name="cover_config.title_font_size" value="110">
+            
+            <!-- Seção de Vídeo -->
+            <h3>Vídeo</h3>
+            <label>Largura:</label>
+            <input type="number" name="video_config.width" value="1080">
+            
+            <label>Altura:</label>
+            <input type="number" name="video_config.height" value="1920">
+            
+            <label>ID do canal do YouTube:</label>
+            <input type="text" name="video_config.youtube_channel_id" value="UCIXTGJvqvxWoWWstA66a2JQ">
+            
+            <!-- Outros campos de video_config também podem ser adicionados -->
+            
+            <button type="submit">Salvar Configuração</button>
+        </form>
+    </div>
+</body>
+</html>
