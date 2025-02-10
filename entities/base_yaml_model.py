@@ -1,14 +1,15 @@
-from typing import List
+from typing import List, Type, TypeVar
 from pydantic import BaseModel, Field
 import yaml
 
+T = TypeVar('T', bound='BaseYAMLModel')
 
 class BaseYAMLModel(BaseModel):
-    @staticmethod
-    def from_yaml(file_path) -> "BaseYAMLModel":
+    @classmethod
+    def from_yaml(cls: Type[T], file_path: str) -> T:
         with open(file_path, "r") as file:
             data = yaml.safe_load(file)
-            return BaseYAMLModel(**data)
+            return cls(**data)
 
     def save_yaml(self, output_path):
         with open(output_path, "w") as file:

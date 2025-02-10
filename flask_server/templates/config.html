@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurações</title>
     <!-- Link para o CSS específico para a página de configurações -->
-    <link rel="stylesheet" href="/static/config_styles.css">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav>
@@ -18,37 +18,42 @@
     <div class="container">
         <h2>Configurações</h2>
         <form action="/save_config" method="POST">
-            <!-- Seção de Legendas -->
-            <h3>Legendas</h3>
-            <label>Fonte:</label>
-            <input type="text" name="captions_config.font_path" value="assets/bangers.ttf">
-            
-            <label>Tamanho:</label>
-            <input type="number" name="captions_config.font_size" value="110">
-            
-            <label>Cor:</label>
-            <input type="color" name="captions_config.color" value="#FFFFFF">
-            
-            <!-- Outros campos de captions_config podem ser adicionados conforme necessário -->
-            
-            <!-- Seção de Capa -->
-            <h3>Capa</h3>
-            <label>Tamanho da fonte:</label>
-            <input type="number" name="cover_config.title_font_size" value="110">
-            
-            <!-- Seção de Vídeo -->
-            <h3>Vídeo</h3>
-            <label>Largura:</label>
-            <input type="number" name="video_config.width" value="1080">
-            
-            <label>Altura:</label>
-            <input type="number" name="video_config.height" value="1920">
-            
-            <label>ID do canal do YouTube:</label>
-            <input type="text" name="video_config.youtube_channel_id" value="UCIXTGJvqvxWoWWstA66a2JQ">
-            
-            <!-- Outros campos de video_config também podem ser adicionados -->
-            
+            {% for key_1, value in config.items() %}
+                <h3>{{ key_1 | replace('_', ' ') | title }}</h3>
+                {% if isinstance(value, dict) %}    
+                    {% for key_2, value in value.items() %}
+                        <label>{{ key_2 | replace('_', ' ') | title }}:</label>
+                        {% if key_2.endswith('color') %}
+                            <input type="color" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}">
+                        {% elif key_2.endswith('path') %}
+                            <input type="text" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}">
+                        {% elif isinstance(value, bool) %}
+                            <input type="checkbox" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}" {% if value %}checked{% endif %}>
+                        {% elif isinstance(value, int) %}
+                            <input type="number" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}">
+                        {% elif isinstance(value, float) %}
+                            <input type="number" step="0.01" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}">
+                        {% else %}
+                            <input type="text" name="config.{{ key_1 }}.{{ key_2 }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <label>{{ key_1 | replace('_', ' ') | title }}:</label>
+                    {% if key_1.endswith('color') %}
+                        <input type="color" name="config.{{ key_1 }}" value="{{ value }}">
+                    {% elif key_1.endswith('path') %}
+                        <input type="text" name="config.{{ key_1 }}" value="{{ value }}">
+                    {% elif isinstance(value, int) %}
+                        <input type="number" name="config.{{ key_1 }}" value="{{ value }}">
+                    {% elif isinstance(value, float) %}
+                        <input type="number" step="0.01" name="config.{{ key_1 }}" value="{{ value }}">
+                    {% elif isinstance(value, bool) %}
+                        <input type="checkbox" name="config.{{ key_1 }}" {% if value %}checked{% endif %}>
+                    {% else %}
+                        <input type="text" name="config.{{ key_1 }}" value="{{ value }}">
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
             <button type="submit">Salvar Configuração</button>
         </form>
     </div>

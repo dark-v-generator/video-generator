@@ -1,15 +1,15 @@
 captions_config:
-    color: '#ffffff'
+    color: '#FFFFFF'
     fade_duration: 0
     font_path: assets/bangers.ttf
-    font_size: 111
+    font_size: 110
     stroke_color: '#000000'
     stroke_width: 1
     upper: true
 cover_config:
     title_font_size: 110
-histories_path: null
-seed: USSZU4F6Z9
+histories_path: output
+seed: JLJCV085ZX
 video_config:
     audio_speed_rate: 1.0
     cover_duration: 5

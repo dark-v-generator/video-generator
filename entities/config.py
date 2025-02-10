@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 from pydantic import Field
 from entities.base_yaml_model import BaseYAMLModel
 
@@ -15,7 +16,7 @@ class CoverConfig(BaseYAMLModel):
     title_font_size: int = Field(110, title="Title font size")
 
 class VideoConfig(BaseYAMLModel):
-    watermark_path: str = Field(None, title="Path to the water mark image")
+    watermark_path: Optional[str] = Field(None, title="Path to the water mark image")
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
     cover_duration: int = Field(5, title="Cover duration")
@@ -37,7 +38,7 @@ class MainConfig(BaseYAMLModel):
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
-    histories_path: str = Field(None, title="Path to save the output video")
+    histories_path: str = Field('output', title="Path to save the output video")
     seed: str = Field(__generate_random_seed(), title="Seed")
 
     def int_seed(self) -> int:

@@ -42,6 +42,14 @@ nav .github-link:hover {
     text-decoration: underline;
 }
 
+.container {
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 5px;
+}
+
 /* Estilo da seção hero */
 .hero {
     background-color: #6a5acd;
@@ -143,6 +151,45 @@ nav .github-link:hover {
 .feature-card p {
     font-size: 16px;
 }
+
+/* Estilo do formulário */
+form {
+    display: flex;
+    flex-direction: column;
+}
+form h3 {
+    margin: 20px 0 10px;
+    font-size: 20px;
+    color: #555;
+}
+form label {
+    margin-top: 10px;
+    font-weight: bold;
+}
+form input[type="text"],
+form input[type="number"],
+form input[type="color"] {
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+form button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #ff7f50;
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+form button:hover {
+    background-color: #ff6347;
+}
+
 
 /* Rodapé */
 footer {

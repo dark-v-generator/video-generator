@@ -3,6 +3,15 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_server.helper import build_nested_dict
 from services import config_service
 
+def __get_context():
+    return {
+        "isinstance": isinstance,
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "dict": dict
+    }
+
 app = Flask(__name__)
 CONFIG_FILE_PATH = 'new_config.yaml'
 
@@ -12,6 +21,7 @@ def home():
 
 @app.route("/save_config", methods=["POST"])
 def save_config():
+    # TODO parse bool fields
     data = build_nested_dict(request.form.to_dict())
     config_service.save_main_config(data, CONFIG_FILE_PATH)
     return redirect(url_for("config_page"))
@@ -19,7 +29,11 @@ def save_config():
 @app.route("/config", methods=["GET", "POST"])
 def config_page():    
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    return render_template("config.html", config=config)
+    return render_template(
+        "config.html", 
+        **__get_context(),
+        config=config.model_dump(),
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
