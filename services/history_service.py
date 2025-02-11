@@ -16,7 +16,7 @@ from proglog import ProgressBarLogger, TqdmProgressBarLogger
 
 REDDIT_HISTORY_FILE_NAME = "history.yaml"
 REGULAR_SPEECH_FILE_NAME = "regular_speech.mp3"
-SPEECH_FILE_NAME = "regular_speech.mp3"
+SPEECH_FILE_NAME = "speech.mp3"
 CAPTIONS_FILE_NAME = "captions.yaml"
 COVER_FILE_NAME = "cover.png"
 FINAL_VIDEO_FILE_NAME = "final_video.mp4"
@@ -92,17 +92,15 @@ def generate_captions(reddit_history: RedditHistory, rate: float, config: MainCo
     reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)
 
-def generate_speech(reddit_history: RedditHistory, rate: float) -> RedditHistory:
+def generate_speech(reddit_history: RedditHistory, rate: float, config: MainConfig) -> None:
     history = reddit_history.history
     text = __get_speech_text(reddit_history.history)
     speech_path = path.join(reddit_history.folder_path, SPEECH_FILE_NAME)
     speech_service.synthesize_speech(text, history.gender, rate, speech_path)
-    return RedditHistory(
-        **reddit_history.model_dump(),
-        speech_path=speech_path,
-    )
+    reddit_history.speech_path = str(Path(speech_path).resolve())
+    save_reddit_history(reddit_history, config)
 
-def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> RedditHistory:
+def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> None:
     cover_path = path.join(reddit_history.folder_path, COVER_FILE_NAME)
     cover_service.generate_reddit_cover(
         reddit_cover=reddit_history.cover,
@@ -113,10 +111,16 @@ def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> RedditH
     save_reddit_history(reddit_history, config)
 
 def generate_reddit_video(
-        reddit_history: RedditHistory, 
+        reddit_history: RedditHistory,
         config: MainConfig,
+        low_quality: bool = True,
         logger: ProgressBarLogger = TqdmProgressBarLogger()
     ) -> None:
+    config.video_config.low_quality = low_quality
+    config.video_config.low_resolution = low_quality
+    speech = None
+    captions = None
+    cover = None
     if reddit_history.speech_path:
         speech = audio_clip.AudioClip(reddit_history.speech_path)
     if reddit_history.captions_path:
@@ -139,7 +143,8 @@ def generate_reddit_video(
     )
 
     video_path = path.join(reddit_history.folder_path, FINAL_VIDEO_FILE_NAME)
-    if config.video_config.low_quality:
+    reddit_history.final_video_path = str(Path(video_path).resolve())
+    if low_quality:
         final_video.clip.write_videofile(
             video_path,
             preset="ultrafast",
@@ -152,3 +157,4 @@ def generate_reddit_video(
             preset="veryfast",
             logger=logger
         )
+    save_reddit_history(reddit_history, config)

@@ -14,3 +14,4 @@ class RedditHistory(BaseYAMLModel):
     captions_path: str = Field("")
     cover_path: str = Field("")
     folder_path: str = Field("")
+    final_video_path: str = Field("")

@@ -12,7 +12,7 @@ def synthesize_speech(
     output_path: str = "output.mp3",
 ) -> None:
     if gender == VoiceGender.MALE:
-        gender = azure_proxy.VoiceVariation.MALE
+        voice_variation = azure_proxy.VoiceVariation.MALE
     else:
-        gender = azure_proxy.VoiceVariation.FEMALE
-    return azure_proxy.synthesize_speech(text=text, gender=gender, rate=rate, output_path=output_path)
+        voice_variation = azure_proxy.VoiceVariation.FEMALE
+    return azure_proxy.synthesize_speech(text=text, voice_variation=voice_variation, rate=rate, output_path=output_path)

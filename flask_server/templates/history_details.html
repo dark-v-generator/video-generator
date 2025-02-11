@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="{{ url_for('static', filename='js/progress_bars.js') }}"></script>
     <title>Detalhes da História</title>
     <style>
         body {
@@ -28,7 +29,7 @@
         .history-card p {
             white-space: pre-wrap;
         }
-        .back-button {
+        .back-button, .action-button {
             padding: 10px 20px;
             border: none;
             background-color: #007bff;
@@ -36,6 +37,8 @@
             border-radius: 4px;
             cursor: pointer;
             text-decoration: none;
+            margin-right: 10px;
+            margin-top: 10px;
         }
         .cover-image {
             max-width: 100%;
@@ -45,38 +48,74 @@
         .audio-player {
             margin-top: 20px;
         }
+        .video-player {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
+    <a href="/" class="back-button">Voltar</a>
     <div class="container">
+
         <div class="history-card">
+            
             <h3>{{ reddit_history.history.title }}</h3>
             <p>{{ reddit_history.history.content }}</p>
             <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
             <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
             <p><strong>Gênero:</strong> {{ reddit_history.history.gender }}</p>
             
-            {% if reddit_history.cover_path %}
-                <img src="/static/{{ reddit_history.cover_path.split('/static/')[-1] }}" alt="Cover Image" class="cover-image">
+            {% if static_path(reddit_history.cover_path) %}
+                <img src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image" class="cover-image">
             {% else %}
                 <p><em>Imagem de capa não disponível</em></p>
             {% endif %}
-            <form action="/history/generate-cover/{{ reddit_history.id }}" method="POST" >
-                <button type="submit">Gerar capa</button>
+            <form action="/history/generate-cover/{{ reddit_history.id }}" method="POST">
+                <button type="submit" class="action-button">Gerar capa</button>
             </form>
             
-            {% if reddit_history.speech_path %}
+            {% if static_path(reddit_history.speech_path) %}
                 <div class="audio-player">
                     <audio controls>
-                        <source src="{{ reddit_history.speech_path }}" type="audio/mpeg">
+                        <source src="{{ static_path(reddit_history.speech_path) }}" type="audio/mpeg">
                         Seu navegador não suporta o elemento de áudio.
                     </audio>
                 </div>
             {% else %}
                 <p><em>Áudio não disponível</em></p>
             {% endif %}
+            <form action="/history/generate-speech/{{ reddit_history.id }}" method="POST">
+                <button type="submit" class="action-button">Gerar fala</button>
+            </form>
             
-            <a href="/" class="back-button">Voltar</a>
+            {% if static_path(reddit_history.captions_path) %}
+                <p><em>Legendas disponíveis</em></p>
+            {% else %}
+                <p><em>Legendas não disponíveis</em></p>
+            {% endif %}
+            <form action="/history/generate-captions/{{ reddit_history.id }}" method="POST">
+                <button type="submit" class="action-button">Gerar legendas</button>
+            </form>
+            
+            {% if static_path(reddit_history.final_video_path) %}
+                <div class="video-player">
+                    <video controls>
+                        <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
+                        Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                </div>
+            {% else %}
+                <p><em>Vídeo final não disponível</em></p>
+            {% endif %}
+            <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
+                <button type="submit" class="action-button">Gerar vídeo</button>
+            </form>
+            {% for task_id, bar_info in bars_info.items() %}
+            <div>
+                <label id="{{ task_id }}-title">{{ bar_info['title'] }}</label>
+                <progress id="{{ task_id }}" value="{{ bar_info['index'] }}" max="{{ bar_info['total'] }}"></progress>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </body>
