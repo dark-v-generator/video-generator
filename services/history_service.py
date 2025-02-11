@@ -9,6 +9,7 @@ from entities.reddit_video import RedditHistory
 from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
 from services import captions_service, cover_service, speech_service, video_service
+from proglog import ProgressBarLogger, TqdmProgressBarLogger
 
 REDDIT_HISTORY_FILE_NAME = "history.yaml"
 REGULAR_SPEECH_FILE_NAME = "regular_speech.mp3"
@@ -89,7 +90,11 @@ def generate_cover(reddit_history: RedditHistory, cover_config: CoverConfig = Co
         cover_path=cover_path,
     )
 
-def generate_reddit_video(reddit_history: RedditHistory, config: MainConfig) -> None:
+def generate_reddit_video(
+        reddit_history: RedditHistory, 
+        config: MainConfig,
+        logger: ProgressBarLogger = TqdmProgressBarLogger()
+    ) -> None:
     if reddit_history.speech_path:
         speech = audio_clip.AudioClip(reddit_history.speech_path)
     if reddit_history.captions_path:
@@ -100,6 +105,7 @@ def generate_reddit_video(reddit_history: RedditHistory, config: MainConfig) -> 
     background_video = video_service.create_video_compilation(
         speech.clip.duration,
         config.video_config,
+        logger=logger
     )
     
     final_video = video_service.generate_video(
@@ -114,9 +120,13 @@ def generate_reddit_video(reddit_history: RedditHistory, config: MainConfig) -> 
     if config.video_config.low_quality:
         final_video.clip.write_videofile(
             video_path,
-            threads=4,
             preset="ultrafast",
             fps=15,
+            logger=logger
         )
     else:
-        final_video.clip.write_videofile(video_path, threads=4, preset="veryfast")
+        final_video.clip.write_videofile(
+            video_path, 
+            preset="veryfast",
+            logger=logger
+        )
