@@ -1,7 +1,14 @@
-from flask import Flask, render_template
+import time
+from flask import Flask, jsonify, render_template
 from flask import Flask, render_template, request, redirect, url_for
 from flask_server.helper import build_nested_dict
 from services import config_service
+from flask_server.progress import ProgressBarLogger, get_progress_bars
+
+def sample_processing_task(logger: ProgressBarLogger):
+    for _ in logger.iter_bar(idx=range(1, 101)):
+        time.sleep(0.1)
+
 
 def __get_context():
     return {
@@ -9,7 +16,8 @@ def __get_context():
         "int": int,
         "float": float,
         "bool": bool,
-        "dict": dict
+        "dict": dict,
+        "bars_info": get_progress_bars()
     }
 
 app = Flask(__name__)
@@ -34,6 +42,11 @@ def config_page():
         **__get_context(),
         config=config.model_dump(),
     )
+
+@app.route("/bars_progress/")
+def verify_progress():
+    return jsonify(get_progress_bars())
+
 
 if __name__ == '__main__':
     app.run(debug=True)
