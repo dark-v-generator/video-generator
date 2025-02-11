@@ -1,9 +1,10 @@
 from os import path
 import os
+from pathlib import Path
 from typing import List
 import uuid
 from entities.captions import Captions
-from entities.config import CoverConfig, MainConfig
+from entities.config import MainConfig
 from entities.cover import RedditCover
 from entities.editor import audio_clip, image_clip
 from entities.history import History
@@ -38,7 +39,7 @@ def srcap_reddit_post(post_url: str, config: MainConfig) -> RedditHistory:
         id=id,
         cover=cover,
         history=history,
-        folder_path=folder_path
+        folder_path=str(Path(folder_path).resolve())
     )
     reddit_history.save_yaml(history_path)
     return reddit_history
@@ -50,6 +51,13 @@ def get_reddit_history(id: str, config: MainConfig) -> RedditHistory:
         return None
     reddit_history = RedditHistory.from_yaml(history_path)
     return reddit_history
+
+def save_reddit_history(reddit_history: RedditHistory, config: MainConfig):
+    folder_path = path.join(config.histories_path, reddit_history.id)
+    history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    reddit_history.save_yaml(history_path)
 
 def list_histories(config: MainConfig) -> List[RedditHistory]:
     if not os.path.isdir(config.histories_path):
@@ -72,7 +80,7 @@ def __get_speech_text(history: History) -> str:
         content=history.content
     )
 
-def generate_captions(reddit_history: RedditHistory, rate: float) -> RedditHistory:
+def generate_captions(reddit_history: RedditHistory, rate: float, config: MainConfig) -> None:
     history = reddit_history.history
     text = __get_speech_text(reddit_history.history)
     regular_speech_path = path.join(reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME) 
@@ -80,11 +88,9 @@ def generate_captions(reddit_history: RedditHistory, rate: float) -> RedditHisto
     speech_service.synthesize_speech(text, history.gender, 1.0, regular_speech_path)
     captions = captions_service.generate_captions_from_file(regular_speech_path)
     captions.with_speed(rate).save_yaml(captions_path)
-    return RedditHistory(
-        **reddit_history.model_dump(),
-        captions_path=captions_path,
-        regular_speech_path=regular_speech_path,
-    )
+    reddit_history.captions_path = str(Path(captions_path).resolve())
+    reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
+    save_reddit_history(reddit_history, config)
 
 def generate_speech(reddit_history: RedditHistory, rate: float) -> RedditHistory:
     history = reddit_history.history
@@ -96,17 +102,15 @@ def generate_speech(reddit_history: RedditHistory, rate: float) -> RedditHistory
         speech_path=speech_path,
     )
 
-def generate_cover(reddit_history: RedditHistory, cover_config: CoverConfig = CoverConfig()) -> RedditHistory:
+def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> RedditHistory:
     cover_path = path.join(reddit_history.folder_path, COVER_FILE_NAME)
     cover_service.generate_reddit_cover(
         reddit_cover=reddit_history.cover,
         output_path=cover_path,
-        config=cover_config
+        config=config.cover_config
     )
-    return RedditHistory(
-        **reddit_history.model_dump(),
-        cover_path=cover_path,
-    )
+    reddit_history.cover_path = str(Path(cover_path).resolve())
+    save_reddit_history(reddit_history, config)
 
 def generate_reddit_video(
         reddit_history: RedditHistory, 

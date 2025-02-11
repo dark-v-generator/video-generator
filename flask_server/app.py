@@ -56,8 +56,15 @@ def config_page():
 @app.route("/history/<history_id>")
 def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    history = history_service.get_reddit_history(history_id, config)
-    return render_template("history_details.html", history=history)
+    reddit_history = history_service.get_reddit_history(history_id, config)
+    return render_template("history_details.html", reddit_history=reddit_history)
+
+@app.route("/history/generate-cover/<history_id>", methods=["POST"])
+def generate_cover(history_id):
+    config = config_service.get_main_config(CONFIG_FILE_PATH)
+    reddit_history = history_service.get_reddit_history(history_id, config)
+    history_service.generate_cover(reddit_history, config)
+    return redirect(url_for("history_details", history_id=history_id))
 
 @app.route("/bars_progress/")
 def verify_progress():

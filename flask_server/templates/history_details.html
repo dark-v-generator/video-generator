@@ -37,13 +37,45 @@
             cursor: pointer;
             text-decoration: none;
         }
+        .cover-image {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        .audio-player {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="history-card">
-            <h3>{{ history.title }}</h3>
-            <p>{{ history.content }}</p>
+            <h3>{{ reddit_history.history.title }}</h3>
+            <p>{{ reddit_history.history.content }}</p>
+            <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
+            <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
+            <p><strong>Gênero:</strong> {{ reddit_history.history.gender }}</p>
+            
+            {% if reddit_history.cover_path %}
+                <img src="/static/{{ reddit_history.cover_path.split('/static/')[-1] }}" alt="Cover Image" class="cover-image">
+            {% else %}
+                <p><em>Imagem de capa não disponível</em></p>
+            {% endif %}
+            <form action="/history/generate-cover/{{ reddit_history.id }}" method="POST" >
+                <button type="submit">Gerar capa</button>
+            </form>
+            
+            {% if reddit_history.speech_path %}
+                <div class="audio-player">
+                    <audio controls>
+                        <source src="{{ reddit_history.speech_path }}" type="audio/mpeg">
+                        Seu navegador não suporta o elemento de áudio.
+                    </audio>
+                </div>
+            {% else %}
+                <p><em>Áudio não disponível</em></p>
+            {% endif %}
+            
             <a href="/" class="back-button">Voltar</a>
         </div>
     </div>
