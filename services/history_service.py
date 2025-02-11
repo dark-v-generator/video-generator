@@ -1,5 +1,7 @@
 from os import path
+import os
 from typing import List
+import uuid
 from entities.captions import Captions
 from entities.config import CoverConfig, MainConfig
 from entities.cover import RedditCover
@@ -18,7 +20,7 @@ CAPTIONS_FILE_NAME = "captions.yaml"
 COVER_FILE_NAME = "cover.png"
 FINAL_VIDEO_FILE_NAME = "final_video.mp4"
 
-def srcap_reddit_post(post_url: str, folder_path: str) -> RedditHistory:
+def srcap_reddit_post(post_url: str, config: MainConfig) -> RedditHistory:
     reddit_post = reddit_proxy.get_reddit_post(post_url)
     history = open_api_proxy.enhance_history(reddit_post.title, reddit_post.content)
     cover = RedditCover(
@@ -27,8 +29,13 @@ def srcap_reddit_post(post_url: str, folder_path: str) -> RedditHistory:
         community=reddit_post.community,
         title=history.title,
     )
+    id = str(uuid.uuid4())
+    folder_path = path.join(config.histories_path, id)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
     history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
     reddit_history = RedditHistory(
+        id=id,
         cover=cover,
         history=history,
         folder_path=folder_path
@@ -36,9 +43,20 @@ def srcap_reddit_post(post_url: str, folder_path: str) -> RedditHistory:
     reddit_history.save_yaml(history_path)
     return reddit_history
 
-def get_reddit_history(folder_path: str) -> RedditHistory:
-    history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
-    return RedditHistory.from_yaml(history_path)
+
+def get_reddit_history(id: str, config: MainConfig) -> RedditHistory:
+    history_path = path.join(config.histories_path, id, REDDIT_HISTORY_FILE_NAME)
+    if not os.path.isfile(history_path):
+        return None
+    reddit_history = RedditHistory.from_yaml(history_path)
+    return reddit_history
+
+def list_histories(config: MainConfig) -> List[RedditHistory]:
+    if not os.path.isdir(config.histories_path):
+        return []
+    directories = os.listdir(config.histories_path)
+    result = [get_reddit_history(directory, config) for directory in directories]
+    return [x for x in result if x is not None]
 
 def divide_reddit_history(reddit_video: RedditHistory, number_of_parts) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(reddit_video.history, number_of_parts=number_of_parts)
