@@ -1,110 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="{{ url_for('static', filename='js/progress_bars.js') }}"></script>
+    <link rel="stylesheet" href="/static/css/history_details.css">
     <title>Detalhes da História</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .history-card {
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .history-card h3 {
-            margin-top: 0;
-        }
-        .history-card p {
-            white-space: pre-wrap;
-        }
-        .back-button, .action-button {
-            padding: 10px 20px;
-            border: none;
-            background-color: #007bff;
-            color: #fff;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            margin-right: 10px;
-            margin-top: 10px;
-        }
-        .cover-image {
-            max-width: 100%;
-            height: auto;
-            margin-bottom: 20px;
-        }
-        .audio-player {
-            margin-top: 20px;
-        }
-        .video-player {
-            margin-top: 20px;
-        }
-    </style>
 </head>
+
 <body>
     <a href="/" class="back-button">Voltar</a>
     <div class="container">
-
         <div class="history-card">
-            {% if static_path(reddit_history.cover_path) %}
+            <div class="center">
+                {% if static_path(reddit_history.cover_path) %}
                 <img width="320" src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image" class="cover-image">
-            {% endif %}
-            <h3>{{ reddit_history.history.title }}</h3>
-            <p>{{ reddit_history.history.content }}</p>
-            <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
-            <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
-            <p><strong>Gênero:</strong> {{ reddit_history.history.gender }}</p>
+                {% endif %}
+            </div>
             {% if show_loading %}
-                <progress id="{{ reddit_history.id }}"></progress>
+            <progress id="{{ reddit_history.id }}"></progress>
             {% endif %}
-            <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
-                <div>
-                    <label>Gerar legendas</label>
-                    <input type="checkbox" name="captions" {% if not static_path(reddit_history.captions_path) %}checked{% endif %}>
-                </div>
-                <div>
-                    <label>Gerar narração</label>
-                    <input type="checkbox" name="speech" {% if not static_path(reddit_history.speech_path) %}checked{% endif %}>
-                </div>
-                <div>
-                    <label>Gerar capa</label>
-                    <input type="checkbox" name="cover" {% if not static_path(reddit_history.cover_path) %}checked{% endif %}>
-                </div>
-                <div>
-                    <label>Baixa qualidade</label>
-                    <input type="checkbox" name="low_quality" checked>
-                </div>
-                <div>
-                    <label>Velocidade da fala</label>
-                    <input type="number" step="0.01" name="rate" value="1.5">
-                </div>
+            <div class="story-details">
 
+                <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
+                <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
+            </div>
+            <form action="/history/generate-video/{{ reddit_history.id }}" method="POST" class="video-generation-form">
+                <div class="form-group">
+                    <label for="gender">Gênero</label>
+                    <select name="reddit_history.history.gender" id="gender">
+                        <option value="male" {% if reddit_history.history.gender=='male' %}selected{% endif %}>
+                            Masculino
+                        </option>
+                        <option value="female" {% if reddit_history.history.gender=='female' %}selected{% endif %}>
+                            Feminino
+                        </option>
+                    </select>
+                </div>
+                <label for="title">Título</label>
+                <input id="title" type="text" name="reddit_history.history.title"
+                    value="{{ reddit_history.history.title }}">
+                <label for="content">Conteúdo</label>
+                <textarea id="content" name="reddit_history.history.content">
+                    {{ reddit_history.history.content }}
+                </textarea>
+                <div class="form-group">
+                    <input id="captions" type="checkbox" name="captions" {% if not
+                        static_path(reddit_history.captions_path) %}checked{% endif %}>
+                    <label for="captions">Gerar legendas</label>
+                </div>
+                <div class="form-group">
+                    <input id="speech" type="checkbox" name="speech" {% if not static_path(reddit_history.speech_path)
+                        %}checked{% endif %}>
+                    <label for="speech">Gerar narração</label>
+                </div>
+                <div class="form-group">
+                    <input id="cover" type="checkbox" name="cover" {% if not static_path(reddit_history.cover_path)
+                        %}checked{% endif %}>
+                    <label for="cover">Gerar capa</label>
+                </div>
+                <div class="form-group">
+                    <input id="low_quality" type="checkbox" name="low_quality" checked>
+                    <label for="low_quality">Baixa qualidade</label>
+                </div>
+                <div class="form-group">
+                    <label for="rate">Velocidade da fala</label>
+                    <input id="rate" type="number" step="0.01" name="rate" value="1.5">
+                </div>
                 <button type="submit" class="action-button">Gerar vídeo</button>
             </form>
 
             {% if static_path(reddit_history.final_video_path) %}
-                <div class="video-player">
-                    <video width="320" controls>
-                        <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
-                        Seu navegador não suporta o elemento de vídeo.
-                    </video>
-                </div>
+            <div class="video-player">
+                <video width="320" controls>
+                    <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
+                    Seu navegador não suporta o elemento de vídeo.
+                </video>
+            </div>
             {% endif %}
-
-
         </div>
     </div>
 </body>
+
 </html>

@@ -39,8 +39,15 @@ def progress_bar_exists(task_id: str) -> bool:
 @app.route("/")
 def home():
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    reddit_videos = history_service.list_histories(config)
-    return render_template("index.html", reddit_videos=reddit_videos)
+    clear_progress_bars()
+    bars_info = get_progress_bars()
+    reddit_histories = history_service.list_histories(config)
+    return render_template(
+        "index.html", 
+        reddit_histories=reddit_histories,
+        **__get_context(),
+        bars_info=bars_info
+    )
 
 
 @app.route("/save_config", methods=["POST"])
@@ -82,6 +89,9 @@ def history_details(history_id):
 
 @app.route("/history/generate-video/<history_id>", methods=["POST"])
 def generate_video(history_id):
+    config = config_service.get_main_config(CONFIG_FILE_PATH)
+    reddit_history = history_service.get_reddit_history(history_id, config)
+
     data = build_nested_dict(request.form.to_dict())
     low_quality = data.get("low_quality", "")
     low_quality = True if low_quality == "on" else False
@@ -93,9 +103,17 @@ def generate_video(history_id):
     cover = True if cover == "on" else False
     rate = data.get("rate", "1.5")
     rate = float(rate)
+    content = data.get('reddit_history', {}).get('history', {}).get('content')
+    title = data.get('reddit_history', {}).get('history', {}).get('title')
+    gender = data.get('reddit_history', {}).get('history', {}).get('gender')
 
-    config = config_service.get_main_config(CONFIG_FILE_PATH)
-    reddit_history = history_service.get_reddit_history(history_id, config)
+    if title:
+        reddit_history.history.title = title
+    if content:
+        reddit_history.history.content = content
+    if gender:
+        reddit_history.history.gender = gender
+    history_service.save_reddit_history(reddit_history, config)
     clear_progress_bars()
 
     def generate_video():

@@ -1,73 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reddit Histórias em Vídeo</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .hero {
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .hero-content h2 {
-            margin-top: 0;
-        }
-        .story-form input[type="url"] {
-            width: calc(100% - 120px);
-            padding: 10px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .story-form button {
-            padding: 10px 20px;
-            border: none;
-            background-color: #007bff;
-            color: #fff;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .reddit-history-card {
-            background-color: #fff;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .reddit-history-card h3 {
-            margin-top: 0;
-        }
-        .reddit-history-card p {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-        }
-        .reddit-history-card button {
-            padding: 10px 20px;
-            border: none;
-            background-color: #007bff;
-            color: #fff;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .emojis {
-            margin-left: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/index.css">
 </head>
+
 <body>
     <main>
         <section class="hero">
@@ -75,7 +14,7 @@
                 <div class="hero-content">
                     <h2>Transforme histórias do Reddit em vídeos incríveis</h2>
                     <p>Cole o link de uma história do Reddit abaixo e crie um vídeo automaticamente</p>
-                    
+
                     <form action="/srcap_reddit_post" method="POST" class="story-form">
                         <input name="url" type="url" placeholder="Cole o URL da história do Reddit aqui..." required>
                         <button type="submit">Criar Vídeo</button>
@@ -85,24 +24,33 @@
         </section>
 
         <div class="container">
-            {% for reddit_video in reddit_videos %}
-                <div class="reddit-history-card">
-                    <h3>{{ reddit_video.history.title }}</h3>
-                    <p>{{ reddit_video.history.content[:200] }}...</p>
-                    <div>
-                        <button onclick="location.href='/history/{{ reddit_video.id }}'">Ver história</button>
-                        <span class="emojis">
-                            {% if reddit_video.captions_path %}
-                                📜
-                            {% endif %}
-                            {% if reddit_video.speech_path %}
-                                🔊
-                            {% endif %}
-                        </span>
+            {% for reddit_history in reddit_histories %}
+            <div class="reddit-history-card">
+                {% if static_path(reddit_history.cover_path) %}
+                <img width="320" src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image"
+                    class="cover-image">
+                {% else %}
+                <h3>{{ reddit_history.history.title }}</h3>
+                {% endif %}
+                <div>
+                    {% if bars_info.get(reddit_history.id) %}
+                        <progress id="{{ reddit_history.id }}"></progress>
+                    {% endif %}
+                    {% if static_path(reddit_history.speech_path) %}
+                    <div class="audio-player">
+                        <audio controls>
+                            <source src="{{ static_path(reddit_history.speech_path) }}" type="audio/mpeg">
+                            Seu navegador não suporta o elemento de áudio.
+                        </audio>
                     </div>
+                    {% endif %}
+
+                    <button onclick="location.href='/history/{{ reddit_history.id }}'">Ver história</button>
                 </div>
+            </div>
             {% endfor %}
         </div>
     </main>
 </body>
+
 </html>
