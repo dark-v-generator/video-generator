@@ -24,9 +24,9 @@ def get_video_ids(channel_id, max_results=500):
 
 
 def __download_youtube_stream(
-    yt: YouTube, 
-    output_path: str, 
-    filename: str, 
+    yt: YouTube,
+    output_path: str,
+    filename: str,
     low_quality=False,
     logger: ProgressBarLogger = TqdmProgressBarLogger(),
 ):
@@ -37,13 +37,15 @@ def __download_youtube_stream(
         stream = streams.first()
 
     def progress_callback(stream, chunk, bytes_remaining):
-        logger(video_download={'total': stream.filesize, 'index': len(chunk)})
+        logger(video_download={"total": stream.filesize, "index": len(chunk)})
 
     yt.register_on_progress_callback(progress_callback)
     stream.download(output_path=output_path, filename=filename)
 
 
-def download_youtube_video(video_id, low_quality=False, logger: ProgressBarLogger = TqdmProgressBarLogger()) -> VideoClip:
+def download_youtube_video(
+    video_id, low_quality=False, logger: ProgressBarLogger = TqdmProgressBarLogger()
+) -> VideoClip:
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
         filename = os.path.basename(tmpfile.name)
         directory = os.path.dirname(tmpfile.name)

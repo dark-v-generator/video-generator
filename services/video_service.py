@@ -7,9 +7,9 @@ from proglog import ProgressBarLogger, TqdmProgressBarLogger
 
 
 def create_video_compilation(
-    min_duration: int, 
+    min_duration: int,
     config: config.VideoConfig = config.VideoConfig(),
-    logger: ProgressBarLogger = TqdmProgressBarLogger()
+    logger: ProgressBarLogger = TqdmProgressBarLogger(),
 ) -> video_clip.VideoClip:
     video_ids = youtube_proxy.get_video_ids(config.youtube_channel_id, max_results=500)
     random.shuffle(video_ids)
@@ -17,9 +17,7 @@ def create_video_compilation(
     total_duration = 0
     for video_id in video_ids:
         new_video = youtube_proxy.download_youtube_video(
-            video_id, 
-            config.low_quality,
-            logger=logger
+            video_id, config.low_quality, logger=logger
         )
         video.concat(new_video)
         total_duration += new_video.clip.duration
@@ -33,14 +31,10 @@ def generate_video(
     background_video: video_clip.VideoClip,
     cover: image_clip.ImageClip = None,
     captions: captions_clip.CaptionsClip = None,
-    config: config.VideoConfig = config.VideoConfig()
+    config: config.VideoConfig = config.VideoConfig(),
 ) -> video_clip.VideoClip:
     audio.add_end_silence(config.end_silece_seconds)
-    if config.low_resolution:
-        aspect_ratio = config.width / config.height
-        background_video.resize(int(400 * aspect_ratio), 400)
-    else:
-        background_video.resize(config.width, config.height)
+    background_video.resize(config.width, config.height)
     background_video.ajust_duration(audio.clip.duration)
     background_video.set_audio(audio)
 

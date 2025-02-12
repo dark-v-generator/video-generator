@@ -53,6 +53,7 @@ DIVIDE_HISTORY_PROMPT = """
     seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
 """
 
+
 def enhance_history(title: str, content: str) -> History:
     user_prompt = """
         Título: {title}
@@ -108,7 +109,7 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
                 "schema": {
                     "type": "array",
                     "items": HISTORY_SCHEMA,
-                }
+                },
             },
         },
     )

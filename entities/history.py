@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 import unidecode
 
+
 class History(BaseModel):
     title: str = Field("", title="Title of the history")
     content: str = Field("", title="Content of the history")
@@ -8,6 +9,6 @@ class History(BaseModel):
 
     def title_normalized(self) -> str:
         title = unidecode.unidecode(self.title)
-        title = title.replace(' ', '_')
+        title = title.replace(" ", "_")
         title = title.lower()
         return title

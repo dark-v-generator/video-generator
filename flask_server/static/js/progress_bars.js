@@ -13,10 +13,5 @@ function updateProgressBar() {
                     }
                 };
             })
-    }, 500)
-}
-
-// TODO remove this
-function startProcessing() {
-    fetch('/process').then(_ => location.reload())
+    }, 1000)
 }

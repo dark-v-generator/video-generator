@@ -1,8 +1,9 @@
-from typing import List, Type, TypeVar
-from pydantic import BaseModel, Field
+from typing import Type, TypeVar
+from pydantic import BaseModel
 import yaml
 
-T = TypeVar('T', bound='BaseYAMLModel')
+T = TypeVar("T", bound="BaseYAMLModel")
+
 
 class BaseYAMLModel(BaseModel):
     @classmethod

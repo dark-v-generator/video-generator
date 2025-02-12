@@ -1,4 +1,3 @@
-import tempfile
 from entities.captions import Captions
 from proxies import whisper_proxy
 

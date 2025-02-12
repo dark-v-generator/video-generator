@@ -3,17 +3,22 @@ from typing import Optional
 from pydantic import Field
 from entities.base_yaml_model import BaseYAMLModel
 
+
 class CaptionsConfig(BaseYAMLModel):
     upper: bool = Field(True)
     font_path: str = Field("assets/bangers.ttf")
     font_size: int = Field(110)
     color: str = Field("#FFFFFF")
     stroke_color: str = Field("#000000")
-    stroke_width: int = Field(1)
+    stroke_width: int = Field(8)
+    upper_text: bool = Field(False)
+    marging: int = Field(50)
     fade_duration: float = Field(0)
+
 
 class CoverConfig(BaseYAMLModel):
     title_font_size: int = Field(110, title="Title font size")
+
 
 class VideoConfig(BaseYAMLModel):
     watermark_path: Optional[str] = Field(None, title="Path to the water mark image")
@@ -38,7 +43,7 @@ class MainConfig(BaseYAMLModel):
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
-    histories_path: str = Field('output', title="Path to save the output video")
+    histories_path: str = Field("output", title="Path to save the output video")
     seed: str = Field(__generate_random_seed(), title="Seed")
 
     def int_seed(self) -> int:

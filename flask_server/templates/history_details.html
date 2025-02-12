@@ -58,20 +58,38 @@
     <div class="container">
 
         <div class="history-card">
-            
+            {% if static_path(reddit_history.cover_path) %}
+                <img width="320" src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image" class="cover-image">
+            {% endif %}
             <h3>{{ reddit_history.history.title }}</h3>
             <p>{{ reddit_history.history.content }}</p>
             <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
             <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
             <p><strong>Gênero:</strong> {{ reddit_history.history.gender }}</p>
-            
-            {% if static_path(reddit_history.cover_path) %}
-                <img src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image" class="cover-image">
-            {% else %}
-                <p><em>Imagem de capa não disponível</em></p>
-            {% endif %}
-            <form action="/history/generate-cover/{{ reddit_history.id }}" method="POST">
-                <button type="submit" class="action-button">Gerar capa</button>
+            <progress id="{{ reddit_history.id }}"></progress>
+            <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
+                <div>
+                    <label>Gerar legendas</label>
+                    <input type="checkbox" name="captions" {% if not static_path(reddit_history.captions_path) %}checked{% endif %}>
+                </div>
+                <div>
+                    <label>Gerar narração</label>
+                    <input type="checkbox" name="speech" {% if not static_path(reddit_history.speech_path) %}checked{% endif %}>
+                </div>
+                <div>
+                    <label>Gerar capa</label>
+                    <input type="checkbox" name="cover" {% if not static_path(reddit_history.cover_path) %}checked{% endif %}>
+                </div>
+                <div>
+                    <label>Baixa qualidade</label>
+                    <input type="checkbox" name="low_quality" checked>
+                </div>
+                <div>
+                    <label>Velocidade da fala</label>
+                    <input type="number" step="0.01" name="rate" value="1.5">
+                </div>
+
+                <button type="submit" class="action-button">Gerar vídeo</button>
             </form>
             
             {% if static_path(reddit_history.speech_path) %}
@@ -84,22 +102,10 @@
             {% else %}
                 <p><em>Áudio não disponível</em></p>
             {% endif %}
-            <form action="/history/generate-speech/{{ reddit_history.id }}" method="POST">
-                <button type="submit" class="action-button">Gerar fala</button>
-            </form>
-            
-            {% if static_path(reddit_history.captions_path) %}
-                <p><em>Legendas disponíveis</em></p>
-            {% else %}
-                <p><em>Legendas não disponíveis</em></p>
-            {% endif %}
-            <form action="/history/generate-captions/{{ reddit_history.id }}" method="POST">
-                <button type="submit" class="action-button">Gerar legendas</button>
-            </form>
-            
+
             {% if static_path(reddit_history.final_video_path) %}
                 <div class="video-player">
-                    <video controls>
+                    <video width="320" controls>
                         <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
                         Seu navegador não suporta o elemento de vídeo.
                     </video>
@@ -107,15 +113,8 @@
             {% else %}
                 <p><em>Vídeo final não disponível</em></p>
             {% endif %}
-            <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
-                <button type="submit" class="action-button">Gerar vídeo</button>
-            </form>
-            {% for task_id, bar_info in bars_info.items() %}
-            <div>
-                <label id="{{ task_id }}-title">{{ bar_info['title'] }}</label>
-                <progress id="{{ task_id }}" value="{{ bar_info['index'] }}" max="{{ bar_info['total'] }}"></progress>
-            </div>
-            {% endfor %}
+
+
         </div>
     </div>
 </body>

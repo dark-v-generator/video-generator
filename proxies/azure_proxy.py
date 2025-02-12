@@ -46,11 +46,11 @@ def __text_to_ssml(text: str, voice: str, rate: float = 1.0, break_time="1s"):
 
 
 def synthesize_speech(
-        text: str, 
-        voice_variation: VoiceVariation = VoiceVariation.MALE, 
-        rate: float = 1.0,
-        output_path: str = 'output.mp3'
-    ) -> str:
+    text: str,
+    voice_variation: VoiceVariation = VoiceVariation.MALE,
+    rate: float = 1.0,
+    output_path: str = "output.mp3",
+) -> str:
     speech_config = __get_speech_config()
     speech_config.speech_synthesis_voice_name = voice_variation.value
     audio_config = speechsdk.AudioConfig(filename=output_path)

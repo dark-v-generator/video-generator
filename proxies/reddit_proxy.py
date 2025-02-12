@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup, ResultSet, Tag
 from pydantic import BaseModel, Field
 import requests
 
+
 class RedditPost(BaseModel):
     title: str = Field("", title="Title of the Reddit post")
     content: str = Field("", title="Content of the Reddit post")

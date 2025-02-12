@@ -6,7 +6,7 @@ import uuid
 from entities.captions import Captions
 from entities.config import MainConfig
 from entities.cover import RedditCover
-from entities.editor import audio_clip, image_clip
+from entities.editor import audio_clip, captions_clip, image_clip
 from entities.history import History
 from entities.reddit_video import RedditHistory
 from proxies import reddit_proxy
@@ -20,6 +20,7 @@ SPEECH_FILE_NAME = "speech.mp3"
 CAPTIONS_FILE_NAME = "captions.yaml"
 COVER_FILE_NAME = "cover.png"
 FINAL_VIDEO_FILE_NAME = "final_video.mp4"
+
 
 def srcap_reddit_post(post_url: str, config: MainConfig) -> RedditHistory:
     reddit_post = reddit_proxy.get_reddit_post(post_url)
@@ -39,7 +40,7 @@ def srcap_reddit_post(post_url: str, config: MainConfig) -> RedditHistory:
         id=id,
         cover=cover,
         history=history,
-        folder_path=str(Path(folder_path).resolve())
+        folder_path=str(Path(folder_path).resolve()),
     )
     reddit_history.save_yaml(history_path)
     return reddit_history
@@ -52,12 +53,14 @@ def get_reddit_history(id: str, config: MainConfig) -> RedditHistory:
     reddit_history = RedditHistory.from_yaml(history_path)
     return reddit_history
 
+
 def save_reddit_history(reddit_history: RedditHistory, config: MainConfig):
     folder_path = path.join(config.histories_path, reddit_history.id)
     history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     reddit_history.save_yaml(history_path)
+
 
 def list_histories(config: MainConfig) -> List[RedditHistory]:
     if not os.path.isdir(config.histories_path):
@@ -66,9 +69,18 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
     result = [get_reddit_history(directory, config) for directory in directories]
     return [x for x in result if x is not None]
 
-def divide_reddit_history(reddit_video: RedditHistory, number_of_parts) -> List[RedditHistory]:
-    histories = open_api_proxy.divide_history(reddit_video.history, number_of_parts=number_of_parts)
-    return [RedditHistory(**reddit_video.model_dump(), history=history) for history in histories]
+
+def divide_reddit_history(
+    reddit_video: RedditHistory, number_of_parts
+) -> List[RedditHistory]:
+    histories = open_api_proxy.divide_history(
+        reddit_video.history, number_of_parts=number_of_parts
+    )
+    return [
+        RedditHistory(**reddit_video.model_dump(), history=history)
+        for history in histories
+    ]
+
 
 def __get_speech_text(history: History) -> str:
     return """
@@ -76,64 +88,92 @@ def __get_speech_text(history: History) -> str:
     
         {content}
     """.format(
-        title=history.title,
-        content=history.content
+        title=history.title, content=history.content
     )
 
-def generate_captions(reddit_history: RedditHistory, rate: float, config: MainConfig) -> None:
-    history = reddit_history.history
-    text = __get_speech_text(reddit_history.history)
-    regular_speech_path = path.join(reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME) 
+
+def generate_captions(
+    reddit_history: RedditHistory, rate: float, config: MainConfig
+) -> None:
+    regular_speech_path = path.join(
+        reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
+    )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
-    speech_service.synthesize_speech(text, history.gender, 1.0, regular_speech_path)
     captions = captions_service.generate_captions_from_file(regular_speech_path)
     captions.with_speed(rate).save_yaml(captions_path)
     reddit_history.captions_path = str(Path(captions_path).resolve())
-    reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)
 
-def generate_speech(reddit_history: RedditHistory, rate: float, config: MainConfig) -> None:
+
+def generate_speech(
+    reddit_history: RedditHistory, rate: float, config: MainConfig
+) -> None:
     history = reddit_history.history
     text = __get_speech_text(reddit_history.history)
     speech_path = path.join(reddit_history.folder_path, SPEECH_FILE_NAME)
+    regular_speech_path = path.join(
+        reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
+    )
     speech_service.synthesize_speech(text, history.gender, rate, speech_path)
     reddit_history.speech_path = str(Path(speech_path).resolve())
+    speech_service.synthesize_speech(text, history.gender, 1.0, regular_speech_path)
+    reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)
+
 
 def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> None:
     cover_path = path.join(reddit_history.folder_path, COVER_FILE_NAME)
     cover_service.generate_reddit_cover(
         reddit_cover=reddit_history.cover,
         output_path=cover_path,
-        config=config.cover_config
+        config=config.cover_config,
     )
     reddit_history.cover_path = str(Path(cover_path).resolve())
     save_reddit_history(reddit_history, config)
 
+
 def generate_reddit_video(
-        reddit_history: RedditHistory,
-        config: MainConfig,
-        low_quality: bool = True,
-        logger: ProgressBarLogger = TqdmProgressBarLogger()
-    ) -> None:
+    reddit_history: RedditHistory,
+    config: MainConfig,
+    low_quality: bool = True,
+    logger: ProgressBarLogger = TqdmProgressBarLogger(),
+) -> None:
     config.video_config.low_quality = low_quality
     config.video_config.low_resolution = low_quality
+
+    if low_quality:
+        size_rate = 400 / config.video_config.height  # fixed 400 height
+        config.video_config.width = int(round(config.video_config.width * size_rate))
+        config.video_config.height = int(round(config.video_config.height * size_rate))
+        config.captions_config.font_size = int(
+            round(config.captions_config.font_size * size_rate)
+        )
+        config.captions_config.stroke_width = int(
+            round(config.captions_config.stroke_width * size_rate)
+        )
+        config.captions_config.marging = int(
+            round(config.captions_config.marging * size_rate)
+        )
+        config.video_config.padding = int(
+            round(config.video_config.padding * size_rate)
+        )
     speech = None
     captions = None
     cover = None
     if reddit_history.speech_path:
         speech = audio_clip.AudioClip(reddit_history.speech_path)
     if reddit_history.captions_path:
-        captions = Captions.from_yaml(reddit_history.captions_path)
+        captions = captions_clip.CaptionsClip(
+            captions=Captions.from_yaml(reddit_history.captions_path),
+            config=config.captions_config,
+        )
     if reddit_history.cover_path:
         cover = image_clip.ImageClip(reddit_history.cover_path)
     print("Generating video compilation...")
     background_video = video_service.create_video_compilation(
-        speech.clip.duration,
-        config.video_config,
-        logger=logger
+        speech.clip.duration, config.video_config, logger=logger
     )
-    
+
     final_video = video_service.generate_video(
         audio=speech,
         background_video=background_video,
@@ -146,15 +186,8 @@ def generate_reddit_video(
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
         final_video.clip.write_videofile(
-            video_path,
-            preset="ultrafast",
-            fps=15,
-            logger=logger
+            video_path, preset="ultrafast", fps=15, logger=logger
         )
     else:
-        final_video.clip.write_videofile(
-            video_path, 
-            preset="veryfast",
-            logger=logger
-        )
+        final_video.clip.write_videofile(video_path, preset="veryfast", logger=logger)
     save_reddit_history(reddit_history, config)
