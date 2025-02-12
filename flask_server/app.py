@@ -14,10 +14,9 @@ CONFIG_FILE_PATH = "new_config.yaml"
 
 
 def static_path(st: str):
-    xs = st.split("/static/")
-    if len(xs) == 0:
-        return ""
-    return f"/static/{xs[-1]}"
+    if not "/static/" in st:
+        return ''
+    return f"/static/{st.split("/static/")[-1]}"
 
 
 def __get_context():
@@ -27,13 +26,15 @@ def __get_context():
         "float": float,
         "bool": bool,
         "dict": dict,
-        "bars_info": get_progress_bars(),
         "static_path": static_path,
     }
 
 
 app = Flask(__name__)
 
+def progress_bar_exists(task_id: str) -> bool:
+    bars_info = get_progress_bars()
+    return task_id in bars_info and (bars_info[task_id]['index'] < bars_info[task_id]['total'])
 
 @app.route("/")
 def home():
@@ -71,8 +72,11 @@ def config_page():
 def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
+    show_loading = request.args.get("show_loading", "false").lower() == "true"
+    if not show_loading and progress_bar_exists(reddit_history.id):
+        return redirect(url_for("history_details", history_id=history_id, show_loading=True))
     return render_template(
-        "history_details.html", reddit_history=reddit_history, **__get_context()
+        "history_details.html", reddit_history=reddit_history, show_loading=show_loading, **__get_context()
     )
 
 
@@ -111,7 +115,7 @@ def generate_video(history_id):
     thread = Thread(target=generate_video)
     thread.start()
 
-    return redirect(url_for("history_details", history_id=history_id))
+    return redirect(url_for("history_details", history_id=history_id, show_loading=True))
 
 
 @app.route("/bars_progress/")

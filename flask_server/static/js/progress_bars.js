@@ -1,4 +1,12 @@
-window.onload = updateProgressBar
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const showLoading = urlParams.get('show_loading');
+
+    if (showLoading?.toLowerCase() === 'true') {
+        updateProgressBar();
+    }
+}
+
 
 function updateProgressBar() {
     const interval = setInterval(() => {
@@ -10,8 +18,15 @@ function updateProgressBar() {
                     if (progressBar !== null) {
                         progressBar.value = data[task_id].index;
                         progressBar.max = data[task_id].total;
+
+                        if (data[task_id].index == data[task_id].total){
+                            clearInterval(interval);
+                            const url = new URL(window.location.href);
+                            url.searchParams.delete('show_loading');
+                            window.location.replace(url.toString())
+                        }
                     }
                 };
             })
-    }, 1000)
+    }, 100)
 }
