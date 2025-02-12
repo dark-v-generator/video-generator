@@ -106,7 +106,9 @@ def generate_captions(
 
 
 def generate_speech(
-    reddit_history: RedditHistory, rate: float, config: MainConfig
+    reddit_history: RedditHistory, 
+    rate: float, 
+    config: MainConfig,
 ) -> None:
     history = reddit_history.history
     text = __get_speech_text(reddit_history.history)
@@ -114,9 +116,11 @@ def generate_speech(
     regular_speech_path = path.join(
         reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
     )
-    speech_service.synthesize_speech(text, history.gender, rate, speech_path)
+
+    gender = speech_service.VoiceGender(history.gender)
+    speech_service.synthesize_speech(text, gender, rate, speech_path)
+    speech_service.synthesize_speech(text, gender, 1.0, regular_speech_path)
     reddit_history.speech_path = str(Path(speech_path).resolve())
-    speech_service.synthesize_speech(text, history.gender, 1.0, regular_speech_path)
     reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)
 
