@@ -65,7 +65,7 @@ def srcap_reddit_post():
     return redirect(url_for("home"))
 
 
-@app.route("/config", methods=["GET", "POST"])
+@app.route("/config")
 def config_page():
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     return render_template(
