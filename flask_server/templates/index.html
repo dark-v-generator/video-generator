@@ -17,7 +17,11 @@
                     <p>Cole o link de uma história do Reddit abaixo e crie um vídeo automaticamente</p>
 
                     <form action="/srcap_reddit_post" method="POST" class="story-form">
+                        <label>URL</label>
                         <input name="url" type="url" placeholder="Cole o URL da história do Reddit aqui..." required>
+                        <label>Número de partes</label>
+                        <input type="number" name="number_of_parts" value="1">
+
                         <button type="submit">Criar Vídeo</button>
                     </form>
                 </div>
@@ -35,7 +39,7 @@
                 {% endif %}
                 <div>
                     {% if bars_info.get(reddit_history.id) %}
-                        <progress id="{{ reddit_history.id }}"></progress>
+                    <progress id="{{ reddit_history.id }}"></progress>
                     {% endif %}
                     {% if static_path(reddit_history.speech_path) %}
                     <div class="audio-player">
@@ -47,8 +51,16 @@
                     {% endif %}
 
                     <button onclick="location.href='/history/{{ reddit_history.id }}'">Ver história</button>
-
-                    <form action="/history/delete/{{ reddit_history.id }}" method="POST" onsubmit="confirmDeletion(event, this)">
+                    {% if static_path(reddit_history.final_video_path) %}
+                    <a 
+                        href="{{ static_path(reddit_history.final_video_path) }}"
+                        download="{{ reddit_history.history.title_normalized() }}.mp4"
+                    >
+                        Download
+                    </a>
+                    {% endif %}
+                    <form action="/history/delete/{{ reddit_history.id }}" method="POST"
+                        onsubmit="confirmDeletion(event, this)">
                         <input type="hidden" name="_method" value="DELETE">
                         <button type="submit">Deletar história</button>
                     </form>

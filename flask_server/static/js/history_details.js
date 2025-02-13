@@ -28,5 +28,5 @@ function updateProgressBar() {
                     }
                 };
             })
-    }, 100)
+    }, 500)
 }

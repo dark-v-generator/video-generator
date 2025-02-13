@@ -60,8 +60,13 @@ def save_config():
 @app.route("/srcap_reddit_post", methods=["POST"])
 def srcap_reddit_post():
     data = build_nested_dict(request.form.to_dict())
+    url = data.get("url", "")
+    number_of_parts = int(data.get("number_of_parts", 1))
+    
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    history_service.srcap_reddit_post(data["url"], config)
+    reddit_history = history_service.srcap_reddit_post(url, config)
+    if number_of_parts > 1:
+        history_service.split_reddit_history(reddit_history, config, number_of_parts)
     return redirect(url_for("home"))
 
 
