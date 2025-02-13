@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="{{ url_for('static', filename='js/progress_bars.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/confirm_deletion.js') }}"></script>
     <link rel="stylesheet" href="/static/css/history_details.css">
     <title>Detalhes da História</title>
 </head>
@@ -22,7 +23,10 @@
             <progress id="{{ reddit_history.id }}"></progress>
             {% endif %}
             <div class="story-details">
-
+                <form action="/history/delete/{{ reddit_history.id }}" method="POST" onsubmit="confirmDeletion(event, this)">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit">Deletar história</button>
+                </form>
                 <p><strong>Autor:</strong> {{ reddit_history.cover.author }}</p>
                 <p><strong>Comunidade:</strong> {{ reddit_history.cover.community }}</p>
             </div>

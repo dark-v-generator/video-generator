@@ -135,6 +135,11 @@ def generate_video(history_id):
 
     return redirect(url_for("history_details", history_id=history_id, show_loading=True))
 
+@app.route("/history/delete/<history_id>", methods=["POST"])
+def delete_reddit_history(history_id):
+    config = config_service.get_main_config(CONFIG_FILE_PATH)
+    history_service.delete_reddit_history(history_id, config)
+    return redirect(url_for('home'))
 
 @app.route("/bars_progress/")
 def verify_progress():

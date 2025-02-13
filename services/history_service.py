@@ -1,6 +1,7 @@
 from os import path
 import os
 from pathlib import Path
+import shutil
 from typing import List
 import uuid
 from entities.captions import Captions
@@ -61,6 +62,9 @@ def save_reddit_history(reddit_history: RedditHistory, config: MainConfig):
         os.makedirs(folder_path)
     reddit_history.save_yaml(history_path)
 
+def delete_reddit_history(id: str, config: MainConfig) -> None:
+    folder_path = path.join(config.histories_path, id)
+    shutil.rmtree(folder_path)
 
 def list_histories(config: MainConfig) -> List[RedditHistory]:
     if not os.path.isdir(config.histories_path):
@@ -70,17 +74,25 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
     return [x for x in result if x is not None]
 
 
-def divide_reddit_history(
-    reddit_video: RedditHistory, number_of_parts
+def split_reddit_history(
+    reddit_history: RedditHistory,
+    config: MainConfig, 
+    number_of_parts
 ) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(
-        reddit_video.history, number_of_parts=number_of_parts
+        reddit_history.history, number_of_parts=number_of_parts
     )
-    return [
-        RedditHistory(**reddit_video.model_dump(), history=history)
+    reddit_histories = [
+        RedditHistory(**{
+            **reddit_history.model_dump(), 
+            history:history,
+            id:str(uuid.uuid4())
+        })
         for history in histories
     ]
-
+    for rh in reddit_histories:
+        save_reddit_history(rh, config)
+    delete_reddit_history(reddit_history.id, config)
 
 def __get_speech_text(history: History) -> str:
     return """

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Reddit Histórias em Vídeo</title>
     <link rel="stylesheet" href="/static/css/index.css">
+    <script src="{{ url_for('static', filename='js/confirm_deletion.js') }}"></script>
 </head>
 
 <body>
@@ -46,6 +47,11 @@
                     {% endif %}
 
                     <button onclick="location.href='/history/{{ reddit_history.id }}'">Ver história</button>
+
+                    <form action="/history/delete/{{ reddit_history.id }}" method="POST" onsubmit="confirmDeletion(event, this)">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <button type="submit">Deletar história</button>
+                    </form>
                 </div>
             </div>
             {% endfor %}
