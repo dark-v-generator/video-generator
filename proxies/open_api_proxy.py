@@ -134,14 +134,19 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
             "json_schema": {
                 "name": "multiple_part_history_schema",
                 "schema": {
-                    "type": "array",
-                    "items": HISTORY_SCHEMA,
+                    "type": "object",
+                    "properties": {
+                        "histories": {
+                            "type": "array",
+                            "items": HISTORY_SCHEMA,
+                        },
+                    },
                 },
             },
         },
     )
     raw_data = response.choices[0].message.content
-    response = json.loads(raw_data)
+    response = json.loads(raw_data).get('histories')
     return [History(**res) for res in response]
 
 

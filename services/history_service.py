@@ -101,13 +101,7 @@ def split_reddit_history(
 
 
 def __get_speech_text(history: History) -> str:
-    return """
-        {title}
-    
-        {content}
-    """.format(
-        title=history.title, content=history.content
-    )
+    return history.content
 
 
 def generate_captions(
@@ -204,7 +198,7 @@ def generate_reddit_video(
         captions=captions,
     )
 
-    video_path = path.join(reddit_history.folder_path, FINAL_VIDEO_FILE_NAME)
+    video_path = path.join(reddit_history.folder_path, reddit_history.history.title_normalized())
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
         final_video.clip.write_videofile(

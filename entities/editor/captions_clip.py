@@ -40,7 +40,7 @@ class CaptionsClip:
             word_clip = CrossFadeOut(duration=self.config.fade_duration).apply(
                 word_clip
             )
-        word_clip: TextClip = word_clip.with_position(["center", "center"])
+        word_clip: TextClip = word_clip.with_position(['center', 0.25], relative=True)
         return word_clip
 
 
