@@ -1,4 +1,4 @@
-window.onload = function() {
+window.onload = function () {
     const urlParams = new URLSearchParams(window.location.search);
     const showLoading = urlParams.get('show_loading');
 
@@ -19,7 +19,7 @@ function updateProgressBar() {
                         progressBar.value = data[task_id].index;
                         progressBar.max = data[task_id].total;
 
-                        if (data[task_id].index == data[task_id].total){
+                        if (data[task_id].index == data[task_id].total) {
                             clearInterval(interval);
                             const url = new URL(window.location.href);
                             url.searchParams.delete('show_loading');
@@ -30,3 +30,32 @@ function updateProgressBar() {
             })
     }, 500)
 }
+
+function deleteCaption(i) {
+    const captionElement = document.getElementById(`caption-segment-${i}`);
+    if (captionElement) {
+        captionElement.remove();
+    }
+}
+
+function deleteHistory(redditHistoryID) {
+    if (confirm("Você tem certeza que deseja deletar esta história?")) {
+        fetch(`/history/delete/${redditHistoryID}`, {
+            method: 'POST',
+        })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('Erro ao deletar a história.');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao deletar a história.');
+            });
+
+
+    }
+}
+

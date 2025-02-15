@@ -16,10 +16,10 @@ class Captions(BaseYAMLModel):
     def with_speed(self, rate: float) -> "Captions":
         new_segments = [
             CaptionSegment(
-                start=segment.start / rate, 
-                end=segment.end / rate, 
+                start=segment.start / rate,
+                end=segment.end / rate,
                 text=segment.text,
-                probability=segment.probability
+                probability=segment.probability,
             )
             for segment in self.segments
         ]

@@ -43,7 +43,19 @@ body {
     gap: 10px;
 }
 
+.vertical-divider {
+    height: '100%';
+    width: 5px;
+    background-color: #CAC4D0;
+    margin-left: 10px;
+    right: 410px;
+    margin-right: 400px;
+}
+
 .right-container {
+    position: fixed;
+    right: 10px;
+    width: 400px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -56,13 +68,13 @@ body {
     font-family: 'Inter'
 }
 
-.input-container label {
+label {
     font-family: 'Inter';
     color: #1E1E1E;
     font-size: 16;
 }
 
-.input-container input[type="text"] {
+input[type="text"] {
     font-family: 'Inter';
     color: #1E1E1E;
     display: flex;
@@ -73,7 +85,7 @@ body {
     width: 100%;
 }
 
-.input-container input[type="number"] {
+input[type="number"] {
     font-family: 'Inter';
     color: #1E1E1E;
     display: flex;
@@ -83,13 +95,13 @@ body {
     padding: 10px;
 }
 
-.input-container input[type="checkbox"] {
+input[type="checkbox"] {
     accent-color: #2C2C2C;
     width: 15px;
     height: 15px;
 }
 
-.input-container select {
+select {
     border-color: #D9D9D9;
     background-color: #FFFFFF;
     color: #1E1E1E;
@@ -99,7 +111,7 @@ body {
     width: 200px;
 }
 
-.input-container textarea {
+textarea {
     font-family: 'Inter';
     color: #1E1E1E;
     display: flex;
@@ -116,14 +128,6 @@ body {
     align-items: center;
     padding: 20px;
     gap: 10px;
-}
-
-.vertical-divider {
-    height: '100%';
-    width: 5px;
-    background-color: #CAC4D0;
-    margin-left: 10px;
-    margin-right: 10px;
 }
 
 .delete-button button {
@@ -193,4 +197,31 @@ progress[value]::-webkit-progress-bar {
 progress[value]::-webkit-progress-value {
     background-color: #007AFF;
     border-radius: 7px;
+}
+
+.subtitle-title {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.horizontal-divider {
+    height: 1px;
+    width: '100%';
+    background-color: #CAC4D0;
+    margin-top: 10px;
+}
+
+.subtitle-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.subtitle-bottom {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
 }

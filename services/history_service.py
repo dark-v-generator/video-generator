@@ -23,9 +23,16 @@ COVER_FILE_NAME = "cover.png"
 FINAL_VIDEO_FILE_NAME = "final_video.mp4"
 
 
-def srcap_reddit_post(post_url: str, config: MainConfig) -> RedditHistory:
+def srcap_reddit_post(
+    post_url: str, enhance_history: bool, config: MainConfig
+) -> RedditHistory:
     reddit_post = reddit_proxy.get_reddit_post(post_url)
-    history = open_api_proxy.enhance_history(reddit_post.title, reddit_post.content)
+    if enhance_history:
+        history = open_api_proxy.enhance_history(reddit_post.title, reddit_post.content)
+    else:
+        history = History(
+            title=reddit_post.title, content=reddit_post.content, gender="male"
+        )
     cover = RedditCover(
         image_url=reddit_post.community_url_photo,
         author=reddit_post.author,
@@ -62,9 +69,11 @@ def save_reddit_history(reddit_history: RedditHistory, config: MainConfig):
         os.makedirs(folder_path)
     reddit_history.save_yaml(history_path)
 
+
 def delete_reddit_history(id: str, config: MainConfig) -> None:
     folder_path = path.join(config.histories_path, id)
     shutil.rmtree(folder_path)
+
 
 def list_histories(config: MainConfig) -> List[RedditHistory]:
     if not os.path.isdir(config.histories_path):
@@ -75,24 +84,21 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
 
 
 def split_reddit_history(
-    reddit_history: RedditHistory,
-    config: MainConfig, 
-    number_of_parts
+    reddit_history: RedditHistory, config: MainConfig, number_of_parts
 ) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(
         reddit_history.history, number_of_parts=number_of_parts
     )
     reddit_histories = [
-        RedditHistory(**{
-            **reddit_history.model_dump(), 
-            history:history,
-            id:str(uuid.uuid4())
-        })
+        RedditHistory(
+            **{**reddit_history.model_dump(), history: history, id: str(uuid.uuid4())}
+        )
         for history in histories
     ]
     for rh in reddit_histories:
         save_reddit_history(rh, config)
     delete_reddit_history(reddit_history.id, config)
+
 
 def __get_speech_text(history: History) -> str:
     return """
@@ -118,8 +124,8 @@ def generate_captions(
 
 
 def generate_speech(
-    reddit_history: RedditHistory, 
-    rate: float, 
+    reddit_history: RedditHistory,
+    rate: float,
     config: MainConfig,
 ) -> None:
     history = reddit_history.history

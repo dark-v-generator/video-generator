@@ -19,9 +19,14 @@
                     <form action="/srcap_reddit_post" method="POST" class="story-form">
                         <label>URL</label>
                         <input name="url" type="url" placeholder="Cole o URL da história do Reddit aqui..." required>
-                        <label>Número de partes</label>
-                        <input type="number" name="number_of_parts" value="1">
-
+                        <div class="input-container g10 w200">
+                            <label>Número de partes</label>
+                            <input type="number" name="number_of_parts" value="1">
+                        </div>
+                        <div class="input-container g10 w200">
+                            <input id="enhance_history" type="checkbox" name="enhance_history" checked>
+                            <label for="captions">Ajustar pontuações e erros (IA)</label>
+                        </div>
                         <button type="submit">Criar Vídeo</button>
                     </form>
                 </div>
@@ -52,10 +57,8 @@
 
                     <button onclick="location.href='/history/{{ reddit_history.id }}'">Ver história</button>
                     {% if static_path(reddit_history.final_video_path) %}
-                    <a 
-                        href="{{ static_path(reddit_history.final_video_path) }}"
-                        download="{{ reddit_history.history.title_normalized() }}.mp4"
-                    >
+                    <a href="{{ static_path(reddit_history.final_video_path) }}"
+                        download="{{ reddit_history.history.title_normalized() }}.mp4">
                         Download
                     </a>
                     {% endif %}

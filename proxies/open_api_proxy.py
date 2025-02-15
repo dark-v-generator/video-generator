@@ -1,5 +1,6 @@
 import json
 from typing import List
+from entities.captions import CaptionSegment, Captions
 from entities.history import History
 from openai import OpenAI
 
@@ -52,6 +53,32 @@ DIVIDE_HISTORY_PROMPT = """
     As partes serão publicadas nas redes sociais, portanto divida em um momento chave da história para que a atenção do ouvinte
     seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
 """
+
+ENHANCE_CAPTIONS_PROMPT = """
+    Vou te passar uma lista de legendas geradas automaticamente 
+    e o texto original. Ajuste a legenda, corrigindo erros nas palavras, e apenas nas palavras.
+    Não altere os tempos das legendas, nem o número de palavras em cada legenda
+    não altere nada, apenas palavras incorretas, de acordo com o texto passado.
+"""
+
+
+CAPTION_SEGMENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "start": {
+            "description": "Início da legenda",
+            "type": "number",
+        },
+        "end": {
+            "description": "Fim da legenda",
+            "type": "string",
+        },
+        "text": {
+            "description": "Conteúdo da legenda",
+            "type": "string",
+        },
+    },
+}
 
 
 def enhance_history(title: str, content: str) -> History:
@@ -116,3 +143,50 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
     raw_data = response.choices[0].message.content
     response = json.loads(raw_data)
     return [History(**res) for res in response]
+
+
+def enhance_captions(captions: Captions, text: str) -> Captions:
+    user_prompt = """
+        Aqui está o texto original:
+        {text}
+
+        E aqui estão as legendas geradas:
+        {captions}
+    """.format(
+        text=text,
+        captions=captions.model_dump().get("segments"),
+    )
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": ENHANCE_CAPTIONS_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "captions_schema",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "segments": {
+                            "type": "array",
+                            "items": CAPTION_SEGMENT_SCHEMA,
+                        },
+                    },
+                },
+            },
+        },
+    )
+    raw_data = response.choices[0].message.content
+    response: List[dict] = json.loads(raw_data).get("segments")
+    segments = [
+        CaptionSegment(
+            start=float(seg.get("start")),
+            end=float(seg.get("end")),
+            text=seg.get("text"),
+        )
+        for seg in response
+    ]
+    return Captions(segments=segments)

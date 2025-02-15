@@ -1,6 +1,7 @@
 from threading import Thread
 from flask import Flask, jsonify, render_template
 from flask import Flask, render_template, request, redirect, url_for
+from entities.captions import Captions
 from flask_server.helper import build_nested_dict
 from services import config_service
 from flask_server.progress import (
@@ -15,7 +16,7 @@ CONFIG_FILE_PATH = "new_config.yaml"
 
 def static_path(st: str):
     if not "/static/" in st:
-        return ''
+        return ""
     return f"/static/{st.split("/static/")[-1]}"
 
 
@@ -27,14 +28,20 @@ def __get_context():
         "bool": bool,
         "dict": dict,
         "static_path": static_path,
+        "enumerate": enumerate,
+        "round": round,
     }
 
 
 app = Flask(__name__)
 
+
 def progress_bar_exists(task_id: str) -> bool:
     bars_info = get_progress_bars()
-    return task_id in bars_info and (bars_info[task_id]['index'] < bars_info[task_id]['total'])
+    return task_id in bars_info and (
+        bars_info[task_id]["index"] < bars_info[task_id]["total"]
+    )
+
 
 @app.route("/")
 def home():
@@ -43,10 +50,10 @@ def home():
     bars_info = get_progress_bars()
     reddit_histories = history_service.list_histories(config)
     return render_template(
-        "index.html", 
+        "index.html",
         reddit_histories=reddit_histories,
         **__get_context(),
-        bars_info=bars_info
+        bars_info=bars_info,
     )
 
 
@@ -60,11 +67,13 @@ def save_config():
 @app.route("/srcap_reddit_post", methods=["POST"])
 def srcap_reddit_post():
     data = build_nested_dict(request.form.to_dict())
+    enhance_history = data.get("enhance_history", "")
+    enhance_history = True if enhance_history == "on" else False
     url = data.get("url", "")
     number_of_parts = int(data.get("number_of_parts", 1))
-    
+
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    reddit_history = history_service.srcap_reddit_post(url, config)
+    reddit_history = history_service.srcap_reddit_post(url, enhance_history, config)
     if number_of_parts > 1:
         history_service.split_reddit_history(reddit_history, config, number_of_parts)
     return redirect(url_for("home"))
@@ -84,11 +93,19 @@ def config_page():
 def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
+    captions = []
+    if reddit_history.captions_path:
+        captions = Captions.from_yaml(reddit_history.captions_path)
     show_loading = request.args.get("show_loading", "false").lower() == "true"
     if not show_loading and progress_bar_exists(reddit_history.id):
-        return redirect(url_for("history_details", history_id=history_id, show_loading=True))
+        return redirect(
+            url_for("history_details", history_id=history_id, show_loading=True)
+        )
     return render_template(
-        "history_details.html", reddit_history=reddit_history, show_loading=show_loading, **__get_context()
+        "history_details.html",
+        reddit_history=reddit_history,
+        show_loading=show_loading,
+        **__get_context(),
     )
 
 
@@ -98,6 +115,8 @@ def generate_video(history_id):
     reddit_history = history_service.get_reddit_history(history_id, config)
 
     data = build_nested_dict(request.form.to_dict())
+    print(request.form)
+    print(request.form.getlist("segments.text[]"))
     low_quality = data.get("low_quality", "")
     low_quality = True if low_quality == "on" else False
     captions = data.get("captions", "")
@@ -108,10 +127,11 @@ def generate_video(history_id):
     cover = True if cover == "on" else False
     rate = data.get("rate", "1.5")
     rate = float(rate)
-    content = data.get('reddit_history', {}).get('history', {}).get('content')
-    title = data.get('reddit_history', {}).get('history', {}).get('title')
-    gender = data.get('reddit_history', {}).get('history', {}).get('gender')
+    content = data.get("reddit_history", {}).get("history", {}).get("content")
+    title = data.get("reddit_history", {}).get("history", {}).get("title")
+    gender = data.get("reddit_history", {}).get("history", {}).get("gender")
 
+    print(data)
     if title:
         reddit_history.history.title = title
     if content:
@@ -138,13 +158,17 @@ def generate_video(history_id):
     thread = Thread(target=generate_video)
     thread.start()
 
-    return redirect(url_for("history_details", history_id=history_id, show_loading=True))
+    return redirect(
+        url_for("history_details", history_id=history_id, show_loading=True)
+    )
+
 
 @app.route("/history/delete/<history_id>", methods=["POST"])
 def delete_reddit_history(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     history_service.delete_reddit_history(history_id, config)
-    return redirect(url_for('home'))
+    return redirect(url_for("home"))
+
 
 @app.route("/bars_progress/")
 def verify_progress():
