@@ -146,7 +146,7 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
         },
     )
     raw_data = response.choices[0].message.content
-    response = json.loads(raw_data).get('histories')
+    response = json.loads(raw_data).get("histories")
     return [History(**res) for res in response]
 
 

@@ -198,7 +198,9 @@ def generate_reddit_video(
         captions=captions,
     )
 
-    video_path = path.join(reddit_history.folder_path, reddit_history.history.title_normalized())
+    video_path = path.join(
+        reddit_history.folder_path, reddit_history.history.title_normalized()
+    )
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
         final_video.clip.write_videofile(
