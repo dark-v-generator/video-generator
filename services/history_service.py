@@ -9,7 +9,7 @@ from entities.config import MainConfig
 from entities.cover import RedditCover
 from entities.editor import audio_clip, captions_clip, image_clip
 from entities.history import History
-from entities.reddit_video import RedditHistory
+from entities.reddit_history import RedditHistory
 from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
 from services import captions_service, cover_service, speech_service, video_service
