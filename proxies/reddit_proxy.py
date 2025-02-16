@@ -22,12 +22,21 @@ def get_reddit_post(url) -> RedditPost:
         "a", class_="subreddit-name"
     ).text.strip()
     reddit_post_params["author"] = __get_author_name(post)
-    reddit_post_params["community_url_photo"] = post.find("faceplate-tracker").find(
-        "img"
-    )["src"]
+    reddit_post_params["community_url_photo"] = __get_community_url_photo(post)
     reddit_post_params["content"] = __get_post_content(post)
 
     return RedditPost(**reddit_post_params)
+
+
+def __get_community_url_photo(post: Tag) -> str:
+    DEFAUL_URL_PHOTO = (
+        "https://styles.redditmedia.com/t5_2r0ij/styles/communityIcon_yor9myhxz5x11.png"
+    )
+    try:
+        return post.find("faceplate-tracker").find("img")["src"]
+    except Exception as e:
+        print(e)
+        return DEFAUL_URL_PHOTO
 
 
 def __get_post_content(post: Tag) -> str:

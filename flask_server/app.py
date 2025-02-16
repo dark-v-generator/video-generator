@@ -12,6 +12,7 @@ from flask_server.worker import Worker, WorkerJob
 
 CONFIG_FILE_PATH = "config.yaml"
 
+
 class FlaskWorker(Flask):
     worker = Worker(
         no_task_wait=60,
@@ -27,6 +28,7 @@ class FlaskWorker(Flask):
         super(FlaskWorker, self).run(
             host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
         )
+
 
 app = FlaskWorker(__name__)
 
@@ -56,8 +58,8 @@ def get_tasks_status():
     progress_bars = get_progress_bars()
     for worker_id in worker_status.keys():
         response[worker_id] = {
-            **progress_bars.get(worker_id, {}), 
-            'queue_status': response.get(worker_id)
+            **progress_bars.get(worker_id, {}),
+            "queue_status": response.get(worker_id),
         }
     return response
 
@@ -153,11 +155,10 @@ def generate_video(history_id):
             low_quality=low_quality,
             logger=FlaskProgressBarLogger(task_id=reddit_history.id),
         )
+
     app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
 
-    return redirect(
-        url_for("history_details", history_id=history_id, show_loading=True)
-    )
+    return redirect(url_for("/"))
 
 
 @app.route("/history/delete/<history_id>", methods=["POST"])

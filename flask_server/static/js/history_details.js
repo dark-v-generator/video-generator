@@ -18,24 +18,10 @@ function updateProgressBar() {
                     if (progressBar !== null) {
                         progressBar.value = data[task_id].index;
                         progressBar.max = data[task_id].total;
-
-                        if (data[task_id].index == data[task_id].total) {
-                            clearInterval(interval);
-                            const url = new URL(window.location.href);
-                            url.searchParams.delete('show_loading');
-                            window.location.replace(url.toString())
-                        }
                     }
                 };
             })
     }, 2000)
-}
-
-function deleteCaption(i) {
-    const captionElement = document.getElementById(`caption-segment-${i}`);
-    if (captionElement) {
-        captionElement.remove();
-    }
 }
 
 function deleteHistory(redditHistoryID) {

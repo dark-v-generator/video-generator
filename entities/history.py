@@ -11,6 +11,6 @@ class History(BaseModel):
     def title_normalized(self) -> str:
         title = unidecode.unidecode(self.title)
         title = title.replace(" ", "_")
-        title = re.sub('[^0-9a-zA-Z_]+', '', title)
+        title = re.sub("[^0-9a-zA-Z_]+", "", title)
         title = title.lower()
         return title

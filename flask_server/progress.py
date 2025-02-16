@@ -16,14 +16,12 @@ class FlaskProgressBarLogger(ProgressBarLogger):
     def __update_attr(self, attr, total):
         with BAR_LOCK:
             if not self.task_id in BAR_DATA:
-                BAR_DATA[self.task_id] = { 'total': 0, 'index': 0, 'message': ''}
+                BAR_DATA[self.task_id] = {"total": 0, "index": 0, "message": ""}
             BAR_DATA[self.task_id][attr] = total
-            
+
     def bars_callback(self, bar, attr, value, old_value):
-        if attr == 'total' or attr == 'index':
-            self.__update_attr(value)
-        else:
-            print(bar, attr, value, old_value)
+        if attr == "total" or attr == "index":
+            self.__update_attr(attr, value)
 
 
 def get_progress_bars():

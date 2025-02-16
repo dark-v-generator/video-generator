@@ -59,7 +59,6 @@ class Worker(threading.Thread):
 
     def run(self):
         while True:
-            print('worker loop')
             try:
                 if not self.start_next_job():
                     time.sleep(self.wait_for_new_job)
