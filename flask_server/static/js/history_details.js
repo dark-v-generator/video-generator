@@ -28,7 +28,7 @@ function updateProgressBar() {
                     }
                 };
             })
-    }, 500)
+    }, 2000)
 }
 
 function deleteCaption(i) {
@@ -54,8 +54,6 @@ function deleteHistory(redditHistoryID) {
                 console.error('Erro:', error);
                 alert('Erro ao deletar a história.');
             });
-
-
     }
 }
 

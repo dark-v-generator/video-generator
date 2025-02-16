@@ -1,7 +1,6 @@
-from threading import Thread
+import os
 from flask import Flask, jsonify, render_template
 from flask import Flask, render_template, request, redirect, url_for
-from entities.captions import Captions
 from flask_server.helper import build_nested_dict
 from services import config_service
 from flask_server.progress import (
@@ -10,8 +9,23 @@ from flask_server.progress import (
     FlaskProgressBarLogger,
 )
 from services import history_service
+from flask_server.worker import Worker, WorkerJob
 
-CONFIG_FILE_PATH = "new_config.yaml"
+CONFIG_FILE_PATH = "config.yaml"
+
+class FlaskWorker(Flask):
+    worker = Worker()
+
+    def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
+        if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
+            with self.app_context():
+                print("starting worker")
+                self.worker.start()
+        super(FlaskWorker, self).run(
+            host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
+        )
+
+app = FlaskWorker(__name__)
 
 
 def static_path(st: str):
@@ -33,35 +47,31 @@ def __get_context():
     }
 
 
-app = Flask(__name__)
+def get_tasks_status():
+    worker_status = app.worker.get_status()
+    response = worker_status
+    progress_bars = get_progress_bars()
+    for worker_id in worker_status.keys():
+        response[worker_id] = {**progress_bars.get(worker_id, {}), **response.get(worker_id, {})}
+    return response
 
 
 def progress_bar_exists(task_id: str) -> bool:
-    bars_info = get_progress_bars()
-    return task_id in bars_info and (
-        bars_info[task_id]["index"] < bars_info[task_id]["total"]
-    )
+    tasks_status = get_tasks_status()
+    return task_id in tasks_status
 
 
 @app.route("/")
 def home():
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    clear_progress_bars()
-    bars_info = get_progress_bars()
     reddit_histories = history_service.list_histories(config)
+    print(get_tasks_status())
     return render_template(
         "index.html",
         reddit_histories=reddit_histories,
         **__get_context(),
-        bars_info=bars_info,
+        tasks_status=get_tasks_status(),
     )
-
-
-@app.route("/save_config", methods=["POST"])
-def save_config():
-    data = build_nested_dict(request.form.to_dict())
-    config_service.save_main_config(data, CONFIG_FILE_PATH)
-    return redirect(url_for("config_page"))
 
 
 @app.route("/srcap_reddit_post", methods=["POST"])
@@ -79,25 +89,12 @@ def srcap_reddit_post():
     return redirect(url_for("home"))
 
 
-@app.route("/config")
-def config_page():
-    config = config_service.get_main_config(CONFIG_FILE_PATH)
-    return render_template(
-        "config.html",
-        **__get_context(),
-        config=config.model_dump(),
-    )
-
-
 @app.route("/history/<history_id>")
 def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
-    captions = []
-    if reddit_history.captions_path:
-        captions = Captions.from_yaml(reddit_history.captions_path)
     show_loading = request.args.get("show_loading", "false").lower() == "true"
-    if not show_loading and progress_bar_exists(reddit_history.id):
+    if progress_bar_exists(reddit_history.id):
         return redirect(
             url_for("history_details", history_id=history_id, show_loading=True)
         )
@@ -154,9 +151,7 @@ def generate_video(history_id):
             low_quality=low_quality,
             logger=FlaskProgressBarLogger(task_id=reddit_history.id),
         )
-
-    thread = Thread(target=generate_video)
-    thread.start()
+    app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
 
     return redirect(
         url_for("history_details", history_id=history_id, show_loading=True)
@@ -172,7 +167,7 @@ def delete_reddit_history(history_id):
 
 @app.route("/bars_progress/")
 def verify_progress():
-    return jsonify(get_progress_bars())
+    return jsonify(get_tasks_status())
 
 
 if __name__ == "__main__":

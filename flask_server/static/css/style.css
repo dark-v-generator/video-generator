@@ -1,204 +1,151 @@
-/* Reset de alguns estilos padrão */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Fonte padrão */
-body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
-    line-height: 1.6;
-}
-
-/* Estilo do cabeçalho e navegação */
-nav {
-    background-color: #333;
-    color: #fff;
-    padding: 10px 0;
-}
-
-nav .container {
+.row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
+    flex-direction: row;
 }
 
-nav .logo {
-    font-size: 24px;
-    font-weight: 600;
-}
-
-nav .github-link {
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-nav .github-link:hover {
-    text-decoration: underline;
-}
-
-.container {
-    max-width: 800px;
-    margin: 30px auto;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 5px;
-}
-
-/* Estilo da seção hero */
-.hero {
-    background-color: #6a5acd;
-    color: #fff;
-    padding: 60px 0;
-    text-align: center;
-}
-
-.hero .hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.hero h2 {
-    font-size: 32px;
-    font-weight: 600;
-    margin-bottom: 20px;
-}
-
-.hero p {
-    font-size: 18px;
-    margin-bottom: 30px;
-}
-
-.hero form {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
-
-.hero form input[type="url"] {
-    padding: 10px;
-    font-size: 16px;
-    width: 60%;
-    max-width: 500px;
-    border: 2px solid #ddd;
-    border-radius: 5px;
-}
-
-.hero form button {
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #ff7f50;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.hero form button:hover {
-    background-color: #ff6347;
-}
-
-/* Seção de funcionalidades */
-.features {
-    padding: 60px 0;
-    background-color: #fff;
-}
-
-.features h2 {
-    text-align: center;
-    font-size: 28px;
-    margin-bottom: 40px;
-    font-weight: 600;
-}
-
-.features .features-grid {
-    display: flex;
-    justify-content: space-around;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.feature-card {
-    background-color: #f0f0f0;
-    padding: 20px;
-    width: 250px;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
-}
-
-.feature-card:hover {
-    transform: translateY(-10px);
-}
-
-.feature-icon {
-    font-size: 40px;
-    margin-bottom: 15px;
-}
-
-.feature-card h3 {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-
-.feature-card p {
-    font-size: 16px;
-}
-
-/* Estilo do formulário */
-form {
+.column {
     display: flex;
     flex-direction: column;
 }
-form h3 {
-    margin: 20px 0 10px;
-    font-size: 20px;
-    color: #555;
+
+.w200 {
+    width: 200px;
 }
-form label {
-    margin-top: 10px;
-    font-weight: bold;
+
+.g10 {
+    gap: 10px;
 }
-form input[type="text"],
-form input[type="number"],
-form input[type="color"] {
-    padding: 8px;
-    margin-top: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+
+.p10 {
+    padding: 10px;
+}
+
+.vertical-divider {
+    height: '100%';
+    width: 5px;
+    background-color: #CAC4D0;
+    margin-left: 10px;
+    right: 410px;
+    margin-right: 400px;
+}
+
+label {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    font-size: 16;
+}
+
+input[type="text"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
     font-size: 16px;
+    padding: 10px;
+    width: 100%;
 }
-form button {
-    margin-top: 20px;
-    padding: 10px 20px;
+input[type="url"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
     font-size: 16px;
-    background-color: #ff7f50;
-    border: none;
-    border-radius: 5px;
-    color: #fff;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-form button:hover {
-    background-color: #ff6347;
+    padding: 10px;
+    width: 100%;
 }
 
 
-/* Rodapé */
-footer {
-    background-color: #333;
-    color: #fff;
-    padding: 20px 0;
-    text-align: center;
+input[type="number"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 16px;
+    padding: 10px;
 }
 
-footer p {
+input[type="checkbox"] {
+    accent-color: #2C2C2C;
+    width: 15px;
+    height: 15px;
+}
+
+select {
+    border-color: #D9D9D9;
+    background-color: #FFFFFF;
+    color: #1E1E1E;
+    padding: 10px;
     font-size: 14px;
+    border-radius: 8px;
+    width: 200px;
+}
+
+textarea {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 15px;
+    padding: 10px;
+    field-sizing: content;
+    width: 100%;
+}
+
+.delete-button button {
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #EC221F;
+    border-color: #900B09;
+    border-width: 1px;
+    color: #FEE9E7;
+    border: none;
+}
+
+.delete-button button:hover {
+    background-color: #1E1E1E;
+}
+
+.primary-button button {
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #2C2C2C;
+    border-color: #2C2C2C;
+    border-width: 1px;
+    color: #F5F5F5;
+    border: none;
+}
+
+.primary-button button:hover {
+    background-color: #1E1E1E;
+}
+
+.link-button a {
+    text-decoration: none;
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #E3E3E3;
+    border-color: #767676;
+    border-width: 1px;
+    color: #1E1E1E;
+}
+
+.link-button a:hover {
+    background-color: #CDCDCD;
+}
+
+.horizontal-divider {
+    height: 1px;
+    width: '100%';
+    background-color: #CAC4D0;
+    margin-top: 10px;
 }

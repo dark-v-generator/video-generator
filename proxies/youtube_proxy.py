@@ -37,8 +37,9 @@ def __download_youtube_stream(
         stream = streams.first()
 
     def progress_callback(stream, chunk, bytes_remaining):
-        logger(video_download={"total": stream.filesize, "index": len(chunk)})
+        logger.bars_callback('video_download', 'index', len(chunk), None)
 
+    logger.bars_callback('video_download', 'total', stream.filesize, None)
     yt.register_on_progress_callback(progress_callback)
     stream.download(output_path=output_path, filename=filename)
 

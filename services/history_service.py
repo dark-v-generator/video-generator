@@ -185,7 +185,7 @@ def generate_reddit_video(
         )
     if reddit_history.cover_path:
         cover = image_clip.ImageClip(reddit_history.cover_path)
-    print("Generating video compilation...")
+    logger("Generating video compilation...")
     background_video = video_service.create_video_compilation(
         speech.clip.duration, config.video_config, logger=logger
     )
@@ -199,7 +199,7 @@ def generate_reddit_video(
     )
 
     video_path = path.join(
-        reddit_history.folder_path, reddit_history.history.title_normalized()
+        reddit_history.folder_path, f'{reddit_history.history.title_normalized()}.mp4'
     )
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
