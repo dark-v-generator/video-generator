@@ -158,7 +158,7 @@ def generate_video(history_id):
 
     app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
 
-    return redirect(url_for("/"))
+    return redirect(url_for("home"))
 
 
 @app.route("/history/delete/<history_id>", methods=["POST"])
