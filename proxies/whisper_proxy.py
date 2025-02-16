@@ -9,7 +9,6 @@ def generate_captions(audio_path: str) -> Captions:
     caption_segments = []
     for segment in output["segments"]:
         for word in segment["words"]:
-            print(word)
             caption_segments.append(
                 CaptionSegment(
                     start=word["start"],

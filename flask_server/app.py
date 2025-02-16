@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_server.helper import build_nested_dict
 from services import config_service
 from flask_server.progress import (
-    clear_progress_bars,
     get_progress_bars,
     FlaskProgressBarLogger,
 )
@@ -14,12 +13,16 @@ from flask_server.worker import Worker, WorkerJob
 CONFIG_FILE_PATH = "config.yaml"
 
 class FlaskWorker(Flask):
-    worker = Worker()
+    worker = Worker(
+        no_task_wait=60,
+        max_parallel=3,
+        wait_for_new_job=10,
+    )
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
             with self.app_context():
-                print("starting worker")
+                print("Starting worker")
                 self.worker.start()
         super(FlaskWorker, self).run(
             host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
@@ -52,7 +55,10 @@ def get_tasks_status():
     response = worker_status
     progress_bars = get_progress_bars()
     for worker_id in worker_status.keys():
-        response[worker_id] = {**progress_bars.get(worker_id, {}), **response.get(worker_id, {})}
+        response[worker_id] = {
+            **progress_bars.get(worker_id, {}), 
+            'queue_status': response.get(worker_id)
+        }
     return response
 
 
@@ -65,12 +71,12 @@ def progress_bar_exists(task_id: str) -> bool:
 def home():
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_histories = history_service.list_histories(config)
-    print(get_tasks_status())
+    tasks_status = get_tasks_status()
     return render_template(
         "index.html",
         reddit_histories=reddit_histories,
         **__get_context(),
-        tasks_status=get_tasks_status(),
+        tasks_status=tasks_status,
     )
 
 
@@ -94,7 +100,7 @@ def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
     show_loading = request.args.get("show_loading", "false").lower() == "true"
-    if progress_bar_exists(reddit_history.id):
+    if not show_loading and progress_bar_exists(reddit_history.id):
         return redirect(
             url_for("history_details", history_id=history_id, show_loading=True)
         )
@@ -112,8 +118,6 @@ def generate_video(history_id):
     reddit_history = history_service.get_reddit_history(history_id, config)
 
     data = build_nested_dict(request.form.to_dict())
-    print(request.form)
-    print(request.form.getlist("segments.text[]"))
     low_quality = data.get("low_quality", "")
     low_quality = True if low_quality == "on" else False
     captions = data.get("captions", "")
@@ -128,7 +132,6 @@ def generate_video(history_id):
     title = data.get("reddit_history", {}).get("history", {}).get("title")
     gender = data.get("reddit_history", {}).get("history", {}).get("gender")
 
-    print(data)
     if title:
         reddit_history.history.title = title
     if content:
@@ -136,7 +139,6 @@ def generate_video(history_id):
     if gender:
         reddit_history.history.gender = gender
     history_service.save_reddit_history(reddit_history, config)
-    clear_progress_bars()
 
     def generate_video():
         if speech:

@@ -40,16 +40,20 @@
         <div class="container">
             {% for reddit_history in reddit_histories %}
             <div class="reddit-history-card g10">
+                {% if tasks_status.get(reddit_history.id, {}).get('queue_status') == 'on_queue' %}
+                <div>
+                    Na fila para ser processado...
+                </div>
+                {% elif tasks_status.get(reddit_history.id, {}).get('queue_status') == 'running' %}
+                <div>
+                    Processando...
+                </div>
+                {% endif %}
                 {% if static_path(reddit_history.cover_path) %}
                 <img width="320" src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image"
                     class="cover-image">
                 {% else %}
                 <h3>{{ reddit_history.history.title }}</h3>
-                {% endif %}
-                {% if tasks_status.get(reddit_history.id) %}
-                <div>
-                    if tasks_status.get(reddit_history.id)
-                </div>
                 {% endif %}
                 {% if static_path(reddit_history.speech_path) %}
                 <div class="audio-player">

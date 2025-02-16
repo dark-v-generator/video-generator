@@ -185,7 +185,7 @@ def generate_reddit_video(
         )
     if reddit_history.cover_path:
         cover = image_clip.ImageClip(reddit_history.cover_path)
-    logger("Generating video compilation...")
+    logger(message="Generating video compilation...")
     background_video = video_service.create_video_compilation(
         speech.clip.duration, config.video_config, logger=logger
     )
