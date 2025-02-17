@@ -205,14 +205,13 @@ def generate_reddit_video(
     if low_quality:
         final_video.clip.write_videofile(
             video_path, 
-            fps=15, 
             logger=logger,
-            codec=config.video_config.codec,
+            ffmpeg_params=config.video_config.ffmpeg_params
         )
     else:
         final_video.clip.write_videofile(
             video_path, 
             logger=logger,
-            codec=config.video_config.codec,
+            ffmpeg_params=config.video_config.ffmpeg_params
         )
     save_reddit_history(reddit_history, config)

@@ -1,5 +1,5 @@
 import random
-from typing import Optional
+from typing import List, Optional
 from pydantic import Field
 from entities.base_yaml_model import BaseYAMLModel
 
@@ -32,7 +32,7 @@ class VideoConfig(BaseYAMLModel):
     )
     low_quality: bool = Field(False, title="Low quality")
     low_resolution: bool = Field(False, title="Change resolution to low")
-    codec: Optional[str] = Field(None, title="ffmpeg codec")
+    ffmpeg_params: List[str] = Field([], title="ffmpeg params")
 
 
 class MainConfig(BaseYAMLModel):

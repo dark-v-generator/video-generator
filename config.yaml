@@ -18,4 +18,3 @@ video_config:
     watermark_path: null
     width: 1080
     youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
-    codec: hevc_nvenc
