@@ -11,10 +11,11 @@ cover_config:
 histories_path: flask_server/static/histories/
 seed: BBBHI91R19
 video_config:
-    cover_duration: 5
-    end_silece_seconds: 3
+    cover_duration: 4
+    end_silece_seconds: 1
     height: 1920
     padding: 60
     watermark_path: null
     width: 1080
     youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
+    codec: hevc_nvenc

@@ -14,4 +14,3 @@ def run_server():
 
 if __name__ == "__main__":
     run_server()
-    print(f'http://{get_local_ip()}:5000')

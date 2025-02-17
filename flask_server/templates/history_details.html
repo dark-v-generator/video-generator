@@ -11,13 +11,38 @@
 </head>
 
 <body>
-    <div class="download-button">
-        <a href="/" class="back-button">Voltar</a>
+    <div class="buttons-container">
+        <div class="download-button">
+            <a href="/" class="back-button">Voltar</a>
+        </div>
+        <div class="delete-button">
+            <button type="button" onclick="deleteHistory('{{ reddit_history.id }}')">Deletar história</button>
+        </div>
+        <div class="download-button">
+            <a href="{{ static_path(reddit_history.final_video_path) }}"
+                download="{{ reddit_history.history.title_normalized() }}.mp4">
+                Download
+            </a>
+        </div>
     </div>
+
 
     <div class="main-container">
         <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
             <div class="left-container">
+                {% if static_path(reddit_history.final_video_path) %}
+                <div class="video-player">
+                    <video width="320" controls>
+                        <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
+                        Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                </div>
+                {% else %}
+                Vídeo ainda não foi gerado
+                {% endif %}
+                {% if show_loading %}
+                <progress id="{{ reddit_history.id }}"></progress>
+                {% endif %}
                 <div class="input-container">
                     <label for="title">Título</label>
                     <input id="title" type="text" name="reddit_history.history.title"
@@ -75,38 +100,6 @@
                 </div>
             </div>
         </form>
-
-
-        <div class="vertical-divider"></div>
-        <div class="right-container g10">
-
-            <div class="buttons-container">
-                <div class="delete-button">
-                    <button type="button" onclick="deleteHistory('{{ reddit_history.id }}')">Deletar história</button>
-                </div>
-                <div class="download-button">
-                    <a href="{{ static_path(reddit_history.final_video_path) }}"
-                        download="{{ reddit_history.history.title_normalized() }}.mp4">
-                        Download
-                    </a>
-                </div>
-            </div>
-
-            {% if static_path(reddit_history.final_video_path) %}
-            <div class="video-player">
-                <video width="320" controls>
-                    <source src="{{ static_path(reddit_history.final_video_path) }}" type="video/mp4">
-                    Seu navegador não suporta o elemento de vídeo.
-                </video>
-            </div>
-            {% else %}
-            Vídeo ainda não foi gerado
-            {% endif %}
-
-            {% if show_loading %}
-            <progress id="{{ reddit_history.id }}"></progress>
-            {% endif %}
-        </div>
     </div>
 </body>
 

@@ -204,8 +204,15 @@ def generate_reddit_video(
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
         final_video.clip.write_videofile(
-            video_path, preset="ultrafast", fps=15, logger=logger
+            video_path, 
+            fps=15, 
+            logger=logger,
+            codec=config.video_config.codec,
         )
     else:
-        final_video.clip.write_videofile(video_path, preset="veryfast", logger=logger)
+        final_video.clip.write_videofile(
+            video_path, 
+            logger=logger,
+            codec=config.video_config.codec,
+        )
     save_reddit_history(reddit_history, config)

@@ -32,7 +32,7 @@ class VideoConfig(BaseYAMLModel):
     )
     low_quality: bool = Field(False, title="Low quality")
     low_resolution: bool = Field(False, title="Change resolution to low")
-    audio_speed_rate: float = Field(1.0, title="Audio speed rate")
+    codec: Optional[str] = Field(None, title="ffmpeg codec")
 
 
 class MainConfig(BaseYAMLModel):
