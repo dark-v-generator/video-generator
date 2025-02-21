@@ -1,21 +1,8 @@
-import math
-import re
-from typing import List, Tuple
+from typing import List
 from moviepy import TextClip, VideoFileClip, CompositeVideoClip
 from moviepy.video.fx import CrossFadeIn, CrossFadeOut
-from pydantic import BaseModel, Field
 from entities.captions import CaptionSegment, Captions
-
-
-class CaptionsConfig(BaseModel):
-    font_path: str = Field("")
-    font_size: int = Field(100)
-    color: str = Field("#000000")
-    stroke_color: str = Field("#000000")
-    stroke_width: int = Field(0)
-    fade_duration: float = Field(0)
-    upper_text: bool = Field(False)
-    marging: int = Field(50)
+from entities.config import CaptionsConfig
 
 
 class CaptionsClip:
@@ -53,7 +40,7 @@ class CaptionsClip:
             word_clip = CrossFadeOut(duration=self.config.fade_duration).apply(
                 word_clip
             )
-        word_clip: TextClip = word_clip.with_position(["center", "center"])
+        word_clip: TextClip = word_clip.with_position(["center", 0.25], relative=True)
         return word_clip
 
 

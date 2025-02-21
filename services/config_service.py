@@ -1,9 +1,12 @@
-import yaml
+import os
 from entities.config import MainConfig
 
 
 def get_main_config(config_path: str = "config.yaml") -> MainConfig:
-    with open(config_path, "r") as file:
-        data = yaml.safe_load(file)
-        config = MainConfig(**data["main"])
-        return config
+    if not os.path.isfile(config_path):
+        MainConfig().save_yaml(config_path)
+    return MainConfig.from_yaml(config_path)
+
+
+def save_main_config(config_dict: dict, config_path: str = "config.yaml") -> MainConfig:
+    MainConfig(**config_dict).save_yaml(config_path)

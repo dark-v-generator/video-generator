@@ -1,8 +1,6 @@
 import os
 import re
-import tempfile
 import azure.cognitiveservices.speech as speechsdk
-from entities.editor.audio_clip import AudioClip
 from enum import Enum
 
 
@@ -47,13 +45,15 @@ def __text_to_ssml(text: str, voice: str, rate: float = 1.0, break_time="1s"):
     return ssml_text
 
 
-def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariation.MALE, rate: float =1.0):
+def synthesize_speech(
+    text: str,
+    voice_variation: VoiceVariation = VoiceVariation.MALE,
+    rate: float = 1.0,
+    output_path: str = "output.mp3",
+) -> str:
     speech_config = __get_speech_config()
     speech_config.speech_synthesis_voice_name = voice_variation.value
-
-    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-        filename = temp_file.name
-        audio_config = speechsdk.AudioConfig(filename=filename)
+    audio_config = speechsdk.AudioConfig(filename=output_path)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, audio_config=audio_config
     )
@@ -61,9 +61,7 @@ def synthesize_speech(text: str, voice_variation: VoiceVariation = VoiceVariatio
         text, voice=voice_variation.value, rate=rate, break_time="300ms"
     )
     result = speech_synthesizer.speak_ssml(ssml_text)
-    if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        return AudioClip(filename)
-    elif result.reason == speechsdk.ResultReason.Canceled:
+    if result.reason != speechsdk.ResultReason.SynthesizingAudioCompleted:
         cancellation_details = result.cancellation_details
         print("Speech synthesis canceled: {}".format(cancellation_details.reason))
         if cancellation_details.reason == speechsdk.CancellationReason.Error:

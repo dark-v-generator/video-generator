@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reddit Histórias em Vídeo</title>
+    <link rel="stylesheet" href="/static/css/index.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="{{ url_for('static', filename='js/confirm_deletion.js') }}"></script>
+</head>
+
+<body>
+    <main>
+        <form action="/srcap_reddit_post" method="POST" class="story-form">
+            <div class="hero-content">
+                <div>
+                    <h2>Transforme histórias do Reddit em vídeos incríveis</h2>
+                    <p>Cole o link de uma história do Reddit abaixo e crie um vídeo automaticamente</p>
+                </div>
+                <div class="input-container">
+                    <label>URL</label>
+                    <input name="url" type="url" placeholder="Cole o URL da história do Reddit aqui..." required>
+                </div>
+                <div class="input-container">
+                    <label>Número de partes</label>
+                    <input type="number" name="number_of_parts" value="1">
+                </div>
+                <div class="row g10">
+                    <div class="input-container">
+                        <input id="enhance_history" type="checkbox" name="enhance_history" checked>
+                        <label for="captions">Ajustar pontuações e erros (IA)</label>
+                    </div>
+                    <div class="primary-button">
+                        <button type="submit">Criar Vídeo</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="container">
+            {% for reddit_history in reddit_histories %}
+            <div class="reddit-history-card g10">
+                {% if tasks_status.get(reddit_history.id, {}).get('queue_status') == 'on_queue' %}
+                <div>
+                    Na fila para ser processado...
+                </div>
+                {% elif tasks_status.get(reddit_history.id, {}).get('queue_status') == 'running' %}
+                <div>
+                    Processando...
+                </div>
+                {% endif %}
+                {% if static_path(reddit_history.cover_path) %}
+                <img width="320" src="{{ static_path(reddit_history.cover_path) }}" alt="Cover Image"
+                    class="cover-image">
+                {% else %}
+                <h3>{{ reddit_history.history.title }}</h3>
+                {% endif %}
+                {% if static_path(reddit_history.speech_path) %}
+                <div class="audio-player">
+                    <audio controls>
+                        <source src="{{ static_path(reddit_history.speech_path) }}" type="audio/mpeg">
+                        Seu navegador não suporta o elemento de áudio.
+                    </audio>
+                </div>
+                {% endif %}
+
+                <div class="buttons-container">
+                    <div class="delete-button">
+                        <form action="/history/delete/{{ reddit_history.id }}" method="POST"
+                            onsubmit="confirmDeletion(event, this)">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <button type="submit">Deletar história</button>
+                        </form>
+                    </div>
+                    {% if static_path(reddit_history.final_video_path) %}
+                    <div class="link-button">
+                        <a href="{{ static_path(reddit_history.final_video_path) }}"
+                            download="{{ reddit_history.history.title_normalized() }}.mp4">
+                            Download
+                        </a>
+                    </div>
+                    {% endif %}
+                    <div class="primary-button">
+                        <button onclick="location.href='/history/{{ reddit_history.id }}'">Ver história</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+
+</html>

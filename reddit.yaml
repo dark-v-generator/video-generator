@@ -1,9 +1,0 @@
-main:
-  output_path: preview/
-  video_config:
-    audio_preview: true
-    audio_speed_rate: 1.5
-  history_config:
-    source: reddit
-    reddit_url: https://www.reddit.com/r/traumatizeThemBack/comments/1iheqxe/yes_i_can_hear_you/
-    number_of_parts: 1
