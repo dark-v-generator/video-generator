@@ -172,8 +172,6 @@ def enhance_captions(captions: Captions, history: History) -> Captions:
         content=history.content,
         captions=captions.model_dump().get("segments"),
     )
-    print(ENHANCE_CAPTIONS_PROMPT)
-    print(user_prompt)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",

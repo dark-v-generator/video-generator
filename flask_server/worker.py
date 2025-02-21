@@ -1,9 +1,12 @@
+import os
 import threading
 import queue
 from typing import Dict
 import uuid
 from threading import Lock
 import time
+
+from flask import Flask
 
 
 class WorkerJob(threading.Thread):
@@ -34,6 +37,8 @@ class Worker(threading.Thread):
         with self.dict_lock:
             if len(self.running_threads) < self.max_parallel:
                 job: WorkerJob = self.q.get(timeout=self.wait_for_new_job)
+                if not job.id in self.waiting_threads:
+                    return True  # Already started
                 del self.waiting_threads[job.id]
                 self.running_threads[job.id] = job
                 self.q.task_done()
@@ -65,3 +70,20 @@ class Worker(threading.Thread):
                     self.clean_finished_jobs()
             except queue.Empty:
                 time.sleep(self.no_task_wait)
+
+
+class FlaskWorker(Flask):
+    worker = Worker(
+        no_task_wait=60,
+        max_parallel=3,
+        wait_for_new_job=10,
+    )
+
+    def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
+        if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
+            with self.app_context():
+                print("Starting worker")
+                self.worker.start()
+        super(FlaskWorker, self).run(
+            host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
+        )

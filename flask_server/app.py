@@ -1,33 +1,16 @@
 import os
-from flask import Flask, jsonify, render_template
-from flask import Flask, render_template, request, redirect, url_for
-from flask_server.helper import build_nested_dict
+from flask import jsonify, render_template
+from flask import render_template, request, redirect, url_for
+from flask_server.entities import GenerateVideoRequest, ScrapRedditPostRequest
 from services import config_service
 from flask_server.progress import (
     get_progress_bars,
     FlaskProgressBarLogger,
 )
 from services import history_service
-from flask_server.worker import Worker, WorkerJob
+from flask_server.worker import FlaskWorker, WorkerJob
 
 CONFIG_FILE_PATH = "config.yaml"
-
-
-class FlaskWorker(Flask):
-    worker = Worker(
-        no_task_wait=60,
-        max_parallel=3,
-        wait_for_new_job=10,
-    )
-
-    def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
-        if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
-            with self.app_context():
-                print("Starting worker")
-                self.worker.start()
-        super(FlaskWorker, self).run(
-            host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
-        )
 
 
 app = FlaskWorker(__name__)
@@ -84,16 +67,12 @@ def home():
 
 @app.route("/srcap_reddit_post", methods=["POST"])
 def srcap_reddit_post():
-    data = build_nested_dict(request.form.to_dict())
-    enhance_history = data.get("enhance_history", "")
-    enhance_history = True if enhance_history == "on" else False
-    url = data.get("url", "")
-    number_of_parts = int(data.get("number_of_parts", 1))
-
+    req = ScrapRedditPostRequest(request.form)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    reddit_history = history_service.srcap_reddit_post(url, enhance_history, config)
-    if number_of_parts > 1:
-        history_service.split_reddit_history(reddit_history, config, number_of_parts)
+    reddit_history = history_service.srcap_reddit_post(req.url, req.enhance_history, config)
+
+    if req.number_of_parts > 1:
+        history_service.split_reddit_history(reddit_history, config, req.number_of_parts)
     return redirect(url_for("home"))
 
 
@@ -118,41 +97,23 @@ def history_details(history_id):
 def generate_video(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
-
-    data = build_nested_dict(request.form.to_dict())
-    low_quality = data.get("low_quality", "")
-    low_quality = True if low_quality == "on" else False
-    captions = data.get("captions", "")
-    captions = True if captions == "on" else False
-    speech = data.get("speech", "")
-    speech = True if speech == "on" else False
-    cover = data.get("cover", "")
-    cover = True if cover == "on" else False
-    rate = data.get("rate", "1.5")
-    rate = float(rate)
-    content = data.get("reddit_history", {}).get("history", {}).get("content")
-    title = data.get("reddit_history", {}).get("history", {}).get("title")
-    gender = data.get("reddit_history", {}).get("history", {}).get("gender")
-
-    if title:
-        reddit_history.history.title = title
-    if content:
-        reddit_history.history.content = content
-    if gender:
-        reddit_history.history.gender = gender
-    history_service.save_reddit_history(reddit_history, config)
-
+    req = GenerateVideoRequest(request.form)
     def generate_video():
-        if speech:
-            history_service.generate_speech(reddit_history, rate, config)
-        if captions:
-            history_service.generate_captions(reddit_history, rate, config)
-        if cover:
+        if req.speech:
+            history_service.generate_speech(reddit_history, req.rate, config)
+        if req.captions:
+            history_service.generate_captions(
+                reddit_history, 
+                req.rate, 
+                config, 
+                enhance_captions=req.enhance_captions
+            )
+        if req.cover:
             history_service.generate_cover(reddit_history, config)
         history_service.generate_reddit_video(
             reddit_history,
             config,
-            low_quality=low_quality,
+            low_quality=req.low_quality,
             logger=FlaskProgressBarLogger(task_id=reddit_history.id),
         )
 
