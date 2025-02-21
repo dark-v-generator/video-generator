@@ -14,7 +14,6 @@ def generate_captions(audio_path: str) -> Captions:
                     start=word["start"],
                     end=word["end"],
                     text=word["word"],
-                    probability=word["probability"],
                 )
             )
     return Captions(segments=caption_segments)

@@ -14,3 +14,10 @@ class History(BaseModel):
         title = re.sub("[^0-9a-zA-Z_]+", "", title)
         title = title.lower()
         return title
+    
+    def striped(self) -> str:
+        return History(
+            title=self.title.strip(),
+            content=self.content.strip(),
+            gender=self.gender.strip()
+        )

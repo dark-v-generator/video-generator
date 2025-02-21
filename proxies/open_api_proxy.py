@@ -23,29 +23,29 @@ HISTORY_SCHEMA = {
 }
 
 ENHANCE_HISTORY_PROMPT = """
-    Eu vou te passar uma história que foi postada em um fórum online, você deve traduzi-la e adapta-la para
-    narração seguindo o seguinte:
-    
-    - Nesses foruns é comum usar essas abreviações para identificação, subistitua elas:
-    (ingles)"I M24" -> "Eu sou um homem de 24 anos"
-    (ingles)"I F20" -> "Eu sou uma mulher de 20 anos"
-    (portugues)"Eu H20" -> "Eu sou um homem de 20 anos"
-    (portugues)"Eu M24" -> "Eu sou um homem de 24 anos"
+Corrija a pontuação (vírgulas, pontos finais, exclamações, interrogações) e substitua abreviações por palavras completas ex:
+ - "Eu H20" -> "Eu sou um homem de 20 anos"
+ - "Eu M24" -> "Eu sou um homem de 24 anos"
+ - "vc" -> "você"
+ - "pq" -> "porque"
+ - "tbm" -> 'também'
 
-    - Ao traduzir os textos do ingês para o português, algumas expressões podem ficar estranhas, portanto
-    pode adaptar termos, expressões ou palavras para algo mais comum no brasil, como "academy" poderia ser
-    traduzido para "escola" por exemplo, pois esse termo é mais comum
+Requisitos:
 
-    - O texto será usado para narração e será publicado nas redes sociais portando adapte alguns termos 
-    como "você que está lendo" para "você que está escutando", "podem perguntar" para "podem deixar um comentário"
-    e outros termos que só fazem sentido no forum podem ser adaptados ou removidos, para a narração ser publicada
+Não altere o conteúdo, o tom ou a estrutura da história.
 
-    - Corriga as pontuações do texto e adapte trechos para que a narração fique mais flúida e melhor de entender,
-    caso seja necessário. Removendo excessos de pontuação, inserindo virgualas onde necessários 
-    e corrigindo as pausas adequadamente.
+Mantenha a informalidade ou formalidade original do texto.
 
-    - Mantenha a história o mais fiel possível, não crie novos termos, não mude a história, apenas traduza (se 
-    necessário) e faça o que foi dito, fora isso tente manter o mais original possível com todo seu conteúdo.
+Adicione ao final, em um novo parágrafo, com uma frase de interação que se encaixe com o texto, exemplo:
+"O que você faria nessa situação? Curta, me siga e deixe nos comentários!"
+
+Proibições:
+
+Não reescreva frases, nem adicione emojis, hashtags ou opiniões pessoais.
+
+Não modifique o contexto, gírias regionais ou expressões características do autor.
+
+Evite paráfrases ou mudanças no estilo narrativo.
 """
 
 DIVIDE_HISTORY_PROMPT = """
@@ -55,10 +55,20 @@ DIVIDE_HISTORY_PROMPT = """
 """
 
 ENHANCE_CAPTIONS_PROMPT = """
-    Vou te passar uma lista de legendas geradas automaticamente 
-    e o texto original. Ajuste a legenda, corrigindo erros nas palavras, e apenas nas palavras.
-    Não altere os tempos das legendas, nem o número de palavras em cada legenda
-    não altere nada, apenas palavras incorretas, de acordo com o texto passado.
+Instrucoes:
+Eu vou te passar uma lista de legenda de uma narracao, contendo uma palavra por segmento. Faca o seguinte:
+
+1. Remova os seguimentos que nao estiverem no texto original, sem alterar os tempos da legenda (sao trechos narrados, mas não legendados).
+
+2. Corrija os textos das legendas para corresponderem exatamente ao conteúdo original, mantendo:
+    - O sentido original e tom do texto.
+    - Os tempos (start e end) inalterados, exceto se precisar mesclar segmentos quebrados (ex: duas legendas separadas para uma única palavra).
+
+Proibições:
+- Não adicione, ou modifique legendas que já estejam corretas.
+- Não altere a ordem das legendas ou o contexto do conteúdo.
+- Nao ajuste ou altere os tempos das legendas, a nao ser em casos de mesclagem de legendas.
+- Nao mescle legendas sem necessidade, o formato deve continuar uma palavra por segmento.
 """
 
 
@@ -150,17 +160,20 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
     return [History(**res) for res in response]
 
 
-def enhance_captions(captions: Captions, text: str) -> Captions:
+def enhance_captions(captions: Captions, history: History) -> Captions:
     user_prompt = """
-        Aqui está o texto original:
-        {text}
+        Conteudo: 
+        {content}
 
-        E aqui estão as legendas geradas:
+        Legendas geradas:
         {captions}
     """.format(
-        text=text,
+        title=history.title,
+        content=history.content,
         captions=captions.model_dump().get("segments"),
     )
+    print(ENHANCE_CAPTIONS_PROMPT)
+    print(user_prompt)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",

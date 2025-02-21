@@ -47,12 +47,11 @@ def srcap_reddit_post(
     reddit_history = RedditHistory(
         id=id,
         cover=cover,
-        history=history,
+        history=history.striped(),
         folder_path=str(Path(folder_path).resolve()),
     )
     reddit_history.save_yaml(history_path)
     return reddit_history
-
 
 def get_reddit_history(id: str, config: MainConfig) -> RedditHistory:
     history_path = path.join(config.histories_path, id, REDDIT_HISTORY_FILE_NAME)
@@ -101,18 +100,24 @@ def split_reddit_history(
 
 
 def __get_speech_text(history: History) -> str:
-    return history.content
+    return f"{history.title}\n {history.content}"
 
 
 def generate_captions(
-    reddit_history: RedditHistory, rate: float, config: MainConfig
+    reddit_history: RedditHistory, 
+    rate: float, 
+    config: MainConfig,
+    enhance_captions: bool = True,
 ) -> None:
     regular_speech_path = path.join(
         reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
     )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
     captions = captions_service.generate_captions_from_file(regular_speech_path)
-    captions.with_speed(rate).save_yaml(captions_path)
+    captions = captions.with_speed(rate).stripped()
+    if enhance_captions:
+        captions = open_api_proxy.enhance_captions(captions, reddit_history.history)
+    captions.save_yaml(captions_path)
     reddit_history.captions_path = str(Path(captions_path).resolve())
     save_reddit_history(reddit_history, config)
 
