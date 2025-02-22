@@ -1,0 +1,46 @@
+pt:
+  enhance_captions_prompt: '
+    Instrucoes
+    Eu vou te passar uma lista de legenda de uma narracao, contendo uma palavra por segmento. Faca o seguinte
+
+    1. Remova os seguimentos que nao estiverem no texto original, sem alterar os tempos da legenda (sao trechos narrados, mas não legendados).
+
+    2. Corrija os textos das legendas para corresponderem exatamente ao conteúdo original, mantendo
+        * O sentido original e tom do texto.
+        * Os tempos (start e end) inalterados, exceto se precisar mesclar segmentos quebrados (ex duas legendas separadas para uma única palavra).
+
+    Proibições
+    * Não adicione, ou modifique legendas que já estejam corretas.
+    * Não altere a ordem das legendas ou o contexto do conteúdo.
+    * Nao ajuste ou altere os tempos das legendas, a nao ser em casos de mesclagem de legendas.
+    * Nao mescle legendas sem necessidade, o formato deve continuar uma palavra por segmento.'
+  enhance_history_prompt: ' 
+    Corrija a pontuação (vírgulas, pontos finais, exclamações, interrogações) e substitua abreviações por palavras completas ex
+    * "Eu H20" -> "Eu sou um homem de 20 anos"
+    * "Eu M24" -> "Eu sou um homem de 24 anos"
+    * "vc" -> "você"
+    * "pq" -> "porque"
+    * "tbm" -> "também"
+
+    Requisitos
+
+    Não altere o conteúdo, o tom ou a estrutura da história.
+
+    Mantenha a informalidade ou formalidade original do texto.
+
+    Adicione ao final, em um novo parágrafo, com uma frase de interação que se encaixe com o texto, exemplo:
+    "O que você faria nessa situação? Curta, me siga e deixe nos comentários!"
+
+    Proibições:
+
+    Não reescreva frases, nem adicione emojis, hashtags ou opiniões pessoais.
+
+    Não modifique o contexto, gírias regionais ou expressões características do autor.
+
+    Evite paráfrases ou mudanças no estilo narrativo.
+    '
+  divide_history_prompt: '
+    Eu vou te passar uma história grande e você deve dividila em partes, sem alterar o conteúdo, mantendo o conteúdo original.
+    As partes serão publicadas nas redes sociais, portanto divida em um momento chave da história para que a atenção do ouvinte
+    seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
+    '

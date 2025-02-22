@@ -1,27 +1,24 @@
 import os
-import threading
-import queue
-from typing import Dict
-import uuid
-from threading import Lock
-import time
-
 from flask import Flask
+from queue import Queue
+import threading
+import uuid
+import time
+from typing import Dict
+from multiprocessing import Process
+from multiprocessing import Lock
 
 
-class WorkerJob(threading.Thread):
+class WorkerJob(Process):
     def __init__(self, id=None, *args, **kwargs):
         self.id = str(uuid.uuid4()) if id is None else id
         super().__init__(*args, **kwargs)
 
 
 class Worker(threading.Thread):
-    def __init__(
-        self, no_task_wait=60, max_parallel=3, wait_for_new_job=5, *args, **kwargs
-    ):
-        self.q = queue.Queue()
+    def __init__(self, max_parallel=3, wait_for_new_job=1, *args, **kwargs):
+        self.q = Queue()
         self.dict_lock = Lock()
-        self.no_task_wait = no_task_wait
         self.max_parallel = max_parallel
         self.wait_for_new_job = wait_for_new_job
         self.running_threads: Dict[str, WorkerJob] = {}
@@ -34,15 +31,21 @@ class Worker(threading.Thread):
             self.q.put(job)
 
     def start_next_job(self) -> bool:
+        if self.q.empty():
+            return False
         with self.dict_lock:
             if len(self.running_threads) < self.max_parallel:
                 job: WorkerJob = self.q.get(timeout=self.wait_for_new_job)
-                if not job.id in self.waiting_threads:
-                    return True  # Already started
-                del self.waiting_threads[job.id]
+                if job.id in self.running_threads:
+                    old_job = self.running_threads[job.id]
+                    old_job.terminate()
+                    old_job.join()
+                    del self.running_threads[old_job.id]
+                if job.id in self.waiting_threads:
+                    del self.waiting_threads[job.id]
                 self.running_threads[job.id] = job
-                self.q.task_done()
                 job.start()
+                self.q.task_done()
                 return True
         return False
 
@@ -64,20 +67,13 @@ class Worker(threading.Thread):
 
     def run(self):
         while True:
-            try:
-                if not self.start_next_job():
-                    time.sleep(self.wait_for_new_job)
-                    self.clean_finished_jobs()
-            except queue.Empty:
-                time.sleep(self.no_task_wait)
+            self.clean_finished_jobs()
+            if not self.start_next_job():
+                time.sleep(self.wait_for_new_job)
 
 
 class FlaskWorker(Flask):
-    worker = Worker(
-        no_task_wait=60,
-        max_parallel=3,
-        wait_for_new_job=10,
-    )
+    worker = Worker()
 
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":

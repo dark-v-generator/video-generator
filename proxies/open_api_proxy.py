@@ -4,6 +4,9 @@ from entities.captions import CaptionSegment, Captions
 from entities.history import History
 from openai import OpenAI
 
+from entities.language import Language
+from services.language_service import t
+
 HISTORY_SCHEMA = {
     "type": "object",
     "properties": {
@@ -21,56 +24,6 @@ HISTORY_SCHEMA = {
         },
     },
 }
-
-ENHANCE_HISTORY_PROMPT = """
-Corrija a pontuação (vírgulas, pontos finais, exclamações, interrogações) e substitua abreviações por palavras completas ex:
- - "Eu H20" -> "Eu sou um homem de 20 anos"
- - "Eu M24" -> "Eu sou um homem de 24 anos"
- - "vc" -> "você"
- - "pq" -> "porque"
- - "tbm" -> 'também'
-
-Requisitos:
-
-Não altere o conteúdo, o tom ou a estrutura da história.
-
-Mantenha a informalidade ou formalidade original do texto.
-
-Adicione ao final, em um novo parágrafo, com uma frase de interação que se encaixe com o texto, exemplo:
-"O que você faria nessa situação? Curta, me siga e deixe nos comentários!"
-
-Proibições:
-
-Não reescreva frases, nem adicione emojis, hashtags ou opiniões pessoais.
-
-Não modifique o contexto, gírias regionais ou expressões características do autor.
-
-Evite paráfrases ou mudanças no estilo narrativo.
-"""
-
-DIVIDE_HISTORY_PROMPT = """
-    Eu vou te passar uma história grande e você deve dividila em partes, sem alterar o conteúdo, mantendo o conteúdo original.
-    As partes serão publicadas nas redes sociais, portanto divida em um momento chave da história para que a atenção do ouvinte
-    seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
-"""
-
-ENHANCE_CAPTIONS_PROMPT = """
-Instrucoes:
-Eu vou te passar uma lista de legenda de uma narracao, contendo uma palavra por segmento. Faca o seguinte:
-
-1. Remova os seguimentos que nao estiverem no texto original, sem alterar os tempos da legenda (sao trechos narrados, mas não legendados).
-
-2. Corrija os textos das legendas para corresponderem exatamente ao conteúdo original, mantendo:
-    - O sentido original e tom do texto.
-    - Os tempos (start e end) inalterados, exceto se precisar mesclar segmentos quebrados (ex: duas legendas separadas para uma única palavra).
-
-Proibições:
-- Não adicione, ou modifique legendas que já estejam corretas.
-- Não altere a ordem das legendas ou o contexto do conteúdo.
-- Nao ajuste ou altere os tempos das legendas, a nao ser em casos de mesclagem de legendas.
-- Nao mescle legendas sem necessidade, o formato deve continuar uma palavra por segmento.
-"""
-
 
 CAPTION_SEGMENT_SCHEMA = {
     "type": "object",
@@ -90,8 +43,13 @@ CAPTION_SEGMENT_SCHEMA = {
     },
 }
 
+ENHANCE_CAPTIONS_PROMPT_KEY='enhance_captions_prompt'
+ENHANCE_HISTORY_PROMPT_KEY='enhance_history_prompt'
+DIVIDE_HISTORY_PROMPT_KEY='divide_history_prompt'
 
-def enhance_history(title: str, content: str) -> History:
+
+
+def enhance_history(title: str, content: str, language: Language = Language.PORTUGUESE) -> History:
     user_prompt = """
         Título: {title}
 
@@ -100,12 +58,13 @@ def enhance_history(title: str, content: str) -> History:
         title=title,
         content=content,
     )
+    system_prompt = t(language.value, ENHANCE_HISTORY_PROMPT_KEY)
 
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": ENHANCE_HISTORY_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         response_format={
@@ -123,7 +82,7 @@ def enhance_history(title: str, content: str) -> History:
     )
 
 
-def divide_history(history: History, number_of_parts: int) -> List[History]:
+def divide_history(history: History, number_of_parts: int, language: Language = Language.PORTUGUESE) -> List[History]:
     user_message = """
         Divida essa história em {number_of_parts} partes:
         {history_dump}
@@ -131,12 +90,12 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
         history_dump=history.model_dump(),
         number_of_parts=number_of_parts,
     )
-
+    system_prompt = t(language.value, DIVIDE_HISTORY_PROMPT_KEY)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": DIVIDE_HISTORY_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
         response_format={
@@ -160,7 +119,7 @@ def divide_history(history: History, number_of_parts: int) -> List[History]:
     return [History(**res) for res in response]
 
 
-def enhance_captions(captions: Captions, history: History) -> Captions:
+def enhance_captions(captions: Captions, history: History, language: Language = Language.PORTUGUESE) -> Captions:
     user_prompt = """
         Conteudo: 
         {content}
@@ -172,11 +131,12 @@ def enhance_captions(captions: Captions, history: History) -> Captions:
         content=history.content,
         captions=captions.model_dump().get("segments"),
     )
+    system_prompt = t(language.value, ENHANCE_CAPTIONS_PROMPT_KEY)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": ENHANCE_CAPTIONS_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         response_format={
