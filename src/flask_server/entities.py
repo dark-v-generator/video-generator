@@ -1,6 +1,7 @@
 from typing import Any, Dict
 from werkzeug.datastructures import ImmutableMultiDict
 
+
 class BaseFormRequest:
     def __init__(self, form: ImmutableMultiDict[str, str]):
         self.data: dict = BaseFormRequest.__build_nested_dict(form.to_dict())
@@ -16,19 +17,20 @@ class BaseFormRequest:
                 sub_data = sub_data[sub_key]
             sub_data[keys[-1]] = value
         return out_data
-    
+
     def get_bool(self, field_name: str, default_value: bool = False) -> bool:
         default = "on" if default_value else "off"
         return self.data.get(field_name, default) == "on"
 
     def get_float(self, field_name: str, default_value: float = 0.0) -> float:
         return float(self.data.get(field_name, str(default_value)))
-    
+
     def get_str(self, field_name: str, default_value: str = "") -> str:
         return self.data.get(field_name, default_value)
-    
+
     def get_int(self, field_name: str, default_value: int = 0) -> int:
         return int(self.data.get(field_name, str(default_value)))
+
 
 class GenerateVideoRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):
@@ -43,12 +45,14 @@ class GenerateVideoRequest(BaseFormRequest):
         self.content = self.get_str("content")
         self.gender = self.get_str("gender")
 
+
 class ScrapRedditPostRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):
         super().__init__(form)
         self.enhance_history = self.get_bool("enhance_history")
         self.url = self.get_str("url")
-        self.language = self.get_str("language", default_value='pt')
+        self.language = self.get_str("language", default_value="pt")
+
 
 class DivideHistoryRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):

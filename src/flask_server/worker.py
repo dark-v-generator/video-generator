@@ -74,6 +74,7 @@ class Worker(threading.Thread):
 
 class FlaskWorker(Flask):
     worker = Worker()
+
     def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
         if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
             with self.app_context():

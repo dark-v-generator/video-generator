@@ -73,7 +73,6 @@ def home():
 @app.route("/srcap_reddit_post", methods=["POST"])
 def srcap_reddit_post():
     req = ScrapRedditPostRequest(request.form)
-    print(req)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     history_service.srcap_reddit_post(
         req.url, req.enhance_history, config, req.language
@@ -137,7 +136,6 @@ def generate_video(history_id):
 @app.route("/history/divide/<history_id>", methods=["POST"])
 def divide_history(history_id):
     req = DivideHistoryRequest(request.form)
-    print(req)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
     history_service.divide_reddit_history(reddit_history, config, req.number_of_parts)

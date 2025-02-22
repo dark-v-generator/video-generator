@@ -25,23 +25,19 @@ FINAL_VIDEO_FILE_NAME = "final_video.mp4"
 
 
 def srcap_reddit_post(
-    post_url: str, 
-    enhance_history: bool, 
+    post_url: str,
+    enhance_history: bool,
     config: MainConfig,
-    language: Language = Language.PORTUGUESE
+    language: Language = Language.PORTUGUESE,
 ) -> RedditHistory:
     reddit_post = reddit_proxy.get_reddit_post(post_url)
     if enhance_history:
         history = open_api_proxy.enhance_history(
-            reddit_post.title, 
-            reddit_post.content, 
-            language=language
+            reddit_post.title, reddit_post.content, language=language
         )
     else:
         history = History(
-            title=reddit_post.title, 
-            content=reddit_post.content, 
-            gender="male"
+            title=reddit_post.title, content=reddit_post.content, gender="male"
         )
     cover = RedditCover(
         image_url=reddit_post.community_url_photo,
@@ -62,6 +58,7 @@ def srcap_reddit_post(
     )
     reddit_history.save_yaml(history_path)
     return reddit_history
+
 
 def get_reddit_history(id: str, config: MainConfig) -> Optional[RedditHistory]:
     history_path = path.join(config.histories_path, id, REDDIT_HISTORY_FILE_NAME)
@@ -93,49 +90,50 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
 
 
 def divide_reddit_history(
-    reddit_history: RedditHistory, 
-    config: MainConfig, 
+    reddit_history: RedditHistory,
+    config: MainConfig,
     number_of_parts: int,
 ) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(
-        reddit_history.history, 
+        reddit_history.history,
         number_of_parts=number_of_parts,
-        language=reddit_history.get_language()
+        language=reddit_history.get_language(),
     )
     reddit_history_params = reddit_history.model_dump()
-    reddit_history_params.pop('id')
-    reddit_history_params.pop('history')
+    reddit_history_params.pop("id")
+    reddit_history_params.pop("history")
     reddit_histories = [
-        RedditHistory(
-            id=str(uuid.uuid4()),
-            history=history,
-            **reddit_history_params
-        )
+        RedditHistory(id=str(uuid.uuid4()), history=history, **reddit_history_params)
         for history in histories
     ]
     for rh in reddit_histories:
         save_reddit_history(rh, config)
     return reddit_histories
 
+
 def __get_speech_text(history: History) -> str:
     return f"{history.title}\n {history.content}"
 
 
 def generate_captions(
-    reddit_history: RedditHistory, 
-    rate: float, 
+    reddit_history: RedditHistory,
+    rate: float,
     config: MainConfig,
     enhance_captions: bool = True,
-    language: Language = Language.PORTUGUESE
+    language: Language = Language.PORTUGUESE,
 ) -> None:
     regular_speech_path = path.join(
         reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
     )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
-    captions = captions_service.generate_captions_from_file(regular_speech_path, language=language)
+    captions = captions_service.generate_captions_from_file(
+        regular_speech_path, language=language
+    )
     captions = captions.with_speed(rate).stripped()
     if enhance_captions:
-        captions = open_api_proxy.enhance_captions(captions, reddit_history.history, language=language)
+        captions = open_api_proxy.enhance_captions(
+            captions, reddit_history.history, language=language
+        )
     captions.save_yaml(captions_path)
     reddit_history.captions_path = str(Path(captions_path).resolve())
     save_reddit_history(reddit_history, config)
@@ -228,14 +226,10 @@ def generate_reddit_video(
     reddit_history.final_video_path = str(Path(video_path).resolve())
     if low_quality:
         final_video.clip.write_videofile(
-            video_path, 
-            logger=logger,
-            ffmpeg_params=config.video_config.ffmpeg_params
+            video_path, logger=logger, ffmpeg_params=config.video_config.ffmpeg_params
         )
     else:
         final_video.clip.write_videofile(
-            video_path, 
-            logger=logger,
-            ffmpeg_params=config.video_config.ffmpeg_params
+            video_path, logger=logger, ffmpeg_params=config.video_config.ffmpeg_params
         )
     save_reddit_history(reddit_history, config)

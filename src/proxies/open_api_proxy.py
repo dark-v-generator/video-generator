@@ -43,13 +43,14 @@ CAPTION_SEGMENT_SCHEMA = {
     },
 }
 
-ENHANCE_CAPTIONS_PROMPT_KEY='enhance_captions_prompt'
-ENHANCE_HISTORY_PROMPT_KEY='enhance_history_prompt'
-DIVIDE_HISTORY_PROMPT_KEY='divide_history_prompt'
+ENHANCE_CAPTIONS_PROMPT_KEY = "enhance_captions_prompt"
+ENHANCE_HISTORY_PROMPT_KEY = "enhance_history_prompt"
+DIVIDE_HISTORY_PROMPT_KEY = "divide_history_prompt"
 
 
-
-def enhance_history(title: str, content: str, language: Language = Language.PORTUGUESE) -> History:
+def enhance_history(
+    title: str, content: str, language: Language = Language.PORTUGUESE
+) -> History:
     user_prompt = """
         Título: {title}
 
@@ -82,7 +83,9 @@ def enhance_history(title: str, content: str, language: Language = Language.PORT
     )
 
 
-def divide_history(history: History, number_of_parts: int, language: Language = Language.PORTUGUESE) -> List[History]:
+def divide_history(
+    history: History, number_of_parts: int, language: Language = Language.PORTUGUESE
+) -> List[History]:
     user_message = """
         Divida essa história em {number_of_parts} partes:
         {history_dump}
@@ -119,7 +122,9 @@ def divide_history(history: History, number_of_parts: int, language: Language = 
     return [History(**res) for res in response]
 
 
-def enhance_captions(captions: Captions, history: History, language: Language = Language.PORTUGUESE) -> Captions:
+def enhance_captions(
+    captions: Captions, history: History, language: Language = Language.PORTUGUESE
+) -> Captions:
     user_prompt = """
         Conteudo: 
         {content}

@@ -22,13 +22,13 @@ class Captions(BaseYAMLModel):
             for segment in self.segments
         ]
         return Captions(segments=new_segments)
+
     def stripped(self) -> "Captions":
         return Captions(
             segments=[
                 CaptionSegment(
-                    start=segment.start,
-                    end=segment.end,
-                    text=segment.text.strip()
-                ) for segment in self.segments
+                    start=segment.start, end=segment.end, text=segment.text.strip()
+                )
+                for segment in self.segments
             ]
         )
