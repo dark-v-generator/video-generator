@@ -120,19 +120,18 @@ def generate_captions(
     rate: float,
     config: MainConfig,
     enhance_captions: bool = True,
-    language: Language = Language.PORTUGUESE,
 ) -> None:
     regular_speech_path = path.join(
         reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
     )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
     captions = captions_service.generate_captions_from_file(
-        regular_speech_path, language=language
+        regular_speech_path, language=reddit_history.get_language()
     )
     captions = captions.with_speed(rate).stripped()
     if enhance_captions:
         captions = open_api_proxy.enhance_captions(
-            captions, reddit_history.history, language=language
+            captions, reddit_history.history, language=reddit_history.get_language()
         )
     captions.save_yaml(captions_path)
     reddit_history.captions_path = str(Path(captions_path).resolve())
@@ -152,8 +151,20 @@ def generate_speech(
     )
 
     gender = speech_service.VoiceGender(history.gender)
-    speech_service.synthesize_speech(text, gender, rate, speech_path)
-    speech_service.synthesize_speech(text, gender, 1.0, regular_speech_path)
+    speech_service.synthesize_speech(
+        text, 
+        gender, 
+        rate, 
+        speech_path,
+        language=reddit_history.get_language()
+    )
+    speech_service.synthesize_speech(
+        text, 
+        gender, 
+        1.0, 
+        regular_speech_path,
+        language=reddit_history.get_language()
+    )
     reddit_history.speech_path = str(Path(speech_path).resolve())
     reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)

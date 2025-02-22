@@ -5,13 +5,8 @@ from enum import Enum
 
 
 class VoiceVariation(Enum):
-    MALE = "pt-BR-AntonioNeural"
-    FEMALE = "pt-BR-ThalitaNeural"
-    MALE_2 = "pt-BR-MacerioMultilingualNeural"
-    MALE_3 = "pt-BR-MacerioMultilingualNeural"
-    FEMALE_2 = "pt-BR-BrendaNeural"
-    FEMALE_3 = "pt-BR-ThalitaNeural"
-    FEMALE_4 = "pt-BR-FranciscaNeural"
+    ANTONIO_NEUTRAL = "pt-BR-AntonioNeural"
+    THALITA_NEUTRAL = "pt-BR-ThalitaNeural"
 
 
 def __get_speech_config():
@@ -47,7 +42,7 @@ def __text_to_ssml(text: str, voice: str, rate: float = 1.0, break_time="1s"):
 
 def synthesize_speech(
     text: str,
-    voice_variation: VoiceVariation = VoiceVariation.MALE,
+    voice_variation: VoiceVariation = VoiceVariation.ANTONIO_NEUTRAL,
     rate: float = 1.0,
     output_path: str = "output.mp3",
 ) -> str:
@@ -55,7 +50,8 @@ def synthesize_speech(
     speech_config.speech_synthesis_voice_name = voice_variation.value
     audio_config = speechsdk.AudioConfig(filename=output_path)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
-        speech_config=speech_config, audio_config=audio_config
+        speech_config=speech_config, 
+        audio_config=audio_config
     )
     ssml_text = __text_to_ssml(
         text, voice=voice_variation.value, rate=rate, break_time="300ms"
@@ -69,18 +65,3 @@ def synthesize_speech(
                 print("Error details: {}".format(cancellation_details.error_details))
         raise "Unable to convert azure speech"
 
-
-if __name__ == "__main__":
-    synthesize_speech(
-        """
-            Você quer que nós terminemos? TUDO BEM - Parte 2
-
-
-            Então, essa mulher tem me chamado incessantemente, implorando para conversar
-            e, após apenas 8 dias, ela apareceu no meu trabalho para se desculpar completamente, com uma confissão
-            que ME DEIXOU CHOCADA. 
-        """,
-        VoiceVariation.FEMALE,
-    )
-
-    speechsdk.SpeechRecognizer
