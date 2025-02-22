@@ -7,6 +7,8 @@ from enum import Enum
 class VoiceVariation(Enum):
     ANTONIO_NEUTRAL = "pt-BR-AntonioNeural"
     THALITA_NEUTRAL = "pt-BR-ThalitaNeural"
+    AVA_NEUTRAL = "en-US-AvaMultilingualNeural"
+    ANDREW_NEUTRAL = "en-US-AndrewMultilingualNeural"
 
 
 def __get_speech_config():

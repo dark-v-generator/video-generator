@@ -35,7 +35,7 @@ def __get_azure_voice_variation(gender: VoiceGender,language: Language) -> azure
         case Language.ENGLISH:
             match gender:
                 case VoiceGender.MALE:
-                    return azure_proxy.VoiceVariation.ANTONIO_NEUTRAL
+                    return azure_proxy.VoiceVariation.ANDREW_NEUTRAL
                 case VoiceGender.FEMALE:
-                    return azure_proxy.VoiceVariation.THALITA_NEUTRAL
+                    return azure_proxy.VoiceVariation.AVA_NEUTRAL
     raise "No voice variation found" 

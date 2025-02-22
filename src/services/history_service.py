@@ -86,7 +86,8 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
         return []
     directories = os.listdir(config.histories_path)
     result = [get_reddit_history(directory, config) for directory in directories]
-    return [x for x in result if x is not None]
+    result = [x for x in result if x is not None]
+    return sorted(result, key=lambda x: x.last_updated_at, reverse=True)
 
 
 def divide_reddit_history(
