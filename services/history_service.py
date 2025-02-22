@@ -2,13 +2,14 @@ from os import path
 import os
 from pathlib import Path
 import shutil
-from typing import List
+from typing import List, Optional
 import uuid
 from entities.captions import Captions
 from entities.config import MainConfig
 from entities.cover import RedditCover
 from entities.editor import audio_clip, captions_clip, image_clip
 from entities.history import History
+from entities.language import Language
 from entities.reddit_history import RedditHistory
 from proxies import reddit_proxy
 import proxies.open_api_proxy as open_api_proxy
@@ -24,14 +25,23 @@ FINAL_VIDEO_FILE_NAME = "final_video.mp4"
 
 
 def srcap_reddit_post(
-    post_url: str, enhance_history: bool, config: MainConfig
+    post_url: str, 
+    enhance_history: bool, 
+    config: MainConfig,
+    language: Language = Language.PORTUGUESE
 ) -> RedditHistory:
     reddit_post = reddit_proxy.get_reddit_post(post_url)
     if enhance_history:
-        history = open_api_proxy.enhance_history(reddit_post.title, reddit_post.content)
+        history = open_api_proxy.enhance_history(
+            reddit_post.title, 
+            reddit_post.content, 
+            language=language
+        )
     else:
         history = History(
-            title=reddit_post.title, content=reddit_post.content, gender="male"
+            title=reddit_post.title, 
+            content=reddit_post.content, 
+            gender="male"
         )
     cover = RedditCover(
         image_url=reddit_post.community_url_photo,
@@ -53,7 +63,7 @@ def srcap_reddit_post(
     reddit_history.save_yaml(history_path)
     return reddit_history
 
-def get_reddit_history(id: str, config: MainConfig) -> RedditHistory:
+def get_reddit_history(id: str, config: MainConfig) -> Optional[RedditHistory]:
     history_path = path.join(config.histories_path, id, REDDIT_HISTORY_FILE_NAME)
     if not os.path.isfile(history_path):
         return None
@@ -82,22 +92,31 @@ def list_histories(config: MainConfig) -> List[RedditHistory]:
     return [x for x in result if x is not None]
 
 
-def split_reddit_history(
-    reddit_history: RedditHistory, config: MainConfig, number_of_parts
+def divide_reddit_history(
+    reddit_history: RedditHistory, 
+    config: MainConfig, 
+    number_of_parts: int,
+    language: Language = Language.PORTUGUESE,
 ) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(
-        reddit_history.history, number_of_parts=number_of_parts
+        reddit_history.history, 
+        number_of_parts=number_of_parts,
+        language=language
     )
+    reddit_history_params = reddit_history.model_dump()
+    reddit_history_params.pop('id')
+    reddit_history_params.pop('history')
     reddit_histories = [
         RedditHistory(
-            **{**reddit_history.model_dump(), history: history, id: str(uuid.uuid4())}
+            id=str(uuid.uuid4()),
+            history=history,
+            **reddit_history_params
         )
         for history in histories
     ]
     for rh in reddit_histories:
         save_reddit_history(rh, config)
-    delete_reddit_history(reddit_history.id, config)
-
+    return reddit_histories
 
 def __get_speech_text(history: History) -> str:
     return f"{history.title}\n {history.content}"
@@ -108,15 +127,16 @@ def generate_captions(
     rate: float, 
     config: MainConfig,
     enhance_captions: bool = True,
+    language: Language = Language.PORTUGUESE
 ) -> None:
     regular_speech_path = path.join(
         reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
     )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
-    captions = captions_service.generate_captions_from_file(regular_speech_path)
+    captions = captions_service.generate_captions_from_file(regular_speech_path, language=language)
     captions = captions.with_speed(rate).stripped()
     if enhance_captions:
-        captions = open_api_proxy.enhance_captions(captions, reddit_history.history)
+        captions = open_api_proxy.enhance_captions(captions, reddit_history.history, language=language)
     captions.save_yaml(captions_path)
     reddit_history.captions_path = str(Path(captions_path).resolve())
     save_reddit_history(reddit_history, config)

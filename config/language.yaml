@@ -40,7 +40,12 @@ pt:
     Evite paráfrases ou mudanças no estilo narrativo.
     '
   divide_history_prompt: '
-    Eu vou te passar uma história grande e você deve dividila em partes, sem alterar o conteúdo, mantendo o conteúdo original.
-    As partes serão publicadas nas redes sociais, portanto divida em um momento chave da história para que a atenção do ouvinte
-    seja atraída, e insira ao final trechos para interação como "Curta e me siga para parte 2".
+    Eu vou te passar uma história e você deve dividila em partes, colocando ao final de cada parte o texto "Curta e me siga para parte X"
+    sendo X o numero da proxima parte. Divida a história em um trecho onde as partes fiquem com tamanhos parecidos.
+    Além disso você deve adicionar no título de cada parte um "Parte X" ao final sendo X o número da parte
+
+    Proibições:
+    * Não altere nada do texto original, não modifique o conteúdo, nem a ordem nem a estrutura do texto
+    * Não adicione nem remova nada, com exceção do que foi passado
+    * Na parte final não adicione nada ao final, pois não terá uma próxima parte
     '

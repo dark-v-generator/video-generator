@@ -72,7 +72,7 @@ def srcap_reddit_post():
     reddit_history = history_service.srcap_reddit_post(req.url, req.enhance_history, config)
 
     if req.number_of_parts > 1:
-        history_service.split_reddit_history(reddit_history, config, req.number_of_parts)
+        history_service.divide_reddit_history(reddit_history, config, req.number_of_parts)
     return redirect(url_for("home"))
 
 

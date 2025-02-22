@@ -58,7 +58,7 @@ def enhance_history(title: str, content: str, language: Language = Language.PORT
         title=title,
         content=content,
     )
-    system_prompt = t(language.value, ENHANCE_HISTORY_PROMPT_KEY)
+    system_prompt = t(language, ENHANCE_HISTORY_PROMPT_KEY)
 
     client = OpenAI()
     response = client.chat.completions.create(
@@ -90,7 +90,7 @@ def divide_history(history: History, number_of_parts: int, language: Language = 
         history_dump=history.model_dump(),
         number_of_parts=number_of_parts,
     )
-    system_prompt = t(language.value, DIVIDE_HISTORY_PROMPT_KEY)
+    system_prompt = t(language, DIVIDE_HISTORY_PROMPT_KEY)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -131,7 +131,7 @@ def enhance_captions(captions: Captions, history: History, language: Language = 
         content=history.content,
         captions=captions.model_dump().get("segments"),
     )
-    system_prompt = t(language.value, ENHANCE_CAPTIONS_PROMPT_KEY)
+    system_prompt = t(language, ENHANCE_CAPTIONS_PROMPT_KEY)
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4o-mini",

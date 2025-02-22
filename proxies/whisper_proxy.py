@@ -1,10 +1,11 @@
 import whisper
 from entities.captions import CaptionSegment, Captions
+from entities.language import Language
 
 
-def generate_captions(audio_path: str) -> Captions:
+def generate_captions(audio_path: str, language: Language=Language.PORTUGUESE) -> Captions:
     model = whisper.load_model("base")
-    output = model.transcribe(audio_path, word_timestamps=True, language="pt")
+    output = model.transcribe(audio_path, word_timestamps=True, language=language.value)
 
     caption_segments = []
     for segment in output["segments"]:

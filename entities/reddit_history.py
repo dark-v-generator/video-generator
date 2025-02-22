@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 from pydantic import Field
 from entities.base_yaml_model import BaseYAMLModel
@@ -15,3 +16,8 @@ class RedditHistory(BaseYAMLModel):
     cover_path: str = Field("")
     folder_path: str = Field("")
     final_video_path: str = Field("")
+    last_updated_at: datetime = Field(datetime.now())
+
+    def save_yaml(self, output_path):
+        self.last_updated_at = datetime.now()
+        super().save_yaml(output_path)
