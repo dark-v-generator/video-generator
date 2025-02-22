@@ -1,0 +1,151 @@
+.row {
+    display: flex;
+    flex-direction: row;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+}
+
+.w200 {
+    width: 200px;
+}
+
+.g10 {
+    gap: 10px;
+}
+
+.p10 {
+    padding: 10px;
+}
+
+.vertical-divider {
+    height: '100%';
+    width: 5px;
+    background-color: #CAC4D0;
+    margin-left: 10px;
+    right: 410px;
+    margin-right: 400px;
+}
+
+label {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    font-size: 16;
+}
+
+input[type="text"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 16px;
+    padding: 10px;
+    width: 100%;
+}
+input[type="url"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 16px;
+    padding: 10px;
+    width: 100%;
+}
+
+
+input[type="number"] {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 16px;
+    padding: 10px;
+}
+
+input[type="checkbox"] {
+    accent-color: #2C2C2C;
+    width: 15px;
+    height: 15px;
+}
+
+select {
+    border-color: #D9D9D9;
+    background-color: #FFFFFF;
+    color: #1E1E1E;
+    padding: 10px;
+    font-size: 14px;
+    border-radius: 8px;
+    width: 200px;
+}
+
+textarea {
+    font-family: 'Inter';
+    color: #1E1E1E;
+    display: flex;
+    border: 1px solid #D9D9D9;
+    border-radius: 8px;
+    font-size: 15px;
+    padding: 10px;
+    field-sizing: content;
+    width: 100%;
+}
+
+.delete-button button {
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #EC221F;
+    border-color: #900B09;
+    border-width: 1px;
+    color: #FEE9E7;
+    border: none;
+}
+
+.delete-button button:hover {
+    background-color: #1E1E1E;
+}
+
+.primary-button button {
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #2C2C2C;
+    border-color: #2C2C2C;
+    border-width: 1px;
+    color: #F5F5F5;
+    border: none;
+}
+
+.primary-button button:hover {
+    background-color: #1E1E1E;
+}
+
+.link-button a {
+    text-decoration: none;
+    font-family: 'Inter';
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 12px;
+    background-color: #E3E3E3;
+    border-color: #767676;
+    border-width: 1px;
+    color: #1E1E1E;
+}
+
+.link-button a:hover {
+    background-color: #CDCDCD;
+}
+
+.horizontal-divider {
+    height: 1px;
+    width: '100%';
+    background-color: #CAC4D0;
+    margin-top: 10px;
+}

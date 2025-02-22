@@ -1,13 +1,13 @@
-from entities.captions import Captions
-from proxies import open_api_proxy
-from services import config_service, history_service
 
 
-config = config_service.get_main_config("config.yaml")
-history_id = '440ef369-a1c8-4e48-baf3-325d903960be'
+from src.entities.reddit_history import RedditHistory
+from src.services import config_service, history_service
 
-reddit_history = history_service.get_reddit_history(history_id, config=config)
-captions = Captions.from_yaml(reddit_history.captions_path).stripped()
-captions.save_yaml('original_captions.yaml')
-new_captions = open_api_proxy.enhance_captions(captions, reddit_history.history)
-new_captions.save_yaml('new_captions.yaml')
+config = config_service.get_main_config()
+history_id='8d898bec-8374-4074-a292-da9475447449'
+reddit_history: RedditHistory = history_service.get_reddit_history(history_id, config)
+new_histories = history_service.divide_reddit_history(reddit_history, config, 2)
+for rhistory in new_histories:
+    history=rhistory.history
+    print(history.title)
+    print(history.content)

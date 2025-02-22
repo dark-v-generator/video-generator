@@ -1,4 +1,4 @@
-from flask_server import app as flask_server
+from src.flask_server import app as flask_server
 import socket
 
 def get_local_ip():
