@@ -67,11 +67,8 @@ en:
     * Do not merge captions unnecessarily; the format should remain one word per segment.'
   enhance_history_prompt: ' 
     Correct the punctuation (commas, periods, exclamation marks, question marks) and replace abbreviations with complete words, e.g.:
-    * "Eu H20" -> "I am a 20-year-old man"
-    * "Eu M24" -> "I am a 24-year-old man"
-    * "vc" -> "you"
-    * "pq" -> "because"
-    * "tbm" -> "also"
+    * "I 20M" -> "I am a 20-year-old man"
+    * "I 24F" -> "I am a 24-year-old man"
 
     Requirements:
     * Do not alter the content, tone, or structure of the story.

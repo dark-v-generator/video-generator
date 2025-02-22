@@ -75,7 +75,10 @@ def srcap_reddit_post():
     req = ScrapRedditPostRequest(request.form)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     history_service.srcap_reddit_post(
-        req.url, req.enhance_history, config, req.language
+        req.url, 
+        req.enhance_history, 
+        config, 
+        req.language
     )
     return redirect(url_for("home"))
 

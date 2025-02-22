@@ -1,6 +1,8 @@
 from typing import Any, Dict
 from werkzeug.datastructures import ImmutableMultiDict
 
+from src.entities.language import Language
+
 
 class BaseFormRequest:
     def __init__(self, form: ImmutableMultiDict[str, str]):
@@ -31,6 +33,12 @@ class BaseFormRequest:
     def get_int(self, field_name: str, default_value: int = 0) -> int:
         return int(self.data.get(field_name, str(default_value)))
 
+    def get_language(self, field_name: str, default_value: Language = Language.PORTUGUESE) -> Language:
+        res = self.data.get(field_name)
+        if not res:
+            return default_value
+        return Language(res)
+
 
 class GenerateVideoRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):
@@ -51,7 +59,7 @@ class ScrapRedditPostRequest(BaseFormRequest):
         super().__init__(form)
         self.enhance_history = self.get_bool("enhance_history")
         self.url = self.get_str("url")
-        self.language = self.get_str("language", default_value="pt")
+        self.language = self.get_language("language", default_value=Language.PORTUGUESE)
 
 
 class DivideHistoryRequest(BaseFormRequest):

@@ -33,7 +33,9 @@ def srcap_reddit_post(
     reddit_post = reddit_proxy.get_reddit_post(post_url)
     if enhance_history:
         history = open_api_proxy.enhance_history(
-            reddit_post.title, reddit_post.content, language=language
+            reddit_post.title,
+            reddit_post.content,
+            language=language,
         )
     else:
         history = History(
@@ -55,6 +57,7 @@ def srcap_reddit_post(
         cover=cover,
         history=history.striped(),
         folder_path=str(Path(folder_path).resolve()),
+        language=language.value,
     )
     reddit_history.save_yaml(history_path)
     return reddit_history
@@ -153,18 +156,10 @@ def generate_speech(
 
     gender = speech_service.VoiceGender(history.gender)
     speech_service.synthesize_speech(
-        text, 
-        gender, 
-        rate, 
-        speech_path,
-        language=reddit_history.get_language()
+        text, gender, rate, speech_path, language=reddit_history.get_language()
     )
     speech_service.synthesize_speech(
-        text, 
-        gender, 
-        1.0, 
-        regular_speech_path,
-        language=reddit_history.get_language()
+        text, gender, 1.0, regular_speech_path, language=reddit_history.get_language()
     )
     reddit_history.speech_path = str(Path(speech_path).resolve())
     reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
