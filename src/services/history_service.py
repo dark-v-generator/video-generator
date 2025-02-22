@@ -96,12 +96,11 @@ def divide_reddit_history(
     reddit_history: RedditHistory, 
     config: MainConfig, 
     number_of_parts: int,
-    language: Language = Language.PORTUGUESE,
 ) -> List[RedditHistory]:
     histories = open_api_proxy.divide_history(
         reddit_history.history, 
         number_of_parts=number_of_parts,
-        language=language
+        language=reddit_history.get_language()
     )
     reddit_history_params = reddit_history.model_dump()
     reddit_history_params.pop('id')

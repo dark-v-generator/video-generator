@@ -39,10 +39,18 @@ class GenerateVideoRequest(BaseFormRequest):
         self.cover = self.get_bool("cover")
         self.rate = self.get_float("rate", default_value=1.5)
         self.enhance_captions = self.get_bool("enhance_captions", default_value=True)
+        self.title = self.get_str("title")
+        self.content = self.get_str("content")
+        self.gender = self.get_str("gender")
 
 class ScrapRedditPostRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):
         super().__init__(form)
         self.enhance_history = self.get_bool("enhance_history")
         self.url = self.get_str("url")
-        self.number_of_parts = self.get_int("number_of_parts", default_value=1)
+        self.language = self.get_str("language", default_value='pt')
+
+class DivideHistoryRequest(BaseFormRequest):
+    def __init__(self, form: ImmutableMultiDict[str, str]):
+        super().__init__(form)
+        self.number_of_parts = self.get_int("number_of_parts", default_value=2)

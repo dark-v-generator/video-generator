@@ -1,6 +1,10 @@
 from flask import jsonify, render_template
 from flask import render_template, request, redirect, url_for
-from src.flask_server.entities import GenerateVideoRequest, ScrapRedditPostRequest
+from src.flask_server.entities import (
+    DivideHistoryRequest,
+    GenerateVideoRequest,
+    ScrapRedditPostRequest,
+)
 from src.services import config_service
 from src.flask_server.progress import (
     get_progress_bars,
@@ -13,9 +17,7 @@ CONFIG_FILE_PATH = "config/base.yaml"
 
 
 app = FlaskWorker(
-    __name__,
-    static_folder='../../web/static/',
-    template_folder='../../web/templates/'
+    __name__, static_folder="../../web/static/", template_folder="../../web/templates/"
 )
 
 
@@ -71,11 +73,11 @@ def home():
 @app.route("/srcap_reddit_post", methods=["POST"])
 def srcap_reddit_post():
     req = ScrapRedditPostRequest(request.form)
+    print(req)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
-    reddit_history = history_service.srcap_reddit_post(req.url, req.enhance_history, config)
-
-    if req.number_of_parts > 1:
-        history_service.divide_reddit_history(reddit_history, config, req.number_of_parts)
+    history_service.srcap_reddit_post(
+        req.url, req.enhance_history, config, req.language
+    )
     return redirect(url_for("home"))
 
 
@@ -101,15 +103,22 @@ def generate_video(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
     req = GenerateVideoRequest(request.form)
+    history = reddit_history.history
+    if req.title:
+        history.title = req.title
+    if req.content:
+        history.content = req.content
+    if req.gender:
+        history.gender = req.gender
+    reddit_history.history = history
+    history_service.save_reddit_history(reddit_history, config)
+
     def generate_video():
         if req.speech:
             history_service.generate_speech(reddit_history, req.rate, config)
         if req.captions:
             history_service.generate_captions(
-                reddit_history, 
-                req.rate, 
-                config, 
-                enhance_captions=req.enhance_captions
+                reddit_history, req.rate, config, enhance_captions=req.enhance_captions
             )
         if req.cover:
             history_service.generate_cover(reddit_history, config)
@@ -122,6 +131,16 @@ def generate_video(history_id):
 
     app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
 
+    return redirect(url_for("home"))
+
+
+@app.route("/history/divide/<history_id>", methods=["POST"])
+def divide_history(history_id):
+    req = DivideHistoryRequest(request.form)
+    print(req)
+    config = config_service.get_main_config(CONFIG_FILE_PATH)
+    reddit_history = history_service.get_reddit_history(history_id, config)
+    history_service.divide_reddit_history(reddit_history, config, req.number_of_parts)
     return redirect(url_for("home"))
 
 

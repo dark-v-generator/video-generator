@@ -26,7 +26,30 @@
         </div>
     </div>
 
-
+    <form action="/history/divide/{{ reddit_history.id }}" method="POST">
+        <div class="column">
+            <div class="input-container column">
+                <label for="gender"> Número de partes</label>
+                <select name="number_of_parts" id="number_of_parts">
+                    <option value="2">
+                        2
+                    </option>
+                    <option value="3">
+                        3
+                    </option>
+                    <option value="4">
+                        4
+                    </option>
+                    <option value="5">
+                        5
+                    </option>
+                </select>
+            </div>
+            <div class="primary-button">
+                <button type="submit" class="action-button">Dividir história</button>
+            </div>
+        </div>
+    </form>
     <div class="main-container">
         <form action="/history/generate-video/{{ reddit_history.id }}" method="POST">
             <div class="left-container">
@@ -78,17 +101,24 @@
                         <label for="captions">Gerar legendas</label>
                     </div>
                     <div class="input-container g10 w200">
+                        <input id="enhance_captions" type="checkbox" name="enhance_captions" {% if not
+                            static_path(reddit_history.captions_path) %}checked{% endif %}>
+                        <label for="enhance_captions">Aprimorar legendas (IA)</label>
+                    </div>
+                </div>
+                <div class="row g10">
+                    <div class="input-container g10 w200">
                         <input id="speech" type="checkbox" name="speech" {% if not
                             static_path(reddit_history.speech_path) %}checked{% endif %}>
                         <label for="speech">Gerar narração</label>
                     </div>
-                </div>
-                <div class="row g10">
                     <div class="input-container g10 w200">
                         <input id="cover" type="checkbox" name="cover" {% if not static_path(reddit_history.cover_path)
                             %}checked{% endif %}>
                         <label for="cover">Gerar capa</label>
                     </div>
+                </div>
+                <div class="row g10">
                     <div class="input-container g10 w200">
                         <input id="low_quality" type="checkbox" name="low_quality" checked>
                         <label for="low_quality">Baixa qualidade</label>
