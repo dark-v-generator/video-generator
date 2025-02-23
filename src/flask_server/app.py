@@ -120,7 +120,10 @@ def generate_video(history_id):
             history_service.generate_speech(reddit_history, req.rate, config)
         if req.captions:
             history_service.generate_captions(
-                reddit_history, req.rate, config, enhance_captions=req.enhance_captions
+                reddit_history, 
+                req.rate, 
+                config, 
+                enhance_captions=req.enhance_captions
             )
         if req.cover:
             history_service.generate_cover(reddit_history, config)

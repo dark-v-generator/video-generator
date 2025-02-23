@@ -125,15 +125,15 @@ def generate_captions(
     config: MainConfig,
     enhance_captions: bool = True,
 ) -> None:
-    regular_speech_path = path.join(
-        reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
-    )
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
+    print("Generating captions...")
     captions = captions_service.generate_captions_from_file(
-        regular_speech_path, language=reddit_history.get_language()
+        reddit_history.speech_path, 
+        language=reddit_history.get_language()
     )
-    captions = captions.with_speed(rate).stripped()
+    captions = captions.stripped()
     if enhance_captions:
+        print("Enhancing captions...")
         captions = open_api_proxy.enhance_captions(
             captions, reddit_history.history, language=reddit_history.get_language()
         )
@@ -150,19 +150,24 @@ def generate_speech(
     history = reddit_history.history
     text = __get_speech_text(reddit_history.history)
     speech_path = path.join(reddit_history.folder_path, SPEECH_FILE_NAME)
-    regular_speech_path = path.join(
-        reddit_history.folder_path, REGULAR_SPEECH_FILE_NAME
-    )
+
 
     gender = speech_service.VoiceGender(history.gender)
+    print("Syntesizing speech...")
     speech_service.synthesize_speech(
         text, gender, rate, speech_path, language=reddit_history.get_language()
     )
-    speech_service.synthesize_speech(
-        text, gender, 1.0, regular_speech_path, language=reddit_history.get_language()
-    )
+
+    # regular_speech_path = path.join(
+    #     reddit_history.folder_path, 
+    #     REGULAR_SPEECH_FILE_NAME
+    # )
+    # speech_service.synthesize_speech(
+    #     text, gender, 1.0, regular_speech_path, language=reddit_history.get_language()
+    # )    
+    # reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
+
     reddit_history.speech_path = str(Path(speech_path).resolve())
-    reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
     save_reddit_history(reddit_history, config)
 
 
