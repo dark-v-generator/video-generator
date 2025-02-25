@@ -43,12 +43,12 @@ class BaseFormRequest:
 class GenerateVideoRequest(BaseFormRequest):
     def __init__(self, form: ImmutableMultiDict[str, str]):
         super().__init__(form)
-        self.low_quality = self.get_bool("low_quality")
+        self.low_quality = self.get_bool("low-quality")
         self.captions = self.get_bool("captions")
         self.speech = self.get_bool("speech")
         self.cover = self.get_bool("cover")
         self.rate = self.get_float("rate", default_value=1.5)
-        self.enhance_captions = self.get_bool("enhance_captions", default_value=True)
+        self.enhance_captions = self.get_bool("enhance-captions")
         self.title = self.get_str("title")
         self.content = self.get_str("content")
         self.gender = self.get_str("gender")

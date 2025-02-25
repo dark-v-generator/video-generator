@@ -96,16 +96,23 @@ def generate_video(history_id):
         history.gender = req.gender
     reddit_history.history = history
     history_service.save_reddit_history(reddit_history, config)
-    def generate_video():
-        bar_logger = FlaskProgressBarLogger(task_id=reddit_history.id)
-        app.create_progress_bar(bar_logger)
+    bar_logger = FlaskProgressBarLogger(task_id=reddit_history.id)
+    app.create_progress_bar(bar_logger)
+    
+    def generate_video(bar_logger: FlaskProgressBarLogger):
         if req.speech:
             bar_logger.log_message("Generating speech...")
             history_service.generate_speech(reddit_history, req.rate, config)
         if req.captions:
-            bar_logger.log_message("Generating captions...")
+            if req.enhance_captions:
+                bar_logger.log_message("Generating enhanced captions...")
+            else:
+                bar_logger.log_message("Generating captions...")
             history_service.generate_captions(
-                reddit_history, req.rate, config, enhance_captions=req.enhance_captions
+                reddit_history,
+                req.rate, 
+                config, 
+                enhance_captions=req.enhance_captions
             )
         if req.cover:
             bar_logger.log_message("Generating cover...")
@@ -118,7 +125,7 @@ def generate_video(history_id):
             logger=bar_logger,
         )
 
-    app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
+    app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video, args=(bar_logger,)))
 
     return redirect(url_for("home"))
 
