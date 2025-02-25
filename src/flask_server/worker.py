@@ -1,5 +1,3 @@
-import os
-from flask import Flask
 from queue import Queue
 import threading
 import uuid
@@ -70,16 +68,3 @@ class Worker(threading.Thread):
             self.clean_finished_jobs()
             if not self.start_next_job():
                 time.sleep(self.wait_for_new_job)
-
-
-class FlaskWorker(Flask):
-    worker = Worker()
-
-    def run(self, host=None, port=None, debug=None, load_dotenv=True, **options):
-        if not self.debug or os.getenv("WERKZEUG_RUN_MAIN") == "true":
-            with self.app_context():
-                print("Starting worker")
-                self.worker.start()
-        super(FlaskWorker, self).run(
-            host=host, port=port, debug=debug, load_dotenv=load_dotenv, **options
-        )

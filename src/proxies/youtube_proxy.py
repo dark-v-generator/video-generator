@@ -3,12 +3,12 @@ import tempfile
 from googleapiclient.discovery import build
 from pytubefix import YouTube
 from proglog import ProgressBarLogger, TqdmProgressBarLogger
+from src.flask_server.progress import FlaskProgressBarLogger
 from src.entities.editor.video_clip import VideoClip
 
 
 def __get_youtube_service():
     return build("youtube", "v3", developerKey=os.environ.get("YOUTUBE_API_KEY"))
-
 
 def get_video_ids(channel_id, max_results=500):
     youtube = __get_youtube_service()
@@ -37,9 +37,11 @@ def __download_youtube_stream(
         stream = streams.first()
 
     def progress_callback(stream, chunk, bytes_remaining):
-        logger.bars_callback("video_download", "index", len(chunk), None)
+        if isinstance(logger, FlaskProgressBarLogger):
+            logger.bars_callback("video_download", "index", len(chunk), None)
 
-    logger.bars_callback("video_download", "total", stream.filesize, None)
+    if isinstance(logger, FlaskProgressBarLogger):
+        logger.bars_callback("video_download", "total", stream.filesize, None)
     yt.register_on_progress_callback(progress_callback)
     stream.download(output_path=output_path, filename=filename)
 

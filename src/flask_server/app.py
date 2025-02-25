@@ -1,3 +1,4 @@
+from threading import Lock
 from flask import jsonify, render_template
 from flask import render_template, request, redirect, url_for
 from src.flask_server.entities import (
@@ -7,17 +8,18 @@ from src.flask_server.entities import (
 )
 from src.services import config_service
 from src.flask_server.progress import (
-    get_progress_bars,
     FlaskProgressBarLogger,
 )
 from src.services import history_service
-from src.flask_server.worker import FlaskWorker, WorkerJob
+from src.flask_server.worker import WorkerJob
+from src.flask_server.flask_worker import FlaskWorker
 
 CONFIG_FILE_PATH = "config/base.yaml"
 
-
 app = FlaskWorker(
-    __name__, static_folder="../../web/static/", template_folder="../../web/templates/"
+    __name__, 
+    static_folder="../../web/static/", 
+    template_folder="../../web/templates/"
 )
 
 
@@ -40,28 +42,11 @@ def __get_context():
     }
 
 
-def get_tasks_status():
-    worker_status = app.worker.get_status()
-    response = worker_status
-    progress_bars = get_progress_bars()
-    for worker_id in worker_status.keys():
-        response[worker_id] = {
-            **progress_bars.get(worker_id, {}),
-            "queue_status": response.get(worker_id),
-        }
-    return response
-
-
-def progress_bar_exists(task_id: str) -> bool:
-    tasks_status = get_tasks_status()
-    return task_id in tasks_status
-
-
 @app.route("/")
 def home():
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_histories = history_service.list_histories(config)
-    tasks_status = get_tasks_status()
+    tasks_status = app.get_tasks_status()
     return render_template(
         "index.html",
         reddit_histories=reddit_histories,
@@ -75,10 +60,7 @@ def srcap_reddit_post():
     req = ScrapRedditPostRequest(request.form)
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     history_service.srcap_reddit_post(
-        req.url, 
-        req.enhance_history, 
-        config, 
-        req.language
+        req.url, req.enhance_history, config, req.language
     )
     return redirect(url_for("home"))
 
@@ -88,7 +70,7 @@ def history_details(history_id):
     config = config_service.get_main_config(CONFIG_FILE_PATH)
     reddit_history = history_service.get_reddit_history(history_id, config)
     show_loading = request.args.get("show_loading", "false").lower() == "true"
-    if not show_loading and progress_bar_exists(reddit_history.id):
+    if not show_loading and app.task_exists(reddit_history.id):
         return redirect(
             url_for("history_details", history_id=history_id, show_loading=True)
         )
@@ -114,24 +96,26 @@ def generate_video(history_id):
         history.gender = req.gender
     reddit_history.history = history
     history_service.save_reddit_history(reddit_history, config)
-
     def generate_video():
+        bar_logger = FlaskProgressBarLogger(task_id=reddit_history.id)
+        app.create_progress_bar(bar_logger)
         if req.speech:
+            bar_logger.log_message("Generating speech...")
             history_service.generate_speech(reddit_history, req.rate, config)
         if req.captions:
+            bar_logger.log_message("Generating captions...")
             history_service.generate_captions(
-                reddit_history, 
-                req.rate, 
-                config, 
-                enhance_captions=req.enhance_captions
+                reddit_history, req.rate, config, enhance_captions=req.enhance_captions
             )
         if req.cover:
+            bar_logger.log_message("Generating cover...")
             history_service.generate_cover(reddit_history, config)
+        bar_logger.log_message("Generating video...")
         history_service.generate_reddit_video(
             reddit_history,
             config,
             low_quality=req.low_quality,
-            logger=FlaskProgressBarLogger(task_id=reddit_history.id),
+            logger=bar_logger,
         )
 
     app.worker.put(WorkerJob(id=reddit_history.id, target=generate_video))
@@ -157,7 +141,7 @@ def delete_reddit_history(history_id):
 
 @app.route("/bars_progress/")
 def verify_progress():
-    return jsonify(get_tasks_status())
+    return jsonify(app.get_tasks_status())
 
 
 if __name__ == "__main__":

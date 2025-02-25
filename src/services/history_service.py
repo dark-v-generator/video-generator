@@ -103,15 +103,25 @@ def divide_reddit_history(
         number_of_parts=number_of_parts,
         language=reddit_history.get_language(),
     )
-    reddit_history_params = reddit_history.model_dump()
-    reddit_history_params.pop("id")
-    reddit_history_params.pop("history")
-    reddit_histories = [
-        RedditHistory(id=str(uuid.uuid4()), history=history, **reddit_history_params)
-        for history in histories
-    ]
-    for rh in reddit_histories:
-        save_reddit_history(rh, config)
+    reddit_histories = []
+    for history in histories:
+        history_id = str(uuid.uuid4())
+        history_path = str(Path(path.join(config.histories_path, history_id)).resolve())
+        cover = RedditCover(
+            image_url=reddit_history.cover.image_url,
+            author=reddit_history.cover.author,
+            community=reddit_history.cover.community,
+            title=history.title,
+        )
+        new_history = RedditHistory(
+            id=history_id,
+            cover=cover,
+            history=history.striped(),
+            folder_path=history_path,
+            language=reddit_history.language,
+        )
+        reddit_histories.append(new_history)
+        save_reddit_history(new_history, config)        
     return reddit_histories
 
 
@@ -128,8 +138,7 @@ def generate_captions(
     captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
     print("Generating captions...")
     captions = captions_service.generate_captions_from_file(
-        reddit_history.speech_path, 
-        language=reddit_history.get_language()
+        reddit_history.speech_path, language=reddit_history.get_language()
     )
     captions = captions.stripped()
     if enhance_captions:
@@ -151,7 +160,6 @@ def generate_speech(
     text = __get_speech_text(reddit_history.history)
     speech_path = path.join(reddit_history.folder_path, SPEECH_FILE_NAME)
 
-
     gender = speech_service.VoiceGender(history.gender)
     print("Syntesizing speech...")
     speech_service.synthesize_speech(
@@ -159,12 +167,12 @@ def generate_speech(
     )
 
     # regular_speech_path = path.join(
-    #     reddit_history.folder_path, 
+    #     reddit_history.folder_path,
     #     REGULAR_SPEECH_FILE_NAME
     # )
     # speech_service.synthesize_speech(
     #     text, gender, 1.0, regular_speech_path, language=reddit_history.get_language()
-    # )    
+    # )
     # reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
 
     reddit_history.speech_path = str(Path(speech_path).resolve())

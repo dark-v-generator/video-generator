@@ -47,13 +47,9 @@
         <div class="container">
             {% for reddit_history in reddit_histories %}
             <div class="reddit-history-card g10">
-                {% if tasks_status.get(reddit_history.id, {}).get('queue_status') == 'on_queue' %}
+                {% if tasks_status.get(reddit_history.id, {}).get('message') %}
                 <div>
-                    Na fila para ser processado...
-                </div>
-                {% elif tasks_status.get(reddit_history.id, {}).get('queue_status') == 'running' %}
-                <div>
-                    Processando...
+                    {{ tasks_status.get(reddit_history.id, {}).get('message') }}
                 </div>
                 {% endif %}
                 {% if static_path(reddit_history.cover_path) %}
