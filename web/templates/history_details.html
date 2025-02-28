@@ -68,19 +68,19 @@
                 {% endif %}
                 <div class="input-container">
                     <label for="title">Título</label>
-                    <input id="title" type="text" name="reddit_history.history.title"
+                    <input id="title" type="text" name="title"
                         value="{{ reddit_history.history.title }}">
                 </div>
 
                 <div class="input-container">
                     <label for="content">Conteúdo</label>
                     <textarea id="content"
-                        name="reddit_history.history.content">{{ reddit_history.history.content }}</textarea>
+                        name="content">{{ reddit_history.history.content }}</textarea>
                 </div>
                 <div class="row g10">
                     <div class="input-container column">
                         <label for="gender">Gênero</label>
-                        <select name="reddit_history.history.gender" id="gender">
+                        <select name="gender" id="gender">
                             <option value="male" {% if reddit_history.history.gender=='male' %}selected{% endif %}>
                                 Masculino
                             </option>
