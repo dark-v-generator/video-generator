@@ -1,0 +1,2 @@
+# This directory will contain the built frontend files
+# Run 'make build-frontend' to populate this directory with the React SPA

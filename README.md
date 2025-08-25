@@ -6,17 +6,39 @@ Esse projeto cria histórias com base em um comando enviado para o gemini, faz a
 
 ## Como instalar
 
-### Ambiente virtual (opicional)
+### Pré-requisitos
+
+Instale o [uv](https://docs.astral.sh/uv/getting-started/installation/) - um gerenciador de pacotes Python rápido:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Ou via pip
+pip install uv
 ```
 
 ### Instalar dependências
 
 ```bash
-pip install -r requirements.txt
+# Instalar todas as dependências
+uv sync
+
+# Ou instalar com dependências de desenvolvimento
+uv sync --extra dev
+```
+
+### Usando o Makefile (recomendado)
+
+```bash
+# Instalar tudo (frontend + backend)
+make install
+
+# Instalar apenas dependências de desenvolvimento
+make install-dev
 ```
 
 ### Configurar credenciais
@@ -36,11 +58,37 @@ As variáveis de ambiente são para acessar a API do Google e AWS.
 ### Executar
 
 ```bash
-python main.py
+# Usando uv (recomendado)
+uv run python main.py
+
+# Ou usando o Makefile
+make run
+
+# Para o servidor de desenvolvimento
+uv run python -m uvicorn src.main_fastapi:app --reload
 ```
 
 Caso tenha dúvidas sobre os parâmetros, execute:
 
 ```bash
-python main.py --help
+uv run python main.py --help
+```
+
+### Comandos úteis com uv
+
+```bash
+# Adicionar nova dependência
+uv add package-name
+
+# Adicionar dependência de desenvolvimento
+uv add --dev package-name
+
+# Atualizar dependências
+uv lock --upgrade
+
+# Executar testes
+uv run pytest
+
+# Executar scripts
+uv run python script.py
 ```

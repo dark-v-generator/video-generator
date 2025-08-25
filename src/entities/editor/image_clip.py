@@ -1,3 +1,4 @@
+import tempfile
 from moviepy import ImageClip as MoviepyImageClip
 from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 
@@ -5,8 +6,14 @@ from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 class ImageClip:
     clip: MoviepyImageClip
 
-    def __init__(self, file_path: str):
-        self.clip = MoviepyImageClip(file_path)
+    def __init__(self, file_path: str = None, bytes: bytes = None):
+        if bytes:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+                tmpfile.write(bytes)
+                tmpfile.seek(0)
+                self.clip = MoviepyImageClip(tmpfile.name)
+        else:
+            self.clip = MoviepyImageClip(file_path)
 
     def apply_fadein(self, duration):
         self.clip = CrossFadeIn(duration=duration).apply(self.clip)

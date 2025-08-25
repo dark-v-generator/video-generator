@@ -1,255 +1,315 @@
-from os import path
-import os
-from pathlib import Path
-import shutil
-from typing import List, Optional
+import tempfile
+import threading
+from typing import List, AsyncIterable, Union
 import uuid
-from src.entities.captions import Captions
-from src.entities.config import MainConfig
-from src.entities.cover import RedditCover
-from src.entities.editor import audio_clip, captions_clip, image_clip
-from src.entities.history import History
-from src.entities.language import Language
-from src.entities.reddit_history import RedditHistory
-from src.proxies import reddit_proxy
-from src.proxies import open_api_proxy
-from src.services import captions_service, cover_service, speech_service, video_service
-from proglog import ProgressBarLogger, TqdmProgressBarLogger
 
-REDDIT_HISTORY_FILE_NAME = "history.yaml"
-REGULAR_SPEECH_FILE_NAME = "regular_speech.mp3"
-SPEECH_FILE_NAME = "speech.mp3"
-CAPTIONS_FILE_NAME = "captions.yaml"
-COVER_FILE_NAME = "cover.png"
-FINAL_VIDEO_FILE_NAME = "final_video.mp4"
+from ..core.proglog_logger import AsyncProgressLogger
+from ..core.logging_config import get_logger
 
-
-def srcap_reddit_post(
-    post_url: str,
-    enhance_history: bool,
-    config: MainConfig,
-    language: Language = Language.PORTUGUESE,
-) -> RedditHistory:
-    reddit_post = reddit_proxy.get_reddit_post(post_url)
-    if enhance_history:
-        history = open_api_proxy.enhance_history(
-            reddit_post.title,
-            reddit_post.content,
-            language=language,
-        )
-    else:
-        history = History(
-            title=reddit_post.title, content=reddit_post.content, gender="male"
-        )
-    cover = RedditCover(
-        image_url=reddit_post.community_url_photo,
-        author=reddit_post.author,
-        community=reddit_post.community,
-        title=history.title,
-    )
-    id = str(uuid.uuid4())
-    folder_path = path.join(config.histories_path, id)
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
-    reddit_history = RedditHistory(
-        id=id,
-        cover=cover,
-        history=history.striped(),
-        folder_path=str(Path(folder_path).resolve()),
-        language=language.value,
-    )
-    reddit_history.save_yaml(history_path)
-    return reddit_history
+from .interfaces import (
+    IHistoryService,
+    ISpeechService,
+    ICaptionsService,
+    ICoverService,
+    IVideoService,
+)
+from .llm.interfaces import ILLMService
+from ..entities.captions import Captions
+from ..entities.config import MainConfig
+from ..entities.cover import RedditCover
+from ..entities.editor import audio_clip, captions_clip, image_clip
+from ..entities.history import History
+from ..entities.language import Language
+from ..models.progress import ProgressEvent
+from ..entities.reddit_history import RedditHistory
+from ..repositories.interfaces import (
+    IFileStorage,
+    IHistoryRepository,
+    IFileRepository,
+    IConfigRepository,
+)
+from ..proxies import reddit_proxy
 
 
-def get_reddit_history(id: str, config: MainConfig) -> Optional[RedditHistory]:
-    history_path = path.join(config.histories_path, id, REDDIT_HISTORY_FILE_NAME)
-    if not os.path.isfile(history_path):
-        return None
-    reddit_history = RedditHistory.from_yaml(history_path)
-    return reddit_history
+class HistoryService(IHistoryService):
+    """History service implementation with dependency injection"""
 
+    def __init__(
+        self,
+        history_repository: IHistoryRepository,
+        config_repository: IConfigRepository,
+        speech_service: ISpeechService,
+        captions_service: ICaptionsService,
+        cover_service: ICoverService,
+        video_service: IVideoService,
+        llm_service: ILLMService,
+        file_storage: IFileStorage,
+    ):
+        self._history_repository = history_repository
+        self._config_repository = config_repository
+        self._speech_service = speech_service
+        self._captions_service = captions_service
+        self._cover_service = cover_service
+        self._video_service = video_service
+        self._llm_service = llm_service
+        self._file_storage = file_storage
+        self._logger = get_logger(__name__)
 
-def save_reddit_history(reddit_history: RedditHistory, config: MainConfig):
-    folder_path = path.join(config.histories_path, reddit_history.id)
-    history_path = path.join(folder_path, REDDIT_HISTORY_FILE_NAME)
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-    reddit_history.save_yaml(history_path)
+    def _get_config(self) -> MainConfig:
+        return self._config_repository.load_config()
 
-
-def delete_reddit_history(id: str, config: MainConfig) -> None:
-    folder_path = path.join(config.histories_path, id)
-    shutil.rmtree(folder_path)
-
-
-def list_histories(config: MainConfig) -> List[RedditHistory]:
-    if not os.path.isdir(config.histories_path):
-        return []
-    directories = os.listdir(config.histories_path)
-    result = [get_reddit_history(directory, config) for directory in directories]
-    result = [x for x in result if x is not None]
-    return sorted(result, key=lambda x: x.last_updated_at, reverse=True)
-
-
-def divide_reddit_history(
-    reddit_history: RedditHistory,
-    config: MainConfig,
-    number_of_parts: int,
-) -> List[RedditHistory]:
-    histories = open_api_proxy.divide_history(
-        reddit_history.history,
-        number_of_parts=number_of_parts,
-        language=reddit_history.get_language(),
-    )
-    reddit_histories = []
-    for history in histories:
-        history_id = str(uuid.uuid4())
-        history_path = str(Path(path.join(config.histories_path, history_id)).resolve())
+    async def srcap_reddit_post(
+        self,
+        post_url: str,
+        language: Language = Language.PORTUGUESE,
+    ) -> RedditHistory:
+        """Scrape a Reddit post and create history"""
+        reddit_post = reddit_proxy.get_reddit_post(post_url)
+        history = History(title=reddit_post.title, content=reddit_post.content)
         cover = RedditCover(
-            image_url=reddit_history.cover.image_url,
-            author=reddit_history.cover.author,
-            community=reddit_history.cover.community,
+            image_url=reddit_post.community_url_photo,
+            author=reddit_post.author,
+            community=reddit_post.community,
             title=history.title,
         )
-        new_history = RedditHistory(
-            id=history_id,
+        reddit_history = RedditHistory(
+            id=str(uuid.uuid4()),
             cover=cover,
             history=history.striped(),
-            folder_path=history_path,
-            language=reddit_history.language,
+            language=language.value,
         )
-        reddit_histories.append(new_history)
-        save_reddit_history(new_history, config)        
-    return reddit_histories
+        self._history_repository.save_reddit_history(reddit_history)
+        return reddit_history
 
+    def list_histories(self) -> List[RedditHistory]:
+        """List all available histories"""
+        history_ids = self._history_repository.list_history_ids()
+        histories = []
+        for history_id in history_ids:
+            history = self._history_repository.load_reddit_history(history_id)
+            if history is not None:
+                histories.append(history)
+        return sorted(histories, key=lambda x: x.last_updated_at, reverse=True)
 
-def __get_speech_text(history: History) -> str:
-    return f"{history.title}\n {history.content}"
+    def get_reddit_history(self, history_id: str) -> RedditHistory:
+        """Get a specific Reddit history by ID"""
+        return self._history_repository.load_reddit_history(history_id)
 
+    def save_reddit_history(self, reddit_history: RedditHistory) -> None:
+        """Save Reddit history to storage"""
+        self._history_repository.save_reddit_history(reddit_history)
 
-def generate_captions(
-    reddit_history: RedditHistory,
-    rate: float,
-    config: MainConfig,
-    enhance_captions: bool = True,
-) -> None:
-    captions_path = path.join(reddit_history.folder_path, CAPTIONS_FILE_NAME)
-    print("Generating captions...")
-    captions = captions_service.generate_captions_from_file(
-        reddit_history.speech_path, language=reddit_history.get_language()
-    )
-    captions = captions.stripped()
-    if enhance_captions:
-        print("Enhancing captions...")
-        captions = open_api_proxy.enhance_captions(
-            captions, reddit_history.history, language=reddit_history.get_language()
+    def delete_reddit_history(self, history_id: str) -> bool:
+        """Delete a Reddit history"""
+        return self._history_repository.delete_reddit_history(history_id)
+
+    async def generate_speech(
+        self,
+        reddit_history: RedditHistory,
+        rate: float,
+        voice_id: str,
+    ) -> AsyncIterable[Union[ProgressEvent, RedditHistory]]:
+        """Generate speech for history with streaming progress events"""
+        history = reddit_history.history
+        text = self._get_speech_text(history)
+        yield ProgressEvent.create(
+            "generating",
+            "Generating speech",
+            details={"text_length": len(text), "rate": rate},
         )
-    captions.save_yaml(captions_path)
-    reddit_history.captions_path = str(Path(captions_path).resolve())
-    save_reddit_history(reddit_history, config)
-
-
-def generate_speech(
-    reddit_history: RedditHistory,
-    rate: float,
-    config: MainConfig,
-) -> None:
-    history = reddit_history.history
-    text = __get_speech_text(reddit_history.history)
-    speech_path = path.join(reddit_history.folder_path, SPEECH_FILE_NAME)
-
-    gender = speech_service.VoiceGender(history.gender)
-    print("Syntesizing speech...")
-    speech_service.synthesize_speech(
-        text, gender, rate, speech_path, language=reddit_history.get_language()
-    )
-
-    # regular_speech_path = path.join(
-    #     reddit_history.folder_path,
-    #     REGULAR_SPEECH_FILE_NAME
-    # )
-    # speech_service.synthesize_speech(
-    #     text, gender, 1.0, regular_speech_path, language=reddit_history.get_language()
-    # )
-    # reddit_history.regular_speech_path = str(Path(regular_speech_path).resolve())
-
-    reddit_history.speech_path = str(Path(speech_path).resolve())
-    save_reddit_history(reddit_history, config)
-
-
-def generate_cover(reddit_history: RedditHistory, config: MainConfig) -> None:
-    cover_path = path.join(reddit_history.folder_path, COVER_FILE_NAME)
-    cover_service.generate_reddit_cover(
-        reddit_cover=reddit_history.cover,
-        output_path=cover_path,
-        config=config.cover_config,
-    )
-    reddit_history.cover_path = str(Path(cover_path).resolve())
-    save_reddit_history(reddit_history, config)
-
-
-def generate_reddit_video(
-    reddit_history: RedditHistory,
-    config: MainConfig,
-    low_quality: bool = True,
-    logger: ProgressBarLogger = TqdmProgressBarLogger(),
-) -> None:
-    config.video_config.low_quality = low_quality
-    config.video_config.low_resolution = low_quality
-
-    if low_quality:
-        size_rate = 400 / config.video_config.height  # fixed 400 height
-        config.video_config.width = int(round(config.video_config.width * size_rate))
-        config.video_config.height = int(round(config.video_config.height * size_rate))
-        config.captions_config.font_size = int(
-            round(config.captions_config.font_size * size_rate)
+        speech_bytes = await self._speech_service.generate_speech(text, voice_id, rate)
+        yield ProgressEvent.create(
+            "saving",
+            "Saving audio file",
         )
-        config.captions_config.stroke_width = int(
-            round(config.captions_config.stroke_width * size_rate)
-        )
-        config.captions_config.marging = int(
-            round(config.captions_config.marging * size_rate)
-        )
-        config.video_config.padding = int(
-            round(config.video_config.padding * size_rate)
-        )
-    speech = None
-    captions = None
-    cover = None
-    if reddit_history.speech_path:
-        speech = audio_clip.AudioClip(reddit_history.speech_path)
-    if reddit_history.captions_path:
-        captions = captions_clip.CaptionsClip(
-            captions=Captions.from_yaml(reddit_history.captions_path),
-            config=config.captions_config,
-        )
-    if reddit_history.cover_path:
-        cover = image_clip.ImageClip(reddit_history.cover_path)
-    print("Generating video compilation...")
-    background_video = video_service.create_video_compilation(
-        speech.clip.duration, config.video_config, logger=logger
-    )
+        self._history_repository.save_speech_file(reddit_history.id, speech_bytes)
+        yield self._history_repository.load_reddit_history(reddit_history.id)
 
-    final_video = video_service.generate_video(
-        audio=speech,
-        background_video=background_video,
-        cover=cover,
-        config=config.video_config,
-        captions=captions,
-    )
+    async def generate_captions(
+        self,
+        history_id: str,
+        rate: float,
+        enhance_captions: bool,
+    ) -> None:
+        """Generate captions for history"""
+        self._logger.info("Generating captions...")
 
-    video_path = path.join(
-        reddit_history.folder_path, f"{reddit_history.history.title_normalized()}.mp4"
-    )
-    reddit_history.final_video_path = str(Path(video_path).resolve())
-    if low_quality:
-        final_video.clip.write_videofile(
-            video_path, logger=logger, ffmpeg_params=config.video_config.ffmpeg_params
+        reddit_history = self._history_repository.load_reddit_history(history_id)
+        captions = await self._captions_service.generate_captions(
+            reddit_history.speech_file_id,
+            enhance_captions=enhance_captions,
+            language=reddit_history.get_language(),
         )
-    else:
-        final_video.clip.write_videofile(
-            video_path, logger=logger, ffmpeg_params=config.video_config.ffmpeg_params
+        self._history_repository.save_captions_file(
+            history_id=reddit_history.id, captions_bytes=captions.to_bytes()
         )
-    save_reddit_history(reddit_history, config)
+
+    async def generate_cover(
+        self, reddit_history: RedditHistory
+    ) -> AsyncIterable[Union[ProgressEvent, RedditHistory]]:
+        """Generate cover image for history"""
+        yield ProgressEvent.create(
+            "starting",
+            "Generating cover",
+            details={
+                "title": (
+                    reddit_history.history.title[:50] + "..."
+                    if len(reddit_history.history.title) > 50
+                    else reddit_history.history.title
+                )
+            },
+        )
+
+        cover_bytes = await self._cover_service.generate_cover(reddit_history.cover)
+        if not cover_bytes:
+            raise Exception("No cover data received from cover service")
+
+        yield ProgressEvent.create(
+            "saving",
+            "Saving cover file",
+        )
+        self._history_repository.save_cover_file(
+            history_id=reddit_history.id, cover_bytes=cover_bytes
+        )
+
+        yield self._history_repository.load_reddit_history(reddit_history.id)
+
+    async def generate_reddit_video(
+        self,
+        reddit_history: RedditHistory,
+        low_quality: bool = False,
+    ) -> AsyncIterable[Union[ProgressEvent, RedditHistory]]:
+        config = self._config_repository.load_config()
+        """Generate final video for Reddit history with streaming progress events"""
+        yield ProgressEvent.create(
+            "initializing",
+            "Starting video generation",
+            details={"history_id": reddit_history.id, "low_quality": low_quality},
+        )
+
+        # Apply low quality settings
+        if low_quality:
+            size_rate = 400 / config.video_config.height
+            config.video_config.width = int(
+                round(config.video_config.width * size_rate)
+            )
+            config.video_config.height = int(
+                round(config.video_config.height * size_rate)
+            )
+            config.captions_config.font_size = int(
+                round(config.captions_config.font_size * size_rate)
+            )
+            config.captions_config.stroke_width = int(
+                round(config.captions_config.stroke_width * size_rate)
+            )
+            config.captions_config.marging = int(
+                round(config.captions_config.marging * size_rate)
+            )
+            config.video_config.padding = int(
+                round(config.video_config.padding * size_rate)
+            )
+
+        # Load components
+        speech_bytes = self._history_repository.get_speech_bytes(reddit_history.id)
+        captions_bytes = self._history_repository.get_captions_bytes(reddit_history.id)
+        cover_bytes = self._history_repository.get_cover_bytes(reddit_history.id)
+        font_bytes = self._get_font_bytes()
+
+        if not speech_bytes:
+            raise Exception("No speech audio available for video generation")
+
+        speech = audio_clip.AudioClip(bytes=speech_bytes)
+        captions = (
+            captions_clip.CaptionsClip(
+                captions=Captions.from_bytes(captions_bytes),
+                config=config.captions_config,
+                font_bytes=font_bytes,
+            )
+            if captions_bytes and font_bytes
+            else None
+        )
+        cover = image_clip.ImageClip(bytes=cover_bytes) if cover_bytes else None
+
+        background_video = None
+        async for event in self._video_service.create_video_compilation(
+            speech.clip.duration, low_quality=low_quality
+        ):
+            if isinstance(event, ProgressEvent):
+                yield event
+            else:
+                background_video = event
+
+        if not background_video:
+            raise Exception("Failed to create background video")
+
+        yield ProgressEvent.create(
+            "generating",
+            "Generating final video",
+            details={
+                "components": [
+                    "audio",
+                    "background",
+                    "cover" if cover else None,
+                    "captions" if captions else None,
+                ]
+            },
+        )
+
+        final_video = self._video_service.generate_video(
+            audio=speech,
+            background_video=background_video,
+            cover=cover,
+            low_quality=low_quality,
+            captions=captions,
+        )
+
+        progress_logger = AsyncProgressLogger(
+            "video_writing",
+            "Generating final video",
+        )
+
+        final_video_bytes = None
+
+        def final_video_thread():
+            nonlocal final_video_bytes
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
+                absolute_video_path = tmpfile.name
+                final_video.clip.write_videofile(
+                    absolute_video_path,
+                    ffmpeg_params=config.video_config.ffmpeg_params,
+                    logger=progress_logger,
+                )
+                progress_logger.finish_progress()
+                with open(absolute_video_path, "rb") as f:
+                    final_video_bytes = f.read()
+
+        thread = threading.Thread(target=final_video_thread)
+        thread.start()
+
+        while not progress_logger.is_finished():
+            event = await progress_logger.get_progress_event()
+            if event:
+                yield event
+
+        thread.join()
+
+        if not final_video_bytes:
+            raise Exception("Failed to generate final video")
+
+        self._history_repository.save_final_video_file(
+            history_id=reddit_history.id, final_video_bytes=final_video_bytes
+        )
+        yield self._history_repository.load_reddit_history(reddit_history.id)
+
+    def _get_speech_text(self, history: History) -> str:
+        """Get text for speech synthesis"""
+        return history.content
+
+    def _get_font_bytes(self) -> bytes:
+        """Get font bytes from storage"""
+        font_id = self._config_repository.load_config().captions_config.font_file_id
+        if not font_id:
+            with open("default_font.ttf", "rb") as f:
+                font_bytes = f.read()
+            return font_bytes
+        return self._file_storage.load_file(font_id)

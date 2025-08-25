@@ -1,5 +1,7 @@
-from src.flask_server import app as flask_server
 import socket
+import uvicorn
+from src.core.config import settings
+from src.core.logging_config import configure_logging, get_logger
 
 
 def get_local_ip():
@@ -10,9 +12,29 @@ def get_local_ip():
     return ip
 
 
-def run_server():
-    flask_server.app.run(host="0.0.0.0")
+def run_fastapi_server():
+    """Run the FastAPI server with dependency injection"""
+    # Configure logging first
+    configure_logging()
+    
+    logger = get_logger(__name__)
+    logger.info("Starting FastAPI server with dependency injection architecture...")
+    logger.info(f"Server will be available at: http://{get_local_ip()}:{settings.api_port}")
+    logger.info("API Documentation: /docs")
+    
+    uvicorn.run(
+        "src.main_fastapi:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=settings.debug,
+        log_level="info"  # Ensure uvicorn uses INFO level
+    )
+
+
+def main():
+    """Main application entry point"""
+    run_fastapi_server()
 
 
 if __name__ == "__main__":
-    run_server()
+    main()
