@@ -50,6 +50,12 @@ def synthesize_speech(
 ) -> str:
     speech_config = __get_speech_config()
     speech_config.speech_synthesis_voice_name = voice_variation.value
+    
+    # Set output format to MP3
+    speech_config.set_speech_synthesis_output_format(
+        speechsdk.SpeechSynthesisOutputFormat.Audio16Khz128KBitRateMonoMp3
+    )
+    
     audio_config = speechsdk.AudioConfig(filename=output_path)
     speech_synthesizer = speechsdk.SpeechSynthesizer(
         speech_config=speech_config, 

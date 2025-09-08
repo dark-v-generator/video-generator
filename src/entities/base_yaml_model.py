@@ -15,3 +15,12 @@ class BaseYAMLModel(BaseModel):
     def save_yaml(self, output_path):
         with open(output_path, "w") as file:
             yaml.dump(self.model_dump(), file, allow_unicode=True, width=100, indent=4)
+
+    def to_bytes(self) -> bytes:
+        return yaml.dump(
+            self.model_dump(), allow_unicode=True, width=100, indent=4
+        ).encode("utf-8")
+
+    @classmethod
+    def from_bytes(cls: Type[T], bytes: bytes) -> T:
+        return cls(**yaml.safe_load(bytes.decode("utf-8")))

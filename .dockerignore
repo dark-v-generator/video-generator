@@ -1,0 +1,27 @@
+# Node and frontend artifacts
+frontend/node_modules
+frontend/dist
+
+# Python caches
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# VCS
+.git
+.gitignore
+
+# Local and editor files
+.DS_Store
+.venv
+venv
+.env
+
+# Build caches
+.cache
+*.log
+
+

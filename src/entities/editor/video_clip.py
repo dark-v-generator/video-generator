@@ -1,3 +1,4 @@
+import tempfile
 from moviepy import (
     VideoClip as MoviepyVideoClip,
     VideoFileClip,
@@ -12,10 +13,16 @@ from src.entities.editor.captions_clip import CaptionsClip
 class VideoClip:
     clip: MoviepyVideoClip
 
-    def __init__(self, file_path=None, audio_clip=None):
-        self.clip = None if file_path == None else VideoFileClip(file_path)
-        if audio_clip:
-            self.set_audio(audio_clip)
+    def __init__(self, file_path=None, audio_clip=None, bytes=None):
+        if bytes:
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmpfile:
+                tmpfile.write(bytes)
+                tmpfile.seek(0)
+                self.clip = VideoFileClip(tmpfile.name)
+        else:
+            self.clip = None if file_path == None else VideoFileClip(file_path)
+            if audio_clip:
+                self.set_audio(audio_clip)
 
     def set_audio(self, audio_clip):
         self.audio_clip = audio_clip

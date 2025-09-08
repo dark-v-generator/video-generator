@@ -1,3 +1,4 @@
+import tempfile
 from moviepy import (
     AudioFileClip,
     CompositeAudioClip,
@@ -11,9 +12,16 @@ import numpy as np
 class AudioClip:
     clip: MoviepyAudioClip
 
-    def __init__(self, file_path, volume=1):
+    def __init__(self, file_path: str = None, volume=1, bytes: bytes = None):
         self.file_path = file_path
-        self.clip = AudioFileClip(file_path)
+        if bytes:
+            # Create a temporary file with the audio bytes
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmpfile:
+                tmpfile.write(bytes)
+                tmpfile.flush()
+                self.clip = AudioFileClip(tmpfile.name)
+        else:
+            self.clip = AudioFileClip(file_path)
         self.clip = self.clip.with_volume_scaled(volume)
 
     def add_end_silence(self, duration_in_seconds):

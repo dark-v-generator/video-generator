@@ -1,9 +1,9 @@
-import tempfile
-from src.entities.cover import RedditCover
-from src.entities.history import History
-import imgkit
-from src.entities import config
-from src.entities.editor import image_clip
+from playwright.async_api import async_playwright
+
+from ..repositories.interfaces import IConfigRepository
+from .interfaces import ICoverService
+from ..entities.cover import RedditCover
+from ..entities.config import MainConfig
 
 REDDIT_COVER_HTML = """
 <!DOCTYPE html>
@@ -14,6 +14,12 @@ REDDIT_COVER_HTML = """
 <head>
   <meta charset="UTF-8">
   <style>
+    body {{
+      margin: 0;
+      padding: 0;
+      background: transparent;
+    }}
+    
     .post-cover {{
       width: 1950px;
       padding: 50px;
@@ -84,23 +90,57 @@ REDDIT_COVER_HTML = """
 """
 
 
-def generate_reddit_cover(
-    reddit_cover: RedditCover,
-    output_path: str,
-    config: config.CoverConfig = config.CoverConfig(),
-) -> None:
-    html_content = REDDIT_COVER_HTML.format(
-        title=reddit_cover.title,
-        community=reddit_cover.community,
-        post_author=reddit_cover.author,
-        community_url_photo=reddit_cover.image_url,
-        title_font_size=config.title_font_size,
-    )
+class CoverService(ICoverService):
+    """Cover generation service implementation"""
 
-    tmp_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
-    tmp_file.write(bytes(html_content, "UTF-8"))
-    file_name = tmp_file.name
-    tmp_file.close()
+    def __init__(self, config_repository: IConfigRepository):
+        self._config_repository = config_repository
 
-    options = {"--format": "png", "--transparent": ""}
-    imgkit.from_file(file_name, output_path, options=options)
+    async def generate_cover(self, cover: RedditCover) -> bytes:
+        """Generate cover image and return PNG bytes"""
+        config = self._config_repository.load_config()
+        html_content = self._generate_reddit_cover_html(cover, config.cover_config)
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+
+            # Set viewport for consistent rendering
+            await page.set_viewport_size({"width": 2050, "height": 1200})
+
+            # Set HTML content
+            await page.set_content(html_content.decode("utf-8"))
+
+            # Wait for fonts to load
+            await page.wait_for_load_state("networkidle")
+
+            # Take screenshot of the cover element with transparency
+            cover_element = await page.query_selector(".post-cover")
+            if cover_element:
+                png_bytes = await cover_element.screenshot(
+                    type="png", omit_background=True
+                )
+            else:
+                # Fallback to full page screenshot with transparency
+                png_bytes = await page.screenshot(
+                    type="png", full_page=True, omit_background=True
+                )
+
+            await browser.close()
+            return png_bytes
+
+    def _generate_reddit_cover_html(
+        self,
+        reddit_cover: RedditCover,
+        cover_config,
+    ) -> bytes:
+        """Generate Reddit cover file"""
+        html_content = REDDIT_COVER_HTML.format(
+            title=reddit_cover.title,
+            community=reddit_cover.community,
+            post_author=reddit_cover.author,
+            community_url_photo=reddit_cover.image_url,
+            title_font_size=cover_config.title_font_size,
+        )
+
+        return bytes(html_content, "UTF-8")

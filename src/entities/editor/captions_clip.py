@@ -1,14 +1,24 @@
+import tempfile
 from typing import List
-from moviepy import TextClip, VideoFileClip, CompositeVideoClip
+from moviepy import TextClip
 from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 from src.entities.captions import CaptionSegment, Captions
 from src.entities.config import CaptionsConfig
 
 
 class CaptionsClip:
-    def __init__(self, captions: Captions, config: CaptionsConfig = CaptionsConfig()):
+    def __init__(
+        self,
+        captions: Captions,
+        config: CaptionsConfig = CaptionsConfig(),
+        font_bytes: bytes = None,
+    ):
         self.captions = captions
         self.config = config
+        with tempfile.NamedTemporaryFile(suffix=".ttf", delete=False) as tmpfile:
+            tmpfile.write(font_bytes)
+            tmpfile.seek(0)
+            self.font_path = tmpfile.name
         self.clips = self.__generate_clips()
 
     def __generate_clips(self) -> List[TextClip]:
@@ -25,7 +35,7 @@ class CaptionsClip:
         show_text = show_text.replace(",", "").replace(".", "").strip()
         word_clip = TextClip(
             text=show_text,
-            font=self.config.font_path,
+            font=self.font_path,
             font_size=self.config.font_size,
             color=self.config.color,
             stroke_color=self.config.stroke_color,
@@ -42,18 +52,3 @@ class CaptionsClip:
             )
         word_clip: TextClip = word_clip.with_position(["center", 0.25], relative=True)
         return word_clip
-
-
-if __name__ == "__main__":
-    subs = CaptionsClip("subtitles.srt", CaptionsConfig(font_path="assets/bangers.ttf"))
-    video = VideoFileClip("input.mp4")
-    result = CompositeVideoClip([video, *subs.clips])
-
-    result.write_videofile(
-        "output.mp4",
-        fps=video.fps,
-        temp_audiofile="temp-audio.m4a",
-        remove_temp=True,
-        codec="libx264",
-        audio_codec="aac",
-    )

@@ -6,7 +6,7 @@ from src.entities.base_yaml_model import BaseYAMLModel
 
 class CaptionsConfig(BaseYAMLModel):
     upper: bool = Field(True)
-    font_path: str = Field("assets/bangers.ttf")
+    font_file_id: Optional[str] = Field(None)
     font_size: int = Field(110)
     color: str = Field("#FFFFFF")
     stroke_color: str = Field("#000000")
@@ -21,7 +21,9 @@ class CoverConfig(BaseYAMLModel):
 
 
 class VideoConfig(BaseYAMLModel):
-    watermark_path: Optional[str] = Field(None, title="Path to the water mark image")
+    watermark_file_id: Optional[str] = Field(
+        None, title="File id of the water mark image"
+    )
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
     cover_duration: int = Field(5, title="Cover duration")
@@ -30,9 +32,24 @@ class VideoConfig(BaseYAMLModel):
     youtube_channel_id: str = Field(
         "UCIXTGJvqvxWoWWstA66a2JQ", title="Youtube channel id"
     )
-    low_quality: bool = Field(False, title="Low quality")
-    low_resolution: bool = Field(False, title="Change resolution to low")
     ffmpeg_params: List[str] = Field([], title="ffmpeg params")
+
+
+class LLMConfig(BaseYAMLModel):
+    """Configuration for Large Language Model services"""
+
+    provider: str = Field("openai", title="LLM provider (openai, local)")
+    model: str = Field("gpt-5-mini-2025-08-07", title="Model to use")
+    temperature: float = Field(0.7, title="Temperature for generation")
+    max_tokens: int = Field(2000, title="Maximum tokens for generation")
+
+
+class SpeechConfig(BaseYAMLModel):
+    """Configuration for Text-to-Speech services"""
+
+    provider: str = Field("fish-speech", title="Speech provider (coqui, fish-speech)")
+    default_voice: str = Field("", title="Default voice to use")
+    default_rate: float = Field(1.0, title="Default speech rate")
 
 
 class MainConfig(BaseYAMLModel):
@@ -43,8 +60,10 @@ class MainConfig(BaseYAMLModel):
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
-    histories_path: str = Field("output", title="Path to save the output video")
-    seed: str = Field(__generate_random_seed(), title="Seed")
+    llm_config: LLMConfig = Field(LLMConfig(), title="LLM configuration")
+    speech_config: SpeechConfig = Field(SpeechConfig(), title="Speech configuration")
+    seed: Optional[str] = Field(None, title="Seed")
 
     def int_seed(self) -> int:
-        return int.from_bytes(self.seed.encode(), "little")
+        seed = self.seed or self.__generate_random_seed()
+        return int.from_bytes(seed.encode(), "little")
