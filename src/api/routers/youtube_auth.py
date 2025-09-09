@@ -1,3 +1,4 @@
+import datetime
 import threading
 import time
 from fastapi import APIRouter
@@ -23,34 +24,56 @@ AUTH_STARTED = threading.Event()
 AUTH_COMPLETED = threading.Event()
 
 
+def wait_for_youtube_auth_started(
+    timeout: datetime.timedelta = datetime.timedelta(seconds=30),
+    interval: datetime.timedelta = datetime.timedelta(milliseconds=100),
+):
+    start_time = datetime.datetime.now()
+    while datetime.datetime.now() - start_time < timeout:
+        if AUTH_STARTED.is_set():
+            return True
+        time.sleep(interval.total_seconds())
+    return False
+
+
+def wait_for_youtube_auth_completed(
+    timeout: datetime.timedelta = datetime.timedelta(seconds=30),
+    interval: datetime.timedelta = datetime.timedelta(milliseconds=100),
+):
+    start_time = datetime.datetime.now()
+    while datetime.datetime.now() - start_time < timeout:
+        if AUTH_COMPLETED.is_set():
+            return True
+        time.sleep(interval.total_seconds())
+    return False
+
+
 @router.post("/auth/initiate")
 async def initiate_youtube_auth(
     timeout: int = 120,
 ) -> YoutubeAuthResponse:
     """Initiate YouTube OAuth flow and return verification URL and code"""
     video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    response = YoutubeAuthResponse()
 
     with LOCK:
         AUTH_STARTED.clear()
         AUTH_COMPLETED.clear()
-    response = YoutubeAuthResponse()
 
     def custom_oauth_verifier(verification_url: str, user_code: str):
         logger.info(f"OAuth initiated - URL: {verification_url}, Code: {user_code}")
         with LOCK:
+            AUTH_STARTED.set()
             response.verification_url = verification_url
             response.user_code = user_code
             response.verified = False
             response.message = (
                 f"Please visit {verification_url} and enter code: {user_code}"
             )
-            AUTH_STARTED.set()
-        for _ in range(timeout):
-            if AUTH_COMPLETED.is_set():
-                logger.info("Auth complete set")
-                break
-            logger.info("Auth not set, waiting for 1 second")
-            time.sleep(1)
+            logger.info("YouTube auth started")
+        wait_for_youtube_auth_completed(
+            timeout=datetime.timedelta(seconds=timeout),
+        )
 
     def try_access_video_thread():
         video_title = YouTube(
@@ -59,32 +82,46 @@ async def initiate_youtube_auth(
             use_oauth=True,
             oauth_verifier=custom_oauth_verifier,
         ).title
+        logger.info(f"Authentication completed successfully! Accessed: {video_title}")
         with LOCK:
+            AUTH_STARTED.set()
+            AUTH_COMPLETED.set()
             response.verified = True
             response.message = (
                 f"Authentication completed successfully! Accessed: {video_title}"
             )
-            AUTH_COMPLETED.set()
-            return
 
     thread = threading.Thread(target=try_access_video_thread)
     thread.start()
-    for _ in range(timeout):
-        if AUTH_STARTED.is_set() or AUTH_COMPLETED.is_set():
-            return response
-        time.sleep(1)
-
-    return YoutubeAuthResponse(
-        verification_url=None,
-        user_code=None,
-        verified=False,
-        message=f"Authentication failed: Timeout",
+    wait_for_youtube_auth_started(
+        timeout=datetime.timedelta(seconds=5),
     )
+
+    return response
 
 
 @router.post("/auth/complete")
-async def complete_youtube_auth():
+async def complete_youtube_auth(
+    timeout: int = 10,
+):
     """Complete YouTube OAuth flow by testing access to a restricted video"""
-    with LOCK:
-        AUTH_COMPLETED.set()
-    return {"message": "Auth complete set"}
+    complete_youtube_auth()
+    wait_for_youtube_auth_completed(
+        timeout=datetime.timedelta(seconds=timeout),
+    )
+    try:
+        video_title = YouTube(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "WEB_CREATOR",
+            use_oauth=True,
+        ).title
+
+        return YoutubeAuthResponse(
+            verified=True,
+            message=f"Authentication completed successfully! Accessed: {video_title}",
+        )
+    except Exception as e:
+        return YoutubeAuthResponse(
+            verified=False,
+            message=f"Authentication failed: {e}",
+        )

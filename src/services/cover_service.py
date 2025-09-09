@@ -102,7 +102,7 @@ class CoverService(ICoverService):
         html_content = self._generate_reddit_cover_html(cover, config.cover_config)
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch()
+            browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
             page = await browser.new_page()
 
             # Set viewport for consistent rendering
