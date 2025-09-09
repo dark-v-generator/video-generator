@@ -21,9 +21,9 @@ class Settings(BaseSettings):
 
     # External API settings
     openai_api_key: Optional[str] = None
-    azure_speech_key: Optional[str] = None
-    azure_speech_region: Optional[str] = None
     google_cloud_credentials_path: Optional[str] = None
+    reddit_client_id: Optional[str] = None
+    reddit_client_secret: Optional[str] = None
 
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"

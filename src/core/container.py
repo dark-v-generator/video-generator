@@ -106,18 +106,7 @@ container.config.from_dict(
         "ffmpeg_path": settings.ffmpeg_path,
         "file_storage_base_path": settings.file_storage_base_path,
         "openai_api_key": settings.openai_api_key,
-        "azure_speech_key": settings.azure_speech_key,
-        "azure_speech_region": settings.azure_speech_region,
         "youtube_api_key": settings.youtube_api_key,
         "google_cloud_credentials_path": settings.google_cloud_credentials_path,
-        "enviroment": settings.environment,
-        "debug": settings.debug,
-        "file_storage_base_path": settings.file_storage_base_path,
-        "openai_api_key": settings.openai_api_key,
-        "azure_speech_key": settings.azure_speech_key,
-        "azure_speech_region": settings.azure_speech_region,
-        "youtube_api_key": settings.youtube_api_key,
-        "google_cloud_credentials_path": settings.google_cloud_credentials_path,
-        "enviroment": settings.environment,
     }
 )
