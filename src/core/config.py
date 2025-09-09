@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     google_cloud_credentials_path: Optional[str] = None
     reddit_client_id: Optional[str] = None
     reddit_client_secret: Optional[str] = None
+    reddit_user_agent: str = "VideoGenerator/1.0 (by u/unknown_user)"
 
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"

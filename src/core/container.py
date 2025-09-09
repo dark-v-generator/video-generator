@@ -19,6 +19,7 @@ from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
 from ..services.llm import LLMServiceFactory
+from ..proxies.reddit_oauth_proxy import RedditOAuthProxy
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -79,10 +80,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         file_storage=file_storage,
     )
 
+    # Reddit proxy
+    reddit_proxy = providers.Singleton(RedditOAuthProxy)
+
     history_service = providers.Singleton(
         HistoryService,
         history_repository=history_repository,
         config_repository=config_repository,
+        reddit_proxy=reddit_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
         cover_service=cover_service,
