@@ -211,6 +211,12 @@ class FishSpeechService(ISpeechService):
                 image_url="https://fish.audio/_next/image/?url=https%3A%2F%2Fpublic-platform.r2.fish.audio%2Fcoverimage%2F1a61293f8fa8441f804deb10d0b2bc95&w=128&q=75",
                 language=Language.PORTUGUESE,
             ),
+            SpeechVoice(
+                id="0889ee96fd82421b8ad9e126c4d73312",
+                name="Iberê Thenório",
+                image_url="https://fish.audio/_next/image/?url=https%3A%2F%2Fpublic-platform.r2.fish.audio%2Fcoverimage%2F0889ee96fd82421b8ad9e126c4d73312&w=256&q=75",
+                language=Language.PORTUGUESE,
+            ),
         ]
 
 

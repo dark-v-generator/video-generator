@@ -1,7 +1,8 @@
-from multiprocessing import get_logger
 from bs4 import BeautifulSoup, ResultSet, Tag
 from pydantic import BaseModel, Field
 import requests
+
+from ..core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
