@@ -28,7 +28,7 @@ from ..repositories.interfaces import (
     IFileRepository,
     IConfigRepository,
 )
-from ..proxies.interfaces import IRedditProxy
+from ..proxies import reddit_proxy
 
 
 class HistoryService(IHistoryService):
@@ -38,7 +38,6 @@ class HistoryService(IHistoryService):
         self,
         history_repository: IHistoryRepository,
         config_repository: IConfigRepository,
-        reddit_proxy: IRedditProxy,
         speech_service: ISpeechService,
         captions_service: ICaptionsService,
         cover_service: ICoverService,
@@ -49,7 +48,6 @@ class HistoryService(IHistoryService):
         self._history_repository = history_repository
         self._config_repository = config_repository
         self._speech_service = speech_service
-        self._reddit_proxy = reddit_proxy
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
@@ -66,7 +64,7 @@ class HistoryService(IHistoryService):
         language: Language = Language.PORTUGUESE,
     ) -> RedditHistory:
         """Scrape a Reddit post and create history"""
-        reddit_post = self._reddit_proxy.get_post(post_url)
+        reddit_post = reddit_proxy.get_reddit_post(post_url)
         history = History(title=reddit_post.title, content=reddit_post.content)
         cover = RedditCover(
             image_url=reddit_post.community_url_photo,
