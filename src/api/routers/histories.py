@@ -7,14 +7,14 @@ from pydantic import BaseModel
 from ...services.interfaces import IHistoryService, ISpeechService
 from ...services.llm.interfaces import ILLMService
 from ...entities.language import Language
-from ...models.progress import ProgressEvent
+from ...entities.progress import ProgressEvent
 from ..dependencies import (
     HistoryServiceDep,
     LLMServiceDep,
     FileStorageDep,
     SpeechServiceDep,
 )
-from ...repositories.interfaces import IFileStorage
+from ...adapters.repositories.interfaces import IFileStorage
 from ...core.logging_config import get_logger
 from ...entities.speech_voice import SpeechVoice
 

@@ -1,11 +1,10 @@
 from dependency_injector import containers, providers
 
-from ..repositories.local_file_storage import LocalFileStorage
-from .config import settings
-
-from ..repositories.config_repository import FileConfigRepository
-from ..repositories.history_repository import FileHistoryRepository
-from ..repositories.local_file_repository import LocalFileRepository
+from ..adapters.repositories.local_file_storage import LocalFileStorage
+from ..core.config import settings
+from ..adapters.repositories.config_repository import FileConfigRepository
+from ..adapters.repositories.history_repository import FileHistoryRepository
+from ..adapters.repositories.local_file_repository import LocalFileRepository
 from ..services.config_service import ConfigService
 
 # Import concrete service implementations (we'll update these)
@@ -19,6 +18,8 @@ from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
 from ..services.llm import LLMServiceFactory
+from ..adapters.proxies.reddit_proxy import BS4RedditProxy
+from ..adapters.proxies.whisper_proxy import LocalWhisperProxy
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -47,25 +48,25 @@ class ApplicationContainer(containers.DeclarativeContainer):
         file_storage=file_storage,
     )
 
+    # Proxies
+    reddit_proxy = providers.Singleton(BS4RedditProxy)
+    whisper_proxy = providers.Singleton(LocalWhisperProxy)
+
     # Speech services - provide both providers
     coqui_speech_service = providers.Singleton(CoquiSpeechService)
     fish_speech_service = providers.Singleton(FishSpeechService)
 
     # Default speech service (can be overridden by configuration)
-    speech_service = providers.Singleton(
-        SpeechServiceFactory.create_speech_service,
-        config_repository=config_repository,
-    )
+    speech_service = providers.Singleton(SpeechServiceFactory.create_speech_service)
 
     # LLM service with factory pattern
-    llm_service = providers.Singleton(
-        LLMServiceFactory.create_llm_service, config_repository=config_repository
-    )
+    llm_service = providers.Singleton(LLMServiceFactory.create_llm_service)
 
     captions_service = providers.Singleton(
         CaptionsService,
         file_storage=file_storage,
         llm_service=llm_service,
+        whisper_proxy=whisper_proxy,
     )
 
     cover_service = providers.Singleton(
@@ -89,24 +90,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         video_service=video_service,
         llm_service=llm_service,
         file_storage=file_storage,
+        reddit_proxy=reddit_proxy,
     )
 
 
 # Create and configure container instance
 container = ApplicationContainer()
-container.config.from_dict(
-    {
-        "default_config_path": settings.default_config_path,
-        "assets_path": settings.assets_path,
-        "api_host": settings.api_host,
-        "api_port": settings.api_port,
-        "environment": settings.environment,
-        "debug": settings.debug,
-        "ollama_base_url": settings.ollama_base_url,
-        "ffmpeg_path": settings.ffmpeg_path,
-        "file_storage_base_path": settings.file_storage_base_path,
-        "openai_api_key": settings.openai_api_key,
-        "youtube_api_key": settings.youtube_api_key,
-        "google_cloud_credentials_path": settings.google_cloud_credentials_path,
-    }
-)

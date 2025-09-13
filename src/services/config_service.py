@@ -1,5 +1,5 @@
 from ..entities.config import MainConfig
-from ..repositories.interfaces import IConfigRepository, IFileStorage
+from ..adapters.repositories.interfaces import IConfigRepository, IFileStorage
 from ..services.interfaces import IConfigService
 
 

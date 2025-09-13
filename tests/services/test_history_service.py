@@ -16,8 +16,7 @@ from src.entities.reddit_history import RedditHistory
 from src.entities.cover import RedditCover
 from src.entities.language import Language
 from src.entities.captions import Captions
-from src.proxies.reddit_proxy import RedditPost
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 
 
 @pytest.fixture
@@ -289,7 +288,7 @@ class TestHistoryService:
     ):
         """Test speech generation"""
         # Create a proper async generator for mocking
-        from src.models.progress import ProgressEvent
+        from src.entities.progress import ProgressEvent
         
         async def mock_generate_speech_func(*args, **kwargs):
             yield ProgressEvent.create("generating", "Generating speech")
@@ -454,7 +453,7 @@ class TestHistoryServiceEdgeCases:
             mock_path.return_value.resolve.return_value = "/new/speech/path.mp3"
             
             # Mock speech service with async generator function
-            from src.models.progress import ProgressEvent
+            from src.entities.progress import ProgressEvent
             
             async def mock_generate_speech_func(*args, **kwargs):
                 yield ProgressEvent.create("generating", "Generating speech")

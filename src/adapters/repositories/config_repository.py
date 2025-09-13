@@ -1,6 +1,6 @@
 from .interfaces import IConfigRepository, IFileRepository
-from ..entities.config import MainConfig
-from ..core.config import settings
+from...entities.config import MainConfig
+from...core.config import settings
 
 
 class FileConfigRepository(IConfigRepository):

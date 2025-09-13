@@ -7,7 +7,7 @@ from ...entities.config import SpeechConfig, VideoConfig, CoverConfig, LLMConfig
 from ...entities.config import CaptionsConfig
 from ...services.interfaces import IConfigService
 
-from ...repositories.interfaces import IFileStorage
+from ...adapters.repositories.interfaces import IFileStorage
 from ..dependencies import ConfigServiceDep, FileStorageDep
 from ...core.container import container
 

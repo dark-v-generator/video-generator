@@ -1,6 +1,6 @@
 from playwright.async_api import async_playwright
 
-from ..repositories.interfaces import IConfigRepository
+from ..adapters.repositories.interfaces import IConfigRepository
 from .interfaces import ICoverService
 from ..entities.cover import RedditCover
 from ..entities.config import MainConfig

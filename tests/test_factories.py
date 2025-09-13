@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from src.services.llm.factory import LLMServiceFactory
 from src.services.speech_service import SpeechServiceFactory
 from src.entities.config import MainConfig, LLMConfig, SpeechConfig
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 from src.entities.history import History
 from src.entities.language import Language
 

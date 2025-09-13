@@ -1,8 +1,8 @@
-import json
-from typing import List, AsyncIterable
+from typing import AsyncIterable
 from openai import OpenAI
 
-from ...repositories.interfaces import IConfigRepository
+from ...core.config import settings
+
 from src.entities.captions import Captions
 from src.entities.history import History
 from src.entities.language import Language
@@ -13,9 +13,8 @@ from ...core.logging_config import get_logger
 class OpenAILLMService(ILLMService):
     """OpenAI implementation of LLM service"""
 
-    def __init__(self, config_repository: IConfigRepository):
+    def __init__(self):
         # Todo change to lazy loading
-        self.config_repository = config_repository
         self._logger = get_logger(__name__)
         self.client = None
 
@@ -24,18 +23,14 @@ class OpenAILLMService(ILLMService):
             self.client = OpenAI()
         return self.client
 
-    def _get_config(self):
-        return self.config_repository.load_config()
-
     async def enhance_history(
         self, title: str, content: str, language: Language
     ) -> AsyncIterable[str]:
         self._logger.info(
             f"Enhancing history with prompt: {self.get_enhance_history_prompt(content, language)[:100]}..."
         )
-        config = self._get_config()
         stream = self._get_client().chat.completions.create(
-            model=config.llm_config.model,
+            model=settings.llm_model,
             messages=[
                 {
                     "role": "user",
@@ -51,9 +46,8 @@ class OpenAILLMService(ILLMService):
     async def enhance_captions(
         self, captions: Captions, history: History, language: Language
     ) -> Captions:
-        config = self._get_config()
         response = self._get_client().chat.completions.create(
-            model=config.llm_config.model,
+            model=settings.llm_model,
             messages=[
                 {
                     "role": "user",

@@ -18,7 +18,7 @@ from src.entities.history import History
 from src.entities.cover import RedditCover
 from src.entities.config import MainConfig
 from src.entities.language import Language
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 
 
 class TestHistoryServiceStreamingSpeech:

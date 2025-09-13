@@ -3,8 +3,17 @@ from typing import Optional
 from datetime import datetime
 
 
+class RedditPost(BaseModel):
+    title: str = Field("", title="Title of the Reddit post")
+    content: str = Field("", title="Content of the Reddit post")
+    community: str = Field("", title="Community of the Reddit post")
+    author: str = Field("", title="Author of the Reddit post")
+    community_url_photo: str = Field("", title="URL of the community photo")
+
+
 class RedditHistoryResponse(BaseModel):
     """Response model for Reddit history"""
+
     id: str
     title: str
     content: str
@@ -22,13 +31,17 @@ class RedditHistoryResponse(BaseModel):
 
 class RedditHistoryCreate(BaseModel):
     """Request model for creating Reddit history"""
+
     url: str = Field(..., description="Reddit post URL")
-    enhance_history: bool = Field(True, description="Whether to enhance the history using AI")
+    enhance_history: bool = Field(
+        True, description="Whether to enhance the history using AI"
+    )
     language: str = Field("portuguese", description="Language for processing")
 
 
 class VideoGenerationRequest(BaseModel):
     """Request model for video generation"""
+
     history_id: str = Field(..., description="ID of the Reddit history")
     title: Optional[str] = Field(None, description="Override title")
     content: Optional[str] = Field(None, description="Override content")
@@ -43,6 +56,7 @@ class VideoGenerationRequest(BaseModel):
 
 class TaskStatusResponse(BaseModel):
     """Response model for task status"""
+
     history_id: str
     status: str  # started, running, completed, failed
     message: str

@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 import tempfile
 
-from ...repositories.interfaces import IFileStorage
+from ...adapters.repositories.interfaces import IFileStorage
 from ..dependencies import FileStorageDep
 
 

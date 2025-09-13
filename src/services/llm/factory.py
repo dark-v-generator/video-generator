@@ -1,4 +1,4 @@
-from ...repositories.interfaces import IConfigRepository
+from ...core.config import settings
 from .interfaces import ILLMService
 from .openai_service import OpenAILLMService
 from .local_llm_service import LocalLLMService
@@ -9,8 +9,7 @@ class LLMServiceFactory:
     """Factory for creating LLM service instances"""
 
     @staticmethod
-    def create_llm_service(config_repository: IConfigRepository) -> ILLMService:
-        _logger = get_logger(__name__)
+    def create_llm_service() -> ILLMService:
         """
         Create an LLM service instance based on the provider.
 
@@ -21,13 +20,15 @@ class LLMServiceFactory:
         Returns:
             An instance of ILLMService
         """
+        logger = get_logger(__name__)
         # Explicit provider takes precedence, config is only used as fallback
-        provider = config_repository.load_config().llm_config.provider
+        provider = settings.llm_provider
 
-        _logger.info(f"Creating LLM service for provider: {provider}")
-        if provider == "openai":
-            return OpenAILLMService(config_repository)
-        elif provider == "local":
-            return LocalLLMService(config_repository)
-        else:
-            raise ValueError(f"Invalid provider: {provider}")
+        logger.info(f"Creating LLM service for provider: {provider}")
+        match provider:
+            case "openai":
+                return OpenAILLMService()
+            case "local":
+                return LocalLLMService()
+            case _:
+                raise ValueError(f"Invalid provider: {provider}")

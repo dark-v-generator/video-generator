@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile
 
 from src.services.speech_service import AzureSpeechService, VoiceGender
 from src.entities.language import Language
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 
 
 @pytest.fixture

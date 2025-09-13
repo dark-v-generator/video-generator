@@ -14,7 +14,7 @@ from typing import (
 from proglog import ProgressBarLogger
 import asyncio
 
-from ..models.progress import ProgressEvent
+from ..entities.progress import ProgressEvent
 
 
 class AsyncProgressLogger(ProgressBarLogger):

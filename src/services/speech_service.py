@@ -1,19 +1,13 @@
 import asyncio
-import os
 from tempfile import NamedTemporaryFile
-from enum import Enum
 from typing import Optional, List
 
 from fish_audio_sdk import Session, TTSRequest
 
 from ..core.config import settings
 
-from ..repositories.interfaces import IConfigRepository
-
 from .interfaces import ISpeechService
 from ..entities.language import Language
-from ..entities.config import MainConfig
-from ..proxies import azure_proxy
 from ..core.logging_config import get_logger
 from ..entities.speech_voice import SpeechVoice
 
@@ -224,23 +218,16 @@ class SpeechServiceFactory:
     """Factory to create speech services based on configuration"""
 
     @staticmethod
-    def create_speech_service(config_repository: IConfigRepository) -> ISpeechService:
+    def create_speech_service() -> ISpeechService:
         logger = get_logger(__name__)
         """Create appropriate speech service based on provider name or configuration"""
-        config = config_repository.load_config()
-        provider = config.speech_config.provider
-        if provider is None:
-            provider = MainConfig().speech_config.provider  # Default provider
-
-        if provider is not None and config is not None:
-            provider = config.speech_config.provider
-
+        provider = settings.speech_provider
         provider = provider.lower().strip()
         logger.info(f"Creating speech service for provider: {provider}")
-        if provider == "coqui":
-            return CoquiSpeechService()
-        elif provider == "fish-speech" or provider == "fish_speech":
-            return FishSpeechService()
-        else:
-            # Default to Azure
-            return CoquiSpeechService()
+        match provider:
+            case "coqui" | "coqui_speech":
+                return CoquiSpeechService()
+            case "fish-speech" | "fish_speech":
+                return FishSpeechService()
+            case _:
+                raise ValueError(f"Invalid provider: {provider}")

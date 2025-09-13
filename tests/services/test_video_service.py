@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock, mock_open
 from src.services.video_service import VideoService
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 from src.entities.editor.video_clip import VideoClip
 from src.entities.editor.audio_clip import AudioClip
 from src.entities.editor.image_clip import ImageClip

@@ -4,9 +4,9 @@ from datetime import datetime
 import uuid
 
 from .interfaces import IHistoryRepository, IFileRepository, IFileStorage
-from ..entities.reddit_history import RedditHistory
-from ..core.config import settings
-from ..core.logging_config import get_logger
+from...entities.reddit_history import RedditHistory
+from...core.config import settings
+from...core.logging_config import get_logger
 
 
 class FileHistoryRepository(IHistoryRepository):

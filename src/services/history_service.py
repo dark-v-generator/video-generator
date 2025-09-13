@@ -3,6 +3,8 @@ import threading
 from typing import List, AsyncIterable, Union
 import uuid
 
+from ..adapters.proxies.interfaces import IRedditProxy
+
 from ..core.proglog_logger import AsyncProgressLogger
 from ..core.logging_config import get_logger
 
@@ -20,15 +22,13 @@ from ..entities.cover import RedditCover
 from ..entities.editor import audio_clip, captions_clip, image_clip
 from ..entities.history import History
 from ..entities.language import Language
-from ..models.progress import ProgressEvent
+from ..entities.progress import ProgressEvent
 from ..entities.reddit_history import RedditHistory
-from ..repositories.interfaces import (
+from ..adapters.repositories.interfaces import (
     IFileStorage,
     IHistoryRepository,
-    IFileRepository,
     IConfigRepository,
 )
-from ..proxies import reddit_proxy
 
 
 class HistoryService(IHistoryService):
@@ -44,6 +44,7 @@ class HistoryService(IHistoryService):
         video_service: IVideoService,
         llm_service: ILLMService,
         file_storage: IFileStorage,
+        reddit_proxy: IRedditProxy,
     ):
         self._history_repository = history_repository
         self._config_repository = config_repository
@@ -53,6 +54,7 @@ class HistoryService(IHistoryService):
         self._video_service = video_service
         self._llm_service = llm_service
         self._file_storage = file_storage
+        self._reddit_proxy = reddit_proxy
         self._logger = get_logger(__name__)
 
     def _get_config(self) -> MainConfig:
@@ -64,7 +66,7 @@ class HistoryService(IHistoryService):
         language: Language = Language.PORTUGUESE,
     ) -> RedditHistory:
         """Scrape a Reddit post and create history"""
-        reddit_post = reddit_proxy.get_reddit_post(post_url)
+        reddit_post = self._reddit_proxy.get_reddit_post(post_url)
         history = History(title=reddit_post.title, content=reddit_post.content)
         cover = RedditCover(
             image_url=reddit_post.community_url_photo,

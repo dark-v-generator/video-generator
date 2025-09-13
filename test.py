@@ -11,7 +11,7 @@ from src.entities.language import Language
 from src.services.speech_service import (
     SpeechServiceFactory,
 )
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 
 async def test_speech_service():
     provider_name = "coqui"

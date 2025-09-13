@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from src.services.history_service import HistoryService
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 from src.entities.reddit_history import RedditHistory
 from src.entities.history import History
 from src.entities.cover import RedditCover

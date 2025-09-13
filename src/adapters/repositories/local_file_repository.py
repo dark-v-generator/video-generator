@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from .interfaces import IFileRepository
-from ..core.config import settings
-from ..core.logging_config import get_logger
+from...core.config import settings
+from...core.logging_config import get_logger
 
 
 class LocalFileRepository(IFileRepository):

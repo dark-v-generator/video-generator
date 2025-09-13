@@ -12,7 +12,7 @@ from ..entities.cover import RedditCover
 from ..entities.editor.audio_clip import AudioClip
 from ..entities.editor.image_clip import ImageClip
 from ..entities.editor.video_clip import VideoClip
-from ..models.progress import ProgressEvent
+from ..entities.progress import ProgressEvent
 from ..entities.config import MainConfig
 
 

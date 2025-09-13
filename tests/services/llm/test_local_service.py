@@ -6,7 +6,7 @@ from src.entities.config import MainConfig, LLMConfig
 from src.entities.history import History
 from src.entities.language import Language
 from src.entities.captions import Captions, CaptionSegment
-from src.models.progress import ProgressEvent
+from src.entities.progress import ProgressEvent
 
 
 @pytest.fixture

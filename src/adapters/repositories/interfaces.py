@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from pathlib import Path
 
-from ..entities.config import MainConfig
-from ..entities.reddit_history import RedditHistory
-from ..entities.history import History
+from...entities.config import MainConfig
+from...entities.reddit_history import RedditHistory
+from...entities.history import History
 
 
 class IConfigRepository(ABC):

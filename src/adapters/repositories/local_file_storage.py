@@ -2,7 +2,7 @@ from pathlib import Path
 import uuid
 
 from .interfaces import IFileStorage
-from ..core.config import settings
+from...core.config import settings
 
 
 class LocalFileStorage(IFileStorage):

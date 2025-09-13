@@ -7,8 +7,8 @@ from typing import Optional, AsyncIterable, Union
 from googleapiclient.discovery import build
 from pytubefix import YouTube
 
-from ..repositories.interfaces import IConfigRepository
-from ..repositories.interfaces import IFileStorage
+from ..adapters.repositories.interfaces import IConfigRepository
+from ..adapters.repositories.interfaces import IFileStorage
 
 
 from ..core.proglog_logger import AsyncProgressLogger
@@ -16,7 +16,7 @@ from ..entities.config import VideoConfig
 from ..entities.editor import captions_clip
 from .interfaces import IVideoService
 from ..entities.editor import image_clip, audio_clip, video_clip
-from ..models.progress import ProgressEvent
+from ..entities.progress import ProgressEvent
 from ..core.logging_config import get_logger
 from ..core.config import settings
 
