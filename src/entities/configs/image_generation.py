@@ -13,4 +13,6 @@ class LocalImageGenerationConfig(BaseYAMLModel):
     model_id: str = Field("stabilityai/sdxl-turbo", title="Local HuggingFace Model ID")
 
 
-ImageGenerationConfig = Union[LeonardoImageGenerationConfig, LocalImageGenerationConfig]
+ImageGenerationConfigType = Union[
+    LeonardoImageGenerationConfig, LocalImageGenerationConfig
+]

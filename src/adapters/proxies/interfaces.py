@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from ...entities.reddit import RedditPost
-from ...entities.captions import Captions
+from ...entities.transcription import TranscriptionResult
+from ...entities.language import Language
+from typing import List, Optional
 
 
 class IRedditProxy(ABC):
@@ -12,10 +14,12 @@ class IRedditProxy(ABC):
         ...
 
 
-class IWhisperProxy(ABC):
+class ITranscriptionProxy(ABC):
     @abstractmethod
-    def generate_captions(self, audio_path: str) -> Captions:
-        """Generate captions from an audio file"""
+    def transcribe(
+        self, audio_bytes: bytes, language: Optional[Language] = None
+    ) -> TranscriptionResult:
+        """Generate transcription result from audio bytes"""
         ...
 
 

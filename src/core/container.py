@@ -1,4 +1,7 @@
+import os
 from dependency_injector import containers, providers
+
+from ..entities.config import MainConfig
 
 from ..adapters.repositories.local_file_storage import LocalFileStorage
 from ..core.config import settings
@@ -19,7 +22,7 @@ from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
 from ..services.llm import LLMServiceFactory
 from ..adapters.proxies.reddit_proxy import BS4RedditProxy
-from ..adapters.proxies.whisper_proxy import LocalWhisperProxy
+from ..adapters.proxies import factories as proxies_factories
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -28,9 +31,23 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # Configuration
     config = providers.Configuration()
 
+    main_config = providers.Singleton(
+        MainConfig.from_yaml, file_path=os.getenv("CONFIG_PATH", "config.yaml")
+    )
+
     # Repositories (Singletons)
     file_repository = providers.Singleton(LocalFileRepository)
     file_storage = providers.Singleton(LocalFileStorage)
+
+    # Proxies configs
+    transcription_proxy = providers.Singleton(
+        proxies_factories.TranscriptionProxyFactory.create,
+        config=main_config.provided.transcription_config,
+    )
+    image_generation_proxy = providers.Singleton(
+        proxies_factories.ImageGeneratorFactory.create,
+        config=main_config.provided.image_generation_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository
@@ -50,7 +67,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Proxies
     reddit_proxy = providers.Singleton(BS4RedditProxy)
-    whisper_proxy = providers.Singleton(LocalWhisperProxy)
 
     # Speech services - provide both providers
     coqui_speech_service = providers.Singleton(CoquiSpeechService)
@@ -66,7 +82,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         CaptionsService,
         file_storage=file_storage,
         llm_service=llm_service,
-        whisper_proxy=whisper_proxy,
+        transcription_proxy=transcription_proxy,
     )
 
     cover_service = providers.Singleton(

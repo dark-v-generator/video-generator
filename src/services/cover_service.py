@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 from ..adapters.repositories.interfaces import IConfigRepository
 from .interfaces import ICoverService
 from ..entities.cover import RedditCover
-from ..entities.main_config import MainConfig
+from ..entities.config import MainConfig
 
 REDDIT_COVER_HTML = """
 <!DOCTYPE html>
@@ -102,7 +102,9 @@ class CoverService(ICoverService):
         html_content = self._generate_reddit_cover_html(cover, config.cover_config)
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(args=["--no-sandbox", "--disable-dev-shm-usage"])
+            browser = await p.chromium.launch(
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
             page = await browser.new_page()
 
             # Set viewport for consistent rendering

@@ -3,7 +3,7 @@ from typing import List
 import torch
 from diffusers import AutoPipelineForText2Image
 from .interfaces import IImageGeneratorProxy
-from src.entities.config.image_generation import LocalImageGenerationConfig
+from src.entities.configs.image_generation import LocalImageGenerationConfig
 
 
 class LocalSDXLImageProxy(IImageGeneratorProxy):

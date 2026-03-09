@@ -2,6 +2,14 @@ import random
 from typing import List, Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
+from src.entities.configs.image_generation import (
+    ImageGenerationConfigType,
+    LocalImageGenerationConfig,
+)
+from src.entities.configs.transcription import (
+    TranscriptionConfigType,
+    LocalTranscriptionConfig,
+)
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -57,6 +65,15 @@ class MainConfig(BaseYAMLModel):
     def __generate_random_seed() -> str:
         return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))
 
+    # Proxies configs
+    transcription_config: TranscriptionConfigType = Field(
+        LocalTranscriptionConfig(), title="Transcription configuration"
+    )
+    image_generation_config: ImageGenerationConfigType = Field(
+        LocalImageGenerationConfig(), title="Image Generation configuration"
+    )
+
+    # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
