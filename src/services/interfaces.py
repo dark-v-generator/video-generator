@@ -102,23 +102,6 @@ class IHistoryService(ABC):
         pass
 
 
-class ISpeechService(ABC):
-    @abstractmethod
-    async def generate_speech(
-        self,
-        text: str,
-        voice_id: Optional[str] = None,
-        rate: float = 1.0,
-    ) -> bytes:
-        """Generate speech from text with progress events, yielding audio bytes as final result"""
-        ...
-
-    @abstractmethod
-    def list_voices(self) -> List[SpeechVoice]:
-        """List all available voices"""
-        ...
-
-
 class ICaptionsService(ABC):
     @abstractmethod
     async def generate_captions(

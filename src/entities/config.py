@@ -10,6 +10,10 @@ from src.entities.configs.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
 )
+from src.entities.configs.speech import (
+    SpeechConfigType,
+    EdgeTTSSpeechConfig,
+)
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -52,14 +56,6 @@ class LLMConfig(BaseYAMLModel):
     max_tokens: int = Field(2000, title="Maximum tokens for generation")
 
 
-class SpeechConfig(BaseYAMLModel):
-    """Configuration for Text-to-Speech services"""
-
-    provider: str = Field("fish-speech", title="Speech provider (coqui, fish-speech)")
-    default_voice: str = Field("", title="Default voice to use")
-    default_rate: float = Field(1.0, title="Default speech rate")
-
-
 class MainConfig(BaseYAMLModel):
     @staticmethod
     def __generate_random_seed() -> str:
@@ -72,13 +68,15 @@ class MainConfig(BaseYAMLModel):
     image_generation_config: ImageGenerationConfigType = Field(
         LocalImageGenerationConfig(), title="Image Generation configuration"
     )
+    speech_config: SpeechConfigType = Field(
+        EdgeTTSSpeechConfig(), title="Speech configuration"
+    )
 
     # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
     llm_config: LLMConfig = Field(LLMConfig(), title="LLM configuration")
-    speech_config: SpeechConfig = Field(SpeechConfig(), title="Speech configuration")
     seed: Optional[str] = Field(None, title="Seed")
 
     def int_seed(self) -> int:

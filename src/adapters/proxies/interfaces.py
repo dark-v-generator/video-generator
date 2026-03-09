@@ -4,7 +4,8 @@ from typing import List
 from ...entities.reddit import RedditPost
 from ...entities.transcription import TranscriptionResult
 from ...entities.language import Language
-from typing import List, Optional
+from ...entities.speech_voice import SpeechVoice
+from typing import List, Optional, Literal
 
 
 class IRedditProxy(ABC):
@@ -34,4 +35,23 @@ class IImageGeneratorProxy(ABC):
         num_images: int = 1,
     ) -> List[bytes]:
         """Generate a list of images from a prompt"""
+        ...
+
+
+class ISpeechProxy(ABC):
+    @abstractmethod
+    async def generate_speech(
+        self,
+        text: str,
+        gender: Literal["male", "female"] = "male",
+        rate: float = 1.0,
+        language: Language = Language.PORTUGUESE,
+        override_voice_id: Optional[str] = None,
+    ) -> bytes:
+        """Generate speech bytes from text"""
+        ...
+
+    @abstractmethod
+    def list_voices(self) -> List[SpeechVoice]:
+        """List all available voices"""
         ...

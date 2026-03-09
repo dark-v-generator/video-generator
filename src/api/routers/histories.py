@@ -4,7 +4,8 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, AsyncIterable
 from pydantic import BaseModel
 
-from ...services.interfaces import IHistoryService, ISpeechService
+from ...services.interfaces import IHistoryService
+from ...adapters.proxies.interfaces import ISpeechProxy
 from ...services.llm.interfaces import ILLMService
 from ...entities.language import Language
 from ...entities.progress import ProgressEvent
@@ -12,7 +13,7 @@ from ..dependencies import (
     HistoryServiceDep,
     LLMServiceDep,
     FileStorageDep,
-    SpeechServiceDep,
+    SpeechProxyDep,
 )
 from ...adapters.repositories.interfaces import IFileStorage
 from ...core.logging_config import get_logger
@@ -81,10 +82,10 @@ async def list_histories(
 
 @router.get("/list-voices")
 async def list_voices(
-    speech_service: ISpeechService = SpeechServiceDep,
+    speech_proxy: ISpeechProxy = SpeechProxyDep,
 ) -> List[SpeechVoice]:
     """List all available voices"""
-    return speech_service.list_voices()
+    return speech_proxy.list_voices()
 
 
 @router.get("/{history_id}")

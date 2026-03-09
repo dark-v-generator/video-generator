@@ -17,9 +17,9 @@ def get_history_service():
     return container.history_service()
 
 
-def get_speech_service():
-    """Get speech service"""
-    return container.speech_service()
+def get_speech_proxy():
+    """Get speech proxy"""
+    return container.speech_proxy()
 
 
 def get_captions_service():
@@ -50,7 +50,7 @@ def get_llm_service():
 # Dependency shortcuts using FastAPI Depends
 FileStorageDep = Depends(get_file_storage)
 HistoryServiceDep = Depends(get_history_service)
-SpeechServiceDep = Depends(get_speech_service)
+SpeechProxyDep = Depends(get_speech_proxy)
 CaptionsServiceDep = Depends(get_captions_service)
 CoverServiceDep = Depends(get_cover_service)
 VideoServiceDep = Depends(get_video_service)

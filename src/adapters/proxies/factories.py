@@ -14,6 +14,18 @@ from src.entities.configs.transcription import (
 )
 from src.adapters.proxies.local_whisper_proxy import LocalWhisperProxy
 from src.adapters.proxies.openai_whisper_proxy import OpenAIWhisperProxy
+from src.entities.configs.speech import (
+    SpeechConfigType,
+    EdgeTTSSpeechConfig,
+    ElevenLabsSpeechConfig,
+)
+from src.adapters.proxies.edge_tts_proxy import EdgeTTSSpeechProxy
+from src.adapters.proxies.elevenlabs_proxy import ElevenLabsSpeechProxy
+from src.adapters.proxies.interfaces import (
+    IImageGeneratorProxy,
+    ITranscriptionProxy,
+    ISpeechProxy,
+)
 
 
 class ImageGeneratorFactory:
@@ -34,5 +46,14 @@ class TranscriptionProxyFactory:
             return LocalWhisperProxy(config=config)
         elif isinstance(config, OpenAITranscriptionConfig):
             return OpenAIWhisperProxy(config=config)
+
+
+class SpeechProxyFactory:
+    @staticmethod
+    def create(config: SpeechConfigType) -> ISpeechProxy:
+        if isinstance(config, EdgeTTSSpeechConfig):
+            return EdgeTTSSpeechProxy(config=config)
+        elif isinstance(config, ElevenLabsSpeechConfig):
+            return ElevenLabsSpeechProxy(config=config)
         else:
-            raise ValueError(f"Unknown Transcription Configuration: {type(config)}")
+            raise ValueError(f"Unknown Speech Configuration: {type(config)}")

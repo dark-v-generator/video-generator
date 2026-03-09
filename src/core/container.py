@@ -12,11 +12,7 @@ from ..services.config_service import ConfigService
 
 # Import concrete service implementations (we'll update these)
 from ..services.history_service import HistoryService
-from ..services.speech_service import (
-    CoquiSpeechService,
-    SpeechServiceFactory,
-    FishSpeechService,
-)
+
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
@@ -48,6 +44,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.ImageGeneratorFactory.create,
         config=main_config.provided.image_generation_config,
     )
+    speech_proxy = providers.Singleton(
+        proxies_factories.SpeechProxyFactory.create,
+        config=main_config.provided.speech_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository
@@ -67,13 +67,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Proxies
     reddit_proxy = providers.Singleton(BS4RedditProxy)
-
-    # Speech services - provide both providers
-    coqui_speech_service = providers.Singleton(CoquiSpeechService)
-    fish_speech_service = providers.Singleton(FishSpeechService)
-
-    # Default speech service (can be overridden by configuration)
-    speech_service = providers.Singleton(SpeechServiceFactory.create_speech_service)
 
     # LLM service with factory pattern
     llm_service = providers.Singleton(LLMServiceFactory.create_llm_service)
@@ -100,7 +93,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         HistoryService,
         history_repository=history_repository,
         config_repository=config_repository,
-        speech_service=speech_service,
+        speech_proxy=speech_proxy,
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,

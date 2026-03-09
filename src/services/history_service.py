@@ -3,14 +3,13 @@ import threading
 from typing import List, AsyncIterable, Union
 import uuid
 
-from ..adapters.proxies.interfaces import IRedditProxy
+from ..adapters.proxies.interfaces import IRedditProxy, ISpeechProxy
 
 from ..core.proglog_logger import AsyncProgressLogger
 from ..core.logging_config import get_logger
 
 from .interfaces import (
     IHistoryService,
-    ISpeechService,
     ICaptionsService,
     ICoverService,
     IVideoService,
@@ -38,7 +37,7 @@ class HistoryService(IHistoryService):
         self,
         history_repository: IHistoryRepository,
         config_repository: IConfigRepository,
-        speech_service: ISpeechService,
+        speech_proxy: ISpeechProxy,
         captions_service: ICaptionsService,
         cover_service: ICoverService,
         video_service: IVideoService,
@@ -48,7 +47,7 @@ class HistoryService(IHistoryService):
     ):
         self._history_repository = history_repository
         self._config_repository = config_repository
-        self._speech_service = speech_service
+        self._speech_proxy = speech_proxy
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
