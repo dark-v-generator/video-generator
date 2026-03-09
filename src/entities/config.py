@@ -15,6 +15,7 @@ from src.entities.configs.speech import (
     EdgeTTSSpeechConfig,
 )
 from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
+from src.entities.configs.llm import LLMConfigType, DSPyLLMConfig
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -75,12 +76,13 @@ class MainConfig(BaseYAMLModel):
     reddit_config: RedditConfigType = Field(
         BS4RedditConfig(), title="Reddit configuration"
     )
+    llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="LLM configuration")
 
     # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
-    llm_config: LLMConfig = Field(LLMConfig(), title="LLM configuration")
+
     seed: Optional[str] = Field(None, title="Seed")
 
     def int_seed(self) -> int:

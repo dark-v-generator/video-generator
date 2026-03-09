@@ -29,6 +29,10 @@ from src.adapters.proxies.interfaces import (
 )
 from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
 from src.adapters.proxies.reddit_proxy import BS4RedditProxy
+from src.entities.configs.llm import LLMConfigType, PromptLLMConfig, DSPyLLMConfig
+from src.adapters.proxies.llm_prompt_proxy import PromptLLMProxy
+from src.adapters.proxies.llm_dspy_proxy import DSPyLLMProxy
+from src.adapters.proxies.interfaces import ILLMProxy
 
 
 class ImageGeneratorFactory:
@@ -69,3 +73,14 @@ class RedditProxyFactory:
             return BS4RedditProxy(config=config)
         else:
             raise ValueError(f"Unknown Reddit Configuration: {type(config)}")
+
+
+class LLMProxyFactory:
+    @staticmethod
+    def create(config: LLMConfigType) -> ILLMProxy:
+        if isinstance(config, DSPyLLMConfig):
+            return DSPyLLMProxy(config=config)
+        elif isinstance(config, PromptLLMConfig):
+            return PromptLLMProxy(config=config)
+        else:
+            raise ValueError(f"Unknown LLM Configuration: {type(config)}")

@@ -51,6 +51,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.RedditProxyFactory.create,
         config=main_config.provided.reddit_config,
     )
+    llm_proxy = providers.Singleton(
+        proxies_factories.LLMProxyFactory.create,
+        config=main_config.provided.llm_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository

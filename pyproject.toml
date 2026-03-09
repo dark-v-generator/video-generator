@@ -66,6 +66,8 @@ dependencies = [
     "torchvision>=0.23.0",
     "torchaudio>=2.8.0",
     "edge-tts>=7.2.7",
+    "litellm>=1.60.0",
+    "dspy-ai>=2.6.27",
 ]
 
 [project.optional-dependencies]

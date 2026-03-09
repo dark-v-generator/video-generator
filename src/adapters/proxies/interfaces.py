@@ -5,7 +5,7 @@ from ...entities.reddit_post import RedditPost
 from ...entities.transcription import TranscriptionResult
 from ...entities.language import Language
 from ...entities.speech_voice import SpeechVoice
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, AsyncIterable
 
 
 class IRedditProxy(ABC):
@@ -54,4 +54,13 @@ class ISpeechProxy(ABC):
     @abstractmethod
     def list_voices(self) -> List[SpeechVoice]:
         """List all available voices"""
+        ...
+
+
+class ILLMProxy(ABC):
+    @abstractmethod
+    async def translate_and_adapt(
+        self, text: str, target_language: Language
+    ) -> AsyncIterable[str]:
+        """Translate and adapt text to the target language via LLM"""
         ...
