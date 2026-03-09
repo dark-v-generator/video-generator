@@ -17,7 +17,6 @@ from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
 from ..services.llm import LLMServiceFactory
-from ..adapters.proxies.reddit_proxy import BS4RedditProxy
 from ..adapters.proxies import factories as proxies_factories
 
 
@@ -48,6 +47,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.SpeechProxyFactory.create,
         config=main_config.provided.speech_config,
     )
+    reddit_proxy = providers.Singleton(
+        proxies_factories.RedditProxyFactory.create,
+        config=main_config.provided.reddit_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository
@@ -66,7 +69,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     # Proxies
-    reddit_proxy = providers.Singleton(BS4RedditProxy)
 
     # LLM service with factory pattern
     llm_service = providers.Singleton(LLMServiceFactory.create_llm_service)

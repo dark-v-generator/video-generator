@@ -14,6 +14,7 @@ from src.entities.configs.speech import (
     SpeechConfigType,
     EdgeTTSSpeechConfig,
 )
+from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -70,6 +71,9 @@ class MainConfig(BaseYAMLModel):
     )
     speech_config: SpeechConfigType = Field(
         EdgeTTSSpeechConfig(), title="Speech configuration"
+    )
+    reddit_config: RedditConfigType = Field(
+        BS4RedditConfig(), title="Reddit configuration"
     )
 
     # Other configs

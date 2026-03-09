@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from ...entities.reddit import RedditPost
+from ...entities.reddit_post import RedditPost
 from ...entities.transcription import TranscriptionResult
 from ...entities.language import Language
 from ...entities.speech_voice import SpeechVoice

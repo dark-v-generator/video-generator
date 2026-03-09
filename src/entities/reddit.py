@@ -3,14 +3,6 @@ from typing import Optional
 from datetime import datetime
 
 
-class RedditPost(BaseModel):
-    title: str = Field("", title="Title of the Reddit post")
-    content: str = Field("", title="Content of the Reddit post")
-    community: str = Field("", title="Community of the Reddit post")
-    author: str = Field("", title="Author of the Reddit post")
-    community_url_photo: str = Field("", title="URL of the community photo")
-
-
 class RedditHistoryResponse(BaseModel):
     """Response model for Reddit history"""
 

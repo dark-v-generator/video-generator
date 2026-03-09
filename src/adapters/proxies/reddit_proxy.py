@@ -2,14 +2,16 @@ from bs4 import BeautifulSoup, ResultSet, Tag
 import requests
 
 from ...adapters.proxies.interfaces import IRedditProxy
-from ...entities.reddit import RedditPost
+from ...entities.reddit_post import RedditPost
 
 from ...core.logging_config import get_logger
+from ...entities.configs.reddit import BS4RedditConfig
 
 
 class BS4RedditProxy(IRedditProxy):
-    def __init__(self):
+    def __init__(self, config: BS4RedditConfig):
         self.logger = get_logger(__name__)
+        self.config = config
 
     def get_reddit_post(self, url: str) -> RedditPost:
         response = requests.get(url)

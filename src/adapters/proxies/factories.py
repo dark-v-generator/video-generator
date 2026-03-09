@@ -25,7 +25,10 @@ from src.adapters.proxies.interfaces import (
     IImageGeneratorProxy,
     ITranscriptionProxy,
     ISpeechProxy,
+    IRedditProxy,
 )
+from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
+from src.adapters.proxies.reddit_proxy import BS4RedditProxy
 
 
 class ImageGeneratorFactory:
@@ -57,3 +60,12 @@ class SpeechProxyFactory:
             return ElevenLabsSpeechProxy(config=config)
         else:
             raise ValueError(f"Unknown Speech Configuration: {type(config)}")
+
+
+class RedditProxyFactory:
+    @staticmethod
+    def create(config: RedditConfigType) -> IRedditProxy:
+        if isinstance(config, BS4RedditConfig):
+            return BS4RedditProxy(config=config)
+        else:
+            raise ValueError(f"Unknown Reddit Configuration: {type(config)}")
