@@ -17,3 +17,5 @@ preview/
 .storage/*
 .env
 web/
+tests/data/*
+
