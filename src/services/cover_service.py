@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 from ..adapters.repositories.interfaces import IConfigRepository
 from .interfaces import ICoverService
 from ..entities.cover import RedditCover
-from ..entities.config import MainConfig
+from ..entities.main_config import MainConfig
 
 REDDIT_COVER_HTML = """
 <!DOCTYPE html>

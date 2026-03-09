@@ -60,6 +60,11 @@ dependencies = [
     "typing_extensions==4.15.0",
     "python-multipart==0.0.20",
     "fish-audio-sdk>=2025.6.3",
+    "diffusers>=0.37.0",
+    "transformers>=4.56.0",
+    "accelerate>=1.13.0",
+    "torchvision>=0.23.0",
+    "torchaudio>=2.8.0",
 ]
 
 [project.optional-dependencies]
