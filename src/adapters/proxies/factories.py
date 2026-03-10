@@ -32,7 +32,9 @@ from src.adapters.proxies.reddit_proxy import BS4RedditProxy
 from src.entities.configs.llm import LLMConfigType, PromptLLMConfig, DSPyLLMConfig
 from src.adapters.proxies.llm_prompt_proxy import PromptLLMProxy
 from src.adapters.proxies.llm_dspy_proxy import DSPyLLMProxy
-from src.adapters.proxies.interfaces import ILLMProxy
+from src.adapters.proxies.interfaces import ILLMProxy, IYouTubeProxy
+from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
+from src.adapters.proxies.pytube_proxy import PyTubeProxy
 
 
 class ImageGeneratorFactory:
@@ -84,3 +86,11 @@ class LLMProxyFactory:
             return PromptLLMProxy(config=config)
         else:
             raise ValueError(f"Unknown LLM Configuration: {type(config)}")
+
+class YouTubeProxyFactory:
+    @staticmethod
+    def create(config: YouTubeConfigType) -> IYouTubeProxy:
+        if isinstance(config, PyTubeYouTubeConfig):
+            return PyTubeProxy(config=config)
+        else:
+            raise ValueError(f"Unknown YouTube Configuration: {type(config)}")

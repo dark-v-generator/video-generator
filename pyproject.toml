@@ -47,10 +47,10 @@ dependencies = [
     "pydub==0.25.1",
     # Web Scraping & APIs
     "requests==2.32.3",
-    "aiohttp==3.10.11",
+    "aiohttp>=3.12.13",
     "beautifulsoup4==4.12.3",
     "google-api-python-client==2.159.0",
-    "pytubefix==8.13.1",
+    "pytubefix==10.3.8",
     # Utilities
     "PyYAML==6.0.2",
     "Unidecode==1.4.0",

@@ -55,6 +55,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.LLMProxyFactory.create,
         config=main_config.provided.llm_config,
     )
+    youtube_proxy = providers.Singleton(
+        proxies_factories.YouTubeProxyFactory.create,
+        config=main_config.provided.youtube_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository

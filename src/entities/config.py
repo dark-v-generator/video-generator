@@ -16,6 +16,7 @@ from src.entities.configs.speech import (
 )
 from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
 from src.entities.configs.llm import LLMConfigType, DSPyLLMConfig
+from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -77,6 +78,9 @@ class MainConfig(BaseYAMLModel):
         BS4RedditConfig(), title="Reddit configuration"
     )
     llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="LLM configuration")
+    youtube_config: YouTubeConfigType = Field(
+        PyTubeYouTubeConfig(), title="YouTube configuration"
+    )
 
     # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")

@@ -81,3 +81,15 @@ class ILLMProxy(ABC):
         Returns the corrected list of dictionaries with 'word', 'start', 'end', 'probability'.
         """
         ...
+
+
+class IYouTubeProxy(ABC):
+    @abstractmethod
+    def list_video_ids(self, url: str) -> List[str]:
+        """List video IDs from a YouTube channel or playlist URL"""
+        ...
+
+    @abstractmethod
+    def download_video(self, video_id: str) -> bytes:
+        """Download a YouTube video and return its bytes"""
+        ...
