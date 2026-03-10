@@ -106,9 +106,10 @@ class ICaptionsService(ABC):
     @abstractmethod
     async def generate_captions(
         self,
-        audio_file_id: str,
+        audio_bytes: bytes,
         enhance_captions: bool = False,
-        language: Language = Language.PORTUGUESE,
+        language: Optional[Language] = None,
+        base_text: Optional[str] = None,
     ) -> Captions:
         """Generate captions from audio"""
         pass

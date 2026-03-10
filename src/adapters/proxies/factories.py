@@ -36,6 +36,9 @@ from src.adapters.proxies.interfaces import ILLMProxy, IYouTubeProxy
 from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.adapters.proxies.pytube_proxy import PyTubeProxy
 
+from src.adapters.proxies.interfaces import ICoverProxy
+from src.adapters.proxies.playwright_cover_proxy import PlaywrightCoverProxy
+from src.entities.configs.cover import CoverConfigType, PlaywrightCoverConfig
 
 class ImageGeneratorFactory:
     @staticmethod
@@ -94,3 +97,11 @@ class YouTubeProxyFactory:
             return PyTubeProxy(config=config)
         else:
             raise ValueError(f"Unknown YouTube Configuration: {type(config)}")
+
+class CoverProxyFactory:
+    @staticmethod
+    def create(config: CoverConfigType) -> ICoverProxy:
+        if isinstance(config, PlaywrightCoverConfig):
+            return PlaywrightCoverProxy(title_font_size=config.title_font_size)
+        else:
+            raise ValueError(f"Unknown Cover Configuration: {type(config)}")

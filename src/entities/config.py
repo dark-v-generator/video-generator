@@ -17,6 +17,7 @@ from src.entities.configs.speech import (
 from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
 from src.entities.configs.llm import LLMConfigType, DSPyLLMConfig
 from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
+from src.entities.configs.cover import CoverConfigType, PlaywrightCoverConfig
 
 
 class CaptionsConfig(BaseYAMLModel):
@@ -31,8 +32,7 @@ class CaptionsConfig(BaseYAMLModel):
     fade_duration: float = Field(0)
 
 
-class CoverConfig(BaseYAMLModel):
-    title_font_size: int = Field(110, title="Title font size")
+
 
 
 class VideoConfig(BaseYAMLModel):
@@ -84,7 +84,7 @@ class MainConfig(BaseYAMLModel):
 
     # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
-    cover_config: CoverConfig = Field(CoverConfig(), title="Cover configuration")
+    cover_config: CoverConfigType = Field(PlaywrightCoverConfig(), title="Cover configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
 
     seed: Optional[str] = Field(None, title="Seed")

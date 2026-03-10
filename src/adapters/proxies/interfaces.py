@@ -93,3 +93,16 @@ class IYouTubeProxy(ABC):
     def download_video(self, video_id: str) -> bytes:
         """Download a YouTube video and return its bytes"""
         ...
+
+
+class ICoverProxy(ABC):
+    @abstractmethod
+    async def create_reddit_cover(
+        self,
+        title: str,
+        community: str,
+        author: str,
+        community_url_photo: str,
+    ) -> bytes:
+        """Generate a reddit cover image and return PNG bytes"""
+        ...

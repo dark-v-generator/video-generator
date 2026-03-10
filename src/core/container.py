@@ -16,7 +16,7 @@ from ..services.history_service import HistoryService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.video_service import VideoService
-from ..services.llm import LLMServiceFactory
+
 from ..adapters.proxies import factories as proxies_factories
 
 
@@ -59,6 +59,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.YouTubeProxyFactory.create,
         config=main_config.provided.youtube_config,
     )
+    cover_proxy = providers.Singleton(
+        proxies_factories.CoverProxyFactory.create,
+        config=main_config.provided.cover_config,
+    )
 
     config_repository = providers.Singleton(
         FileConfigRepository, file_repository=file_repository
@@ -78,19 +82,19 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # Proxies
 
-    # LLM service with factory pattern
-    llm_service = providers.Singleton(LLMServiceFactory.create_llm_service)
+
 
     captions_service = providers.Singleton(
         CaptionsService,
         file_storage=file_storage,
-        llm_service=llm_service,
+        llm_proxy=llm_proxy,
         transcription_proxy=transcription_proxy,
     )
 
     cover_service = providers.Singleton(
         CoverService,
         config_repository=config_repository,
+        cover_proxy=cover_proxy,
     )
 
     video_service = providers.Singleton(
@@ -107,7 +111,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,
-        llm_service=llm_service,
         file_storage=file_storage,
         reddit_proxy=reddit_proxy,
     )

@@ -14,7 +14,6 @@ from .interfaces import (
     ICoverService,
     IVideoService,
 )
-from .llm.interfaces import ILLMService
 from ..entities.captions import Captions
 from ..entities.config import MainConfig
 from ..entities.cover import RedditCover
@@ -41,7 +40,6 @@ class HistoryService(IHistoryService):
         captions_service: ICaptionsService,
         cover_service: ICoverService,
         video_service: IVideoService,
-        llm_service: ILLMService,
         file_storage: IFileStorage,
         reddit_proxy: IRedditProxy,
     ):
@@ -51,7 +49,6 @@ class HistoryService(IHistoryService):
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
-        self._llm_service = llm_service
         self._file_storage = file_storage
         self._reddit_proxy = reddit_proxy
         self._logger = get_logger(__name__)
@@ -136,10 +133,16 @@ class HistoryService(IHistoryService):
         self._logger.info("Generating captions...")
 
         reddit_history = self._history_repository.load_reddit_history(history_id)
+
+        speech_bytes = self._history_repository.get_speech_bytes(reddit_history.id)
+        if not speech_bytes:
+            raise Exception("No speech audio available for captions generation")
+
         captions = await self._captions_service.generate_captions(
-            reddit_history.speech_file_id,
+            audio_bytes=speech_bytes,
             enhance_captions=enhance_captions,
             language=reddit_history.get_language(),
+            base_text=reddit_history.history.content,
         )
         self._history_repository.save_captions_file(
             history_id=reddit_history.id, captions_bytes=captions.to_bytes()
