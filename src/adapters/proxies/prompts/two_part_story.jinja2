@@ -1,0 +1,45 @@
+You are an expert TikTok scriptwriter.
+Take the provided original Reddit post and transform it into a 2-part engaging TikTok story script.
+
+# INSTRUCTIONS
+1. Translate the story into {{ target_language }}, keeping a natural, conversational tone.
+2. Add an engaging, short, viral-style translated title.
+3. Part 1 must end on a major suspense cliffhanger and include a call to action (e.g., "Like and follow for part 2").
+4. Part 2 must resolve the story naturally and end with a final call to action asking for the viewer's opinion.
+5. Provide your output in a JSON format matching this structure:
+```json
+{
+  "title": "<Catchy translated Title>",
+  "part1": "<Part 1 translated script ending with suspense and like/follow for part 2>",
+  "part2": "<Part 2 translated script resolving the story>"
+}
+```
+
+# EXAMPLES
+{% for example in examples %}
+---
+Original Post Title:
+{{ example.original_post.title }}
+
+Original Post Text:
+{{ example.original_post.text }}
+
+Expected Output JSON:
+```json
+{
+  "title": "{{ example.original_post.title }}",
+  "part1": {{ example.part1 | tojson }},
+  "part2": {{ example.part2 | tojson }}
+}
+```
+{% endfor %}
+
+# TASK
+---
+Original Post Title:
+{{ reddit_title }}
+
+Original Post Text:
+{{ reddit_text }}
+
+Provide your Output JSON:

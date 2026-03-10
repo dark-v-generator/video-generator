@@ -64,3 +64,11 @@ class ILLMProxy(ABC):
     ) -> AsyncIterable[str]:
         """Translate and adapt text to the target language via LLM"""
         ...
+
+    @abstractmethod
+    async def generate_two_part_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        """Generate a 2-part TikTok story script from a Reddit post.
+        Returns a dict with 'title', 'part1', and 'part2'."""
+        ...
