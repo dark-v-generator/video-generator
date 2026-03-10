@@ -18,4 +18,4 @@ preview/
 .env
 web/
 tests/data/*
-
+reddit_stories/

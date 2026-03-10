@@ -72,3 +72,12 @@ class ILLMProxy(ABC):
         """Generate a 2-part TikTok story script from a Reddit post.
         Returns a dict with 'title', 'part1', and 'part2'."""
         ...
+
+    @abstractmethod
+    async def enhance_transcription(
+        self, base_text: str, raw_transcription: List[dict]
+    ) -> List[dict]:
+        """Enhance a raw transcription word list using a base script as ground truth.
+        Returns the corrected list of dictionaries with 'word', 'start', 'end', 'probability'.
+        """
+        ...

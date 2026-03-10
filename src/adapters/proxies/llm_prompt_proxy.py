@@ -73,7 +73,9 @@ Return **ONLY** the adapted translated text. Do not add any outside commentary o
 
         # 1. Load Examples
         examples = []
-        yaml_path = os.path.join(os.path.dirname(__file__), "dspy_examples.yaml")
+        yaml_path = os.path.join(
+            os.path.dirname(__file__), "examples", "two_part_story.yaml"
+        )
         if os.path.exists(yaml_path):
             with open(yaml_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
@@ -129,3 +131,56 @@ Return **ONLY** the adapted translated text. Do not add any outside commentary o
         except json.JSONDecodeError as e:
             self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
             raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
+
+    async def enhance_transcription(
+        self, base_text: str, raw_transcription: list[dict]
+    ) -> list[dict]:
+        model_str = self._get_model_string()
+        self._logger.info(f"Enhancing transcription via LiteLLM {model_str}")
+
+        examples = []
+        yaml_path = os.path.join(
+            os.path.dirname(__file__), "examples", "transcription_enhancement.yaml"
+        )
+        if os.path.exists(yaml_path):
+            with open(yaml_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                if data:
+                    examples = data
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("enhance_transcription.jinja2")
+
+        prompt = template.render(
+            base_text=base_text,
+            raw_transcription=json.dumps(raw_transcription, ensure_ascii=False),
+            examples=examples,
+        )
+
+        messages = [
+            {"role": "user", "content": prompt},
+        ]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+        )
+
+        response_text = response.choices[0].message.content
+
+        try:
+            if response_text.startswith("```json"):
+                response_text = response_text.strip("```json").strip("```").strip()
+            if response_text.startswith("```"):
+                response_text = response_text.strip("```").strip()
+
+            result = json.loads(response_text)
+            return result
+        except json.JSONDecodeError as e:
+            self._logger.error(
+                f"Failed to parse enhanced transcription JSON: {response_text}"
+            )
+            raise RuntimeError(f"Could not parse valid JSON from LLM enhancer: {e}")

@@ -52,6 +52,31 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     )
 
 
+class EnhanceTranscriptionSignature(dspy.Signature):
+    """
+    You are an AI specialized in correcting timestamped text transcriptions.
+    You will be provided with a base text (the ground truth text) and a raw transcription (a JSON array of objects representing words spoken by a TTS engine, each with 'word', 'start', and 'end').
+
+    Your task is to merge, split, or alter the words in the raw transcription so their sequences perfectly match the base text.
+
+    Rules:
+    1. ONLY modify the transcription so it perfectly matches the base text.
+    2. Maintain the timestamp information as accurately as possible.
+    3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
+    4. If modifying a word, keep its original 'start' and 'end'.
+    5. Return the modified JSON array of objects.
+    """
+
+    base_text = dspy.InputField(desc="The correct, ground truth text.")
+    raw_transcription = dspy.InputField(
+        desc="A JSON string of the raw transcription word segments from the speech-to-text model."
+    )
+
+    enhanced_transcription = dspy.OutputField(
+        desc="The corrected JSON list containing 'word', 'start', and 'end'."
+    )
+
+
 class DSPyLLMProxy(ILLMProxy):
     def __init__(self, config: DSPyLLMConfig):
         self._logger = get_logger(__name__)
@@ -64,6 +89,57 @@ class DSPyLLMProxy(ILLMProxy):
         # We use dspy.ChainOfThought or just Predict for the 2-part story.
         self._story_generator = None
 
+        # Transcription enhancer
+        self._enhancer = None
+
+    def _get_transcription_enhancer(self):
+        if self._enhancer is not None:
+            return self._enhancer
+
+        enhancer = dspy.Predict(EnhanceTranscriptionSignature)
+        examples = []
+        try:
+            yaml_path = os.path.join(
+                os.path.dirname(__file__),
+                "prompts",
+                "examples",
+                "transcription_enhancement.yaml",
+            )
+
+            if os.path.exists(yaml_path):
+                import yaml
+
+                with open(yaml_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f)
+
+                    if data:
+                        for entry in data:
+                            examples.append(
+                                dspy.Example(
+                                    base_text=entry.get("base_text", ""),
+                                    raw_transcription=entry.get(
+                                        "raw_transcription", ""
+                                    ),
+                                    enhanced_transcription=entry.get(
+                                        "enhanced_transcription", ""
+                                    ),
+                                ).with_inputs("base_text", "raw_transcription")
+                            )
+
+                if examples:
+                    self._logger.info(
+                        f"Loaded {len(examples)} example(s) for transcription enhancement."
+                    )
+                    teleprompter = dspy.teleprompt.LabeledFewShot(k=len(examples))
+                    enhancer = teleprompter.compile(student=enhancer, trainset=examples)
+        except Exception as e:
+            self._logger.error(
+                f"Failed to load dspy transcription enhance examples: {e}"
+            )
+
+        self._enhancer = enhancer
+        return self._enhancer
+
     def _get_story_generator(self):
         if self._story_generator is not None:
             return self._story_generator
@@ -73,7 +149,9 @@ class DSPyLLMProxy(ILLMProxy):
         # Load few-shot examples from YAML
         examples = []
         try:
-            yaml_path = os.path.join(os.path.dirname(__file__), "dspy_examples.yaml")
+            yaml_path = os.path.join(
+                os.path.dirname(__file__), "examples", "two_part_story.yaml"
+            )
             if os.path.exists(yaml_path):
                 with open(yaml_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
@@ -178,3 +256,32 @@ class DSPyLLMProxy(ILLMProxy):
             "part1": result.part1_script,
             "part2": result.part2_script,
         }
+
+    async def enhance_transcription(
+        self, base_text: str, raw_transcription: list[dict]
+    ) -> list[dict]:
+        self._logger.info(
+            f"Enhancing transcription via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        enhancer = self._get_transcription_enhancer()
+        import json
+
+        result = enhancer(
+            base_text=base_text,
+            raw_transcription=json.dumps(raw_transcription, ensure_ascii=False),
+        )
+
+        response_text = result.enhanced_transcription
+        if response_text.startswith("```json"):
+            response_text = response_text.strip("```json").strip("```").strip()
+        if response_text.startswith("```"):
+            response_text = response_text.strip("```").strip()
+
+        try:
+            return json.loads(response_text)
+        except json.JSONDecodeError as e:
+            self._logger.error(
+                f"Failed to parse enhanced transcription JSON: {response_text}"
+            )
+            raise RuntimeError(f"Could not parse valid JSON from DSPy enhancer: {e}")
