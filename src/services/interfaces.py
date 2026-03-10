@@ -128,16 +128,21 @@ class IVideoService(ABC):
         self,
         audio: AudioClip,
         background_video: VideoClip,
+        video_width: int,
+        video_height: int,
+        end_silence_seconds: int = 3,
+        padding: int = 60,
+        cover_duration: int = 5,
+        watermark_bytes: Optional[bytes] = None,
         cover: Optional[ImageClip] = None,
         captions: Optional[CaptionsClip] = None,
-        low_quality: bool = False,
     ) -> VideoClip:
         """Generate final video with all components"""
         pass
 
     @abstractmethod
-    def create_video_compilation(
-        self, min_duration: int, low_quality: bool = False
+    def create_youtube_video_compilation(
+        self, youtube_channel_url: str, min_duration: int, low_quality: bool = False
     ) -> AsyncIterable[Union[ProgressEvent, VideoClip]]:
         """Create video compilation from YouTube content with streaming progress events"""
         pass

@@ -99,8 +99,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     video_service = providers.Singleton(
         VideoService,
-        config_repository=config_repository,
         file_storage=file_storage,
+        youtube_proxy=youtube_proxy,
     )
 
     history_service = providers.Singleton(

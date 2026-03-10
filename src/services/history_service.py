@@ -235,8 +235,10 @@ class HistoryService(IHistoryService):
         cover = image_clip.ImageClip(bytes=cover_bytes) if cover_bytes else None
 
         background_video = None
-        async for event in self._video_service.create_video_compilation(
-            speech.clip.duration, low_quality=low_quality
+        async for event in self._video_service.create_youtube_video_compilation(
+            youtube_channel_url=config.video_config.youtube_channel_url,
+            min_duration=speech.clip.duration,
+            low_quality=low_quality
         ):
             if isinstance(event, ProgressEvent):
                 yield event
@@ -259,11 +261,20 @@ class HistoryService(IHistoryService):
             },
         )
 
+        watermark_bytes = None
+        if config.video_config.watermark_file_id:
+            watermark_bytes = self._file_storage.load_file(config.video_config.watermark_file_id)
+
         final_video = self._video_service.generate_video(
             audio=speech,
             background_video=background_video,
+            video_width=config.video_config.width,
+            video_height=config.video_config.height,
+            end_silence_seconds=config.video_config.end_silece_seconds,
+            padding=config.video_config.padding,
+            cover_duration=config.video_config.cover_duration,
+            watermark_bytes=watermark_bytes,
             cover=cover,
-            low_quality=low_quality,
             captions=captions,
         )
 

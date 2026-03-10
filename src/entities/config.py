@@ -32,9 +32,6 @@ class CaptionsConfig(BaseYAMLModel):
     fade_duration: float = Field(0)
 
 
-
-
-
 class VideoConfig(BaseYAMLModel):
     watermark_file_id: Optional[str] = Field(
         None, title="File id of the water mark image"
@@ -44,8 +41,9 @@ class VideoConfig(BaseYAMLModel):
     cover_duration: int = Field(5, title="Cover duration")
     width: int = Field(1080, title="Width of the video")
     height: int = Field(1920, title="Height of the video")
-    youtube_channel_id: str = Field(
-        "UCIXTGJvqvxWoWWstA66a2JQ", title="Youtube channel id"
+    youtube_channel_url: str = Field(
+        "https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ",
+        title="Youtube channel url",
     )
     ffmpeg_params: List[str] = Field([], title="ffmpeg params")
 
@@ -84,7 +82,9 @@ class MainConfig(BaseYAMLModel):
 
     # Other configs
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
-    cover_config: CoverConfigType = Field(PlaywrightCoverConfig(), title="Cover configuration")
+    cover_config: CoverConfigType = Field(
+        PlaywrightCoverConfig(), title="Cover configuration"
+    )
     captions_config: CaptionsConfig = Field(CaptionsConfig())
 
     seed: Optional[str] = Field(None, title="Seed")

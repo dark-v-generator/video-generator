@@ -4,6 +4,7 @@ from src.adapters.proxies.interfaces import IYouTubeProxy
 from src.entities.configs.youtube import PyTubeYouTubeConfig
 import logging
 import tempfile
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +13,11 @@ class PyTubeProxy(IYouTubeProxy):
     def __init__(self, config: PyTubeYouTubeConfig):
         self.config = config
 
-    def list_video_ids(self, url: str) -> List[str]:
+    async def list_video_ids(self, url: str) -> List[str]:
         """List video IDs from a YouTube channel or playlist URL"""
+        return await asyncio.to_thread(self._extract_video_ids, url)
+
+    def _extract_video_ids(self, url: str) -> List[str]:
         video_ids = []
         try:
             if "playlist" in url or "list=" in url:
@@ -51,22 +55,30 @@ class PyTubeProxy(IYouTubeProxy):
 
         return list(set(extracted_ids))
 
-    def download_video(self, video_id: str) -> bytes:
+    async def download_video(self, video_id: str, low_quality: bool = False) -> bytes:
         """Download a YouTube video and return its bytes"""
+        return await asyncio.to_thread(self._download_video_sync, video_id, low_quality)
+
+    def _download_video_sync(self, video_id: str, low_quality: bool = False) -> bytes:
         try:
             url = f"https://www.youtube.com/watch?v={video_id}"
             yt = YouTube(url)
 
-            # Get highest resolution progressive stream
-            stream = (
-                yt.streams.filter(progressive=True, file_extension="mp4")
-                .order_by("resolution")
-                .desc()
-                .first()
-            )
+            # Get progressive streams
+            streams = yt.streams.filter(
+                progressive=True, file_extension="mp4"
+            ).order_by("resolution")
+            stream = streams.first() if low_quality else streams.desc().first()
             if not stream:
                 # fallback to any mp4 stream
-                stream = yt.streams.filter(file_extension="mp4").first()
+                fallback_streams = yt.streams.filter(file_extension="mp4").order_by(
+                    "resolution"
+                )
+                stream = (
+                    fallback_streams.first()
+                    if low_quality
+                    else fallback_streams.desc().first()
+                )
                 if not stream:
                     raise ValueError(
                         f"No suitable mp4 stream found for video_id {video_id}"

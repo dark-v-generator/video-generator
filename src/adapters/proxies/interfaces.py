@@ -85,12 +85,12 @@ class ILLMProxy(ABC):
 
 class IYouTubeProxy(ABC):
     @abstractmethod
-    def list_video_ids(self, url: str) -> List[str]:
+    async def list_video_ids(self, url: str) -> List[str]:
         """List video IDs from a YouTube channel or playlist URL"""
         ...
 
     @abstractmethod
-    def download_video(self, video_id: str) -> bytes:
+    async def download_video(self, video_id: str, low_quality: bool = False) -> bytes:
         """Download a YouTube video and return its bytes"""
         ...
 
