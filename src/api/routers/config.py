@@ -5,7 +5,7 @@ from typing import Optional
 
 from ...entities.config import SpeechConfig, VideoConfig, CoverConfig, LLMConfig
 from ...entities.config import CaptionsConfig
-from ...services.interfaces import IConfigService
+from ...services.config_service import ConfigService
 
 from ...adapters.repositories.interfaces import IFileStorage
 from ..dependencies import ConfigServiceDep, FileStorageDep
@@ -35,7 +35,7 @@ class UpdateConfigRequest(BaseModel):
 
 @router.get("/", response_model=ConfigResponse)
 async def get_config(
-    config_service: IConfigService = ConfigServiceDep,
+    config_service: ConfigService = ConfigServiceDep,
     file_storage: IFileStorage = FileStorageDep,
 ):
     """Get current configuration"""
@@ -89,7 +89,7 @@ async def get_config(
 
 @router.put("/")
 async def update_config(
-    config_service: IConfigService = ConfigServiceDep,
+    config_service: ConfigService = ConfigServiceDep,
     watermark_file: Optional[UploadFile] = File(None),
     font_file: Optional[UploadFile] = File(None),
     video_config: Optional[str] = Form(None),

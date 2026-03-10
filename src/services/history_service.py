@@ -8,12 +8,9 @@ from ..adapters.proxies.interfaces import IRedditProxy, ISpeechProxy
 from ..core.proglog_logger import AsyncProgressLogger
 from ..core.logging_config import get_logger
 
-from .interfaces import (
-    IHistoryService,
-    ICaptionsService,
-    ICoverService,
-    IVideoService,
-)
+from .captions_service import CaptionsService
+from .cover_service import CoverService
+from .video_service import VideoService
 from ..entities.captions import Captions
 from ..entities.config import MainConfig
 from ..entities.cover import RedditCover
@@ -29,7 +26,7 @@ from ..adapters.repositories.interfaces import (
 )
 
 
-class HistoryService(IHistoryService):
+class HistoryService:
     """History service implementation with dependency injection"""
 
     def __init__(
@@ -37,9 +34,9 @@ class HistoryService(IHistoryService):
         history_repository: IHistoryRepository,
         config_repository: IConfigRepository,
         speech_proxy: ISpeechProxy,
-        captions_service: ICaptionsService,
-        cover_service: ICoverService,
-        video_service: IVideoService,
+        captions_service: CaptionsService,
+        cover_service: CoverService,
+        video_service: VideoService,
         file_storage: IFileStorage,
         reddit_proxy: IRedditProxy,
     ):
@@ -238,7 +235,7 @@ class HistoryService(IHistoryService):
         async for event in self._video_service.create_youtube_video_compilation(
             youtube_channel_url=config.video_config.youtube_channel_url,
             min_duration=speech.clip.duration,
-            low_quality=low_quality
+            low_quality=low_quality,
         ):
             if isinstance(event, ProgressEvent):
                 yield event
@@ -263,7 +260,9 @@ class HistoryService(IHistoryService):
 
         watermark_bytes = None
         if config.video_config.watermark_file_id:
-            watermark_bytes = self._file_storage.load_file(config.video_config.watermark_file_id)
+            watermark_bytes = self._file_storage.load_file(
+                config.video_config.watermark_file_id
+            )
 
         final_video = self._video_service.generate_video(
             audio=speech,

@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, AsyncIterable
 from pydantic import BaseModel
 
-from ...services.interfaces import IHistoryService
+from ...services.history_service import HistoryService
 from ...adapters.proxies.interfaces import ISpeechProxy
 from ...services.llm.interfaces import ILLMService
 from ...entities.language import Language
@@ -57,7 +57,7 @@ class UpdateHistoryRequest(BaseModel):
 
 @router.get("/", response_model=List[dict])
 async def list_histories(
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
 ):
     """List all Reddit histories"""
     histories = history_service.list_histories()
@@ -91,7 +91,7 @@ async def list_voices(
 @router.get("/{history_id}")
 async def get_history(
     history_id: str,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
     file_storage: IFileStorage = FileStorageDep,
 ):
     """Get a specific Reddit history"""
@@ -135,7 +135,7 @@ async def get_history(
 async def update_history(
     history_id: str,
     request: UpdateHistoryRequest,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
 ):
     """Update specific fields of a Reddit history"""
     reddit_history = history_service.get_reddit_history(history_id)
@@ -226,7 +226,7 @@ async def update_history(
 @router.post("/scrap")
 async def scrap_reddit_post(
     request: ScrapRedditRequest,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
 ):
     """Only scrapes Reddit content, no enhancement"""
     # Convert language string to Language enum
@@ -247,7 +247,7 @@ async def scrap_reddit_post(
 @router.post("/generate-video")
 async def generate_video(
     request: GenerateVideoRequest,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
 ):
     """Generate video for a Reddit history and stream progress events"""
     reddit_history = history_service.get_reddit_history(request.history_id)
@@ -317,7 +317,7 @@ async def generate_video(
 @router.post("/enhance-text/{history_id}")
 async def enhance_history_text(
     history_id: str,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
     llm_service: ILLMService = LLMServiceDep,
 ):
     """Enhance history text using LLM with streaming progress"""
@@ -390,7 +390,7 @@ async def enhance_history_text(
 @router.delete("/{history_id}")
 async def delete_history(
     history_id: str,
-    history_service: IHistoryService = HistoryServiceDep,
+    history_service: HistoryService = HistoryServiceDep,
 ):
     """Delete a Reddit history"""
     success = history_service.delete_reddit_history(history_id)

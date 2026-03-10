@@ -1,10 +1,9 @@
 from ..adapters.repositories.interfaces import IConfigRepository
 from ..adapters.proxies.interfaces import ICoverProxy
-from .interfaces import ICoverService
 from ..entities.cover import RedditCover
 
 
-class CoverService(ICoverService):
+class CoverService:
     """Cover generation service implementation"""
 
     def __init__(self, config_repository: IConfigRepository, cover_proxy: ICoverProxy):

@@ -1,13 +1,13 @@
 from typing import Optional
 from ..adapters.proxies.interfaces import ITranscriptionProxy, ILLMProxy
 
-from .interfaces import ICaptionsService
 from ..adapters.repositories.interfaces import IFileStorage
 from ..entities.captions import Captions, CaptionSegment
 from ..entities.language import Language
 from ..core.logging_config import get_logger
 
-class CaptionsService(ICaptionsService):
+
+class CaptionsService:
     """Captions generation service implementation"""
 
     def __init__(
@@ -38,23 +38,26 @@ class CaptionsService(ICaptionsService):
             CaptionSegment(start=w.start, end=w.end, text=w.word)
             for w in transcription_result.words
         ]
-        
+
         if enhance_captions:
             if not base_text:
-                raise ValueError("base_text must be provided when enhance_captions is True")
-                
+                raise ValueError(
+                    "base_text must be provided when enhance_captions is True"
+                )
+
             raw_transcription = [
                 {"word": s.text, "start": s.start, "end": s.end, "probability": 1.0}
                 for s in caption_segments
             ]
-            
+
             enhanced = await self._llm_proxy.enhance_transcription(
-                base_text=base_text,
-                raw_transcription=raw_transcription
+                base_text=base_text, raw_transcription=raw_transcription
             )
-            
+
             caption_segments = [
-                CaptionSegment(start=e.get("start", 0), end=e.get("end", 0), text=e.get("word", ""))
+                CaptionSegment(
+                    start=e.get("start", 0), end=e.get("end", 0), text=e.get("word", "")
+                )
                 for e in enhanced
             ]
 

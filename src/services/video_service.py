@@ -4,26 +4,19 @@ from typing import Optional, AsyncIterable, Union
 from ..adapters.proxies.interfaces import IYouTubeProxy
 
 
-from ..adapters.repositories.interfaces import IFileStorage
-
-
-from ..entities.editor import captions_clip
-from .interfaces import IVideoService
-from ..entities.editor import image_clip, audio_clip, video_clip
+from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
 from ..entities.progress import ProgressEvent
 from ..core.logging_config import get_logger
 
 
-class VideoService(IVideoService):
+class VideoService:
     """Video generation service implementation"""
 
     def __init__(
         self,
-        file_storage: IFileStorage,
         youtube_proxy: IYouTubeProxy,
     ):
         self._logger = get_logger(__name__)
-        self._file_storage = file_storage
         self._youtube_proxy = youtube_proxy
 
     async def create_youtube_video_compilation(

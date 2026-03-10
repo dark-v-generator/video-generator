@@ -1,9 +1,8 @@
 from ..entities.config import MainConfig
 from ..adapters.repositories.interfaces import IConfigRepository, IFileStorage
-from ..services.interfaces import IConfigService
 
 
-class ConfigService(IConfigService):
+class ConfigService:
     def __init__(
         self, config_repository: IConfigRepository, file_storage: IFileStorage
     ):
