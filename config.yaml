@@ -1,32 +1,34 @@
-captions_config:
-    color: '#FFFFFF'
+proxies:
+  cover_config:
+    title_font_size: 150
+  image_generation_config:
+    type: local
+    model_id: stabilityai/sdxl-turbo
+  llm_config:
+    type: dspy
+    provider_config:
+      max_tokens: 2000
+      model: gemma3:12b
+      provider: ollama
+      temperature: 0.7
+  speech_config:
+    type: edge-tts
+  transcription_config:
+    model: base
+    type: local
+services:
+  captions_config:
+    color: "#FFFFFF"
     fade_duration: 0
     font_file_id: null
+    font_path: default_font.ttf
     font_size: 110
     marging: 50
-    stroke_color: '#000000'
+    stroke_color: "#000000"
     stroke_width: 8
     upper: true
     upper_text: false
-cover_config:
-    title_font_size: 110
-image_generation_config:
-    model_id: stabilityai/sdxl-turbo
-    type: local
-llm_config:
-    max_tokens: 2000
-    model: gpt-5-mini-2025-08-07
-    provider: openai
-    temperature: 0.7
-seed: null
-speech_config:
-    default_rate: 1.0
-    default_voice: ''
-    provider: fish-speech
-transcription_config:
-    model: base
-    type: local
-video_config:
+  video_config:
     cover_duration: 5
     end_silece_seconds: 3
     ffmpeg_params: []
@@ -34,4 +36,4 @@ video_config:
     padding: 60
     watermark_file_id: null
     width: 1080
-    youtube_channel_id: UCIXTGJvqvxWoWWstA66a2JQ
+    youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
