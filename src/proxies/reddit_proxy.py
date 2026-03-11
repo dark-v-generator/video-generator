@@ -5,7 +5,7 @@ from ..proxies.interfaces import IRedditProxy
 from ..entities.reddit_post import RedditPost
 
 from ..core.logging_config import get_logger
-from ..entities.configs.reddit import BS4RedditConfig
+from ..entities.configs.proxies.reddit import BS4RedditConfig
 
 
 class BS4RedditProxy(IRedditProxy):

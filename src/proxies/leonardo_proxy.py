@@ -2,7 +2,7 @@ import time
 import requests
 from typing import List
 from .interfaces import IImageGeneratorProxy
-from src.entities.configs.image_generation import LeonardoImageGenerationConfig
+from src.entities.configs.proxies.image_generation import LeonardoImageGenerationConfig
 
 
 class LeonardoImageProxy(IImageGeneratorProxy):

@@ -3,7 +3,7 @@ from typing import Optional
 from ..proxies.interfaces import ITranscriptionProxy, ILLMProxy
 
 from ..entities.captions import Captions, CaptionSegment
-from ..entities.config import CaptionsConfig
+from ..entities.configs.services.captions import CaptionsConfig
 from ..entities.editor.captions_clip import CaptionsClip
 from ..entities.language import Language
 from ..core.logging_config import get_logger

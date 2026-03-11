@@ -1,7 +1,7 @@
 from typing import List
 from pytubefix import YouTube, Channel, Playlist
 from src.proxies.interfaces import IYouTubeProxy
-from src.entities.configs.youtube import PyTubeYouTubeConfig
+from src.entities.configs.proxies.youtube import PyTubeYouTubeConfig
 import logging
 import tempfile
 import asyncio

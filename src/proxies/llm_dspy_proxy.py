@@ -3,7 +3,7 @@ import yaml
 import dspy
 from typing import AsyncIterable
 from src.proxies.interfaces import ILLMProxy
-from src.entities.configs.llm import DSPyLLMConfig
+from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
 
@@ -212,7 +212,7 @@ class DSPyLLMProxy(ILLMProxy):
         else:
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
 
-        dspy.settings.configure(lm=lm)
+        dspy.secrets.configure(lm=lm)
 
     async def translate_and_adapt(
         self, text: str, target_language: Language

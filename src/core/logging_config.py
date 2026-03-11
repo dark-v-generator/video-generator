@@ -8,7 +8,7 @@ ensuring proper log levels, formatting, and handlers are configured.
 import logging
 import sys
 from typing import Optional
-from .config import settings
+from .secrets import secrets
 
 
 def configure_logging(
@@ -66,8 +66,8 @@ def _configure_application_loggers() -> None:
         "src.proxies",
     ]
 
-    # Our application loggers honor settings.debug, independent from root level
-    log_level = logging.DEBUG if settings.debug else logging.INFO
+    # Our application loggers honor secrets.debug, independent from root level
+    log_level = logging.DEBUG if secrets.debug else logging.INFO
 
     for logger_name in app_loggers:
         logger = logging.getLogger(logger_name)

@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Union, Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
@@ -8,6 +8,8 @@ class LLMProviderConfig(BaseYAMLModel):
     model: str = "gemma3:12b"
     temperature: float = 0.7
     max_tokens: int = 2000
+    base_url: Optional[str] = Field(None, exclude=True)
+    api_key: Optional[str] = Field(None, exclude=True)
 
 
 class DSPyLLMConfig(BaseYAMLModel):

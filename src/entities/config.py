@@ -1,69 +1,30 @@
 import random
-from typing import List, Optional
+from typing import Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
-from src.entities.configs.image_generation import (
+
+from src.entities.configs.proxies.image_generation import (
     ImageGenerationConfigType,
     LocalImageGenerationConfig,
 )
-from src.entities.configs.transcription import (
+from src.entities.configs.proxies.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
 )
-from src.entities.configs.speech import (
+from src.entities.configs.proxies.speech import (
     SpeechConfigType,
     EdgeTTSSpeechConfig,
 )
-from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
-from src.entities.configs.llm import LLMConfigType, DSPyLLMConfig
-from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
-from src.entities.configs.cover import CoverConfigType, PlaywrightCoverConfig
+from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig
+from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig
+from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
+from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
+
+from src.entities.configs.services.captions import CaptionsConfig
+from src.entities.configs.services.video import VideoConfig
 
 
-class CaptionsConfig(BaseYAMLModel):
-    upper: bool = Field(True)
-    font_file_id: Optional[str] = Field(None)
-    font_path: str = Field("default_font.ttf", title="Path to the font file")
-    font_size: int = Field(110)
-    color: str = Field("#FFFFFF")
-    stroke_color: str = Field("#000000")
-    stroke_width: int = Field(8)
-    upper_text: bool = Field(False)
-    marging: int = Field(50)
-    fade_duration: float = Field(0)
-
-
-class VideoConfig(BaseYAMLModel):
-    watermark_file_id: Optional[str] = Field(
-        None, title="File id of the water mark image"
-    )
-    end_silece_seconds: int = Field(3, title="End silence seconds")
-    padding: int = Field(60, title="Padding")
-    cover_duration: int = Field(5, title="Cover duration")
-    width: int = Field(1080, title="Width of the video")
-    height: int = Field(1920, title="Height of the video")
-    youtube_channel_url: str = Field(
-        "https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ",
-        title="Youtube channel url",
-    )
-    ffmpeg_params: List[str] = Field([], title="ffmpeg params")
-
-
-class LLMConfig(BaseYAMLModel):
-    """Configuration for Large Language Model services"""
-
-    provider: str = Field("openai", title="LLM provider (openai, local)")
-    model: str = Field("gpt-5-mini-2025-08-07", title="Model to use")
-    temperature: float = Field(0.7, title="Temperature for generation")
-    max_tokens: int = Field(2000, title="Maximum tokens for generation")
-
-
-class MainConfig(BaseYAMLModel):
-    @staticmethod
-    def __generate_random_seed() -> str:
-        return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))
-
-    # Proxies configs
+class ProxiesConfig(BaseYAMLModel):
     transcription_config: TranscriptionConfigType = Field(
         LocalTranscriptionConfig(), title="Transcription configuration"
     )
@@ -80,13 +41,23 @@ class MainConfig(BaseYAMLModel):
     youtube_config: YouTubeConfigType = Field(
         PyTubeYouTubeConfig(), title="YouTube configuration"
     )
-
-    # Other configs
-    video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     cover_config: CoverConfigType = Field(
         PlaywrightCoverConfig(), title="Cover configuration"
     )
+
+
+class ServicesConfig(BaseYAMLModel):
+    video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
+
+
+class MainConfig(BaseYAMLModel):
+    @staticmethod
+    def __generate_random_seed() -> str:
+        return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", k=10))
+
+    proxies: ProxiesConfig = Field(default_factory=ProxiesConfig)
+    services: ServicesConfig = Field(default_factory=ServicesConfig)
 
     seed: Optional[str] = Field(None, title="Seed")
 

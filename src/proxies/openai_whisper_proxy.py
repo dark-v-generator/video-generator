@@ -4,7 +4,7 @@ from openai import OpenAI
 from src.proxies.interfaces import ITranscriptionProxy
 from src.entities.language import Language
 from src.entities.transcription import TranscriptionResult, TranscriptionWord
-from src.entities.configs.transcription import OpenAITranscriptionConfig
+from src.entities.configs.proxies.transcription import OpenAITranscriptionConfig
 from src.core.logging_config import get_logger
 
 

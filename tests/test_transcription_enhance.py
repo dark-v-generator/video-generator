@@ -2,14 +2,14 @@ import argparse
 import asyncio
 import os
 import json
-from src.adapters.proxies.factories import (
+from src.proxies.factories import (
     LLMProxyFactory,
     SpeechProxyFactory,
     TranscriptionProxyFactory,
 )
-from src.entities.configs.transcription import LocalTranscriptionConfig
-from src.entities.configs.speech import EdgeTTSSpeechConfig
-from src.entities.configs.llm import DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
+from src.entities.configs.proxies.transcription import LocalTranscriptionConfig
+from src.entities.configs.proxies.speech import EdgeTTSSpeechConfig
+from src.entities.configs.proxies.llm import DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
 from src.entities.language import Language
 
 
