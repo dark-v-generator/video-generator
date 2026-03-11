@@ -36,6 +36,13 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     4. Part 2 must resolve the story naturally and end with a final call to action asking for the viewer's opinion.
     5. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     6. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
+    7. Reddit posts use specific conventions you MUST handle:
+       - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
+       - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
+       - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
+       - "AITA" means "Am I the asshole?" and "NTA" means "Not the asshole".
+       - "TL;DR" sections should be omitted from the script.
+       - "Edit:" sections should be omitted from the script.
     """
 
     target_language = dspy.InputField(
@@ -162,15 +169,17 @@ class DSPyLLMProxy(ILLMProxy):
                     if data:
                         for entry in data:
                             post = entry.get("original_post", {})
+                            # Extract viral title from part1 (first sentence)
+                            part1_text = entry.get("part1", "")
+                            viral_title = part1_text.split(". Parte 1.")[0].strip() if ". Parte 1." in part1_text else post.get("title", "")
                             examples.append(
                                 dspy.Example(
                                     target_language="Portuguese",
                                     reddit_post_title=post.get("title", ""),
                                     reddit_post_text=post.get("text", ""),
-                                    viral_title=post.get(
-                                        "title", ""
-                                    ),  # We don't have separate titles in our examples so we map it as expected output style
-                                    part1_script=entry.get("part1", ""),
+                                    viral_title=viral_title,
+                                    narrator_gender=entry.get("narrator_gender", "unknown"),
+                                    part1_script=part1_text,
                                     part2_script=entry.get("part2", ""),
                                 ).with_inputs(
                                     "target_language",
@@ -202,21 +211,26 @@ class DSPyLLMProxy(ILLMProxy):
         provider = self.config.provider
         model_name = self.config.model
 
+        # Build optional kwargs only when explicitly set
+        extra_kwargs = {}
+        if self.config.max_tokens is not None:
+            extra_kwargs["max_tokens"] = self.config.max_tokens
+        if self.config.temperature is not None:
+            extra_kwargs["temperature"] = self.config.temperature
+
         # Initialize dynamically based on selected provider config
         if provider == "openai":
-            lm = dspy.OpenAI(model=model_name, max_tokens=self.config.max_tokens)
+            lm = dspy.OpenAI(model=model_name, **extra_kwargs)
         elif provider == "ollama":
             lm = dspy.LM(
                 model=f"ollama_chat/{model_name}",
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
+                **extra_kwargs,
             )
         elif provider == "google":
             lm = dspy.LM(
                 model=f"gemini/{model_name}",
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
                 api_key=self.config.api_key,
+                **extra_kwargs,
             )
         else:
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
