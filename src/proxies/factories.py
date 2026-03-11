@@ -97,12 +97,17 @@ class RedditProxyFactory:
 class LLMProxyFactory:
     @staticmethod
     def create(
-        config: LLMConfigType, openai_api_key: str = None, ollama_base_url: str = None
+        config: LLMConfigType,
+        openai_api_key: str = None,
+        ollama_base_url: str = None,
+        google_api_key: str = None,
     ) -> ILLMProxy:
         if config.provider_config.provider == "openai":
             config.provider_config.api_key = openai_api_key
         elif config.provider_config.provider == "ollama":
             config.provider_config.base_url = ollama_base_url
+        elif config.provider_config.provider == "google":
+            config.provider_config.api_key = google_api_key
 
         if isinstance(config, DSPyLLMConfig):
             return DSPyLLMProxy(config=config)

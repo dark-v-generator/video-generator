@@ -212,7 +212,12 @@ class DSPyLLMProxy(ILLMProxy):
                 temperature=self.config.temperature,
             )
         elif provider == "google":
-            lm = dspy.Google(model=model_name, max_output_tokens=self.config.max_tokens)
+            lm = dspy.LM(
+                model=f"gemini/{model_name}",
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                api_key=self.config.api_key,
+            )
         else:
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
 

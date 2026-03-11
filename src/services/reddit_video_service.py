@@ -180,15 +180,12 @@ class RedditVideoService:
             captions=captions_clip_obj,
         )
 
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-                tmp_path = tmp.name
-            final_video.clip.write_videofile(
-                tmp_path,
-                ffmpeg_params=self._video_service._video_config.ffmpeg_params,
-                logger=None,
-            )
-            shutil.move(tmp_path, output_path)
-            return output_path
-        except Exception as exc:
-            raise exc
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+            tmp_path = tmp.name
+        final_video.clip.write_videofile(
+            tmp_path,
+            ffmpeg_params=self._video_service._video_config.ffmpeg_params,
+            logger=None,
+        )
+        shutil.move(tmp_path, output_path)
+        return output_path

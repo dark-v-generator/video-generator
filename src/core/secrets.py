@@ -9,6 +9,7 @@ class Secrets(BaseSettings):
     youtube_api_key: Optional[str] = None
     elevenlabs_api_key: Optional[str] = None
     leonardo_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
 
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"
