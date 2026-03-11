@@ -19,29 +19,33 @@ class CaptionsClip:
             tmpfile.write(font_bytes)
             tmpfile.seek(0)
             self.font_path = tmpfile.name
-        self.clips = self.__generate_clips()
 
-    def __generate_clips(self) -> List[TextClip]:
+    def get_clips(self, size_rate: float = 1.0) -> List[TextClip]:
         clips = []
         for caption_segment in self.captions.segments:
-            clip = self.__make_word_clip(caption_segment)
+            clip = self.__make_word_clip(caption_segment, size_rate)
             clips.append(clip)
         return clips
 
-    def __make_word_clip(self, caption_segment: CaptionSegment) -> TextClip:
+    def __make_word_clip(self, caption_segment: CaptionSegment, size_rate: float) -> TextClip:
         start_time, end_time = [caption_segment.start, caption_segment.end]
         text = caption_segment.text
         show_text = text.upper() if self.config.upper_text else text
         show_text = show_text.replace(",", "").replace(".", "").strip()
+        
+        font_size = int(round(self.config.font_size * size_rate))
+        stroke_width = int(round(self.config.stroke_width * size_rate))
+        margin = int(round(self.config.marging * size_rate))
+        
         word_clip = TextClip(
             text=show_text,
             font=self.font_path,
-            font_size=self.config.font_size,
+            font_size=font_size,
             color=self.config.color,
             stroke_color=self.config.stroke_color,
-            stroke_width=self.config.stroke_width,
+            stroke_width=stroke_width,
             text_align="center",
-            margin=(self.config.marging, self.config.marging),
+            margin=(margin, margin),
         ).with_start(start_time)
         word_clip = word_clip.with_duration(end_time - start_time)
 

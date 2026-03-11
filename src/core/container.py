@@ -83,6 +83,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         llm_proxy=llm_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
+        cover_service=cover_service,
         video_service=video_service,
     )
 

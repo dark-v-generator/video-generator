@@ -59,16 +59,38 @@ class CaptionsService:
                 for s in caption_segments
             ]
 
-            enhanced = await self._llm_proxy.enhance_transcription(
-                base_text=base_text, raw_transcription=raw_transcription
-            )
-
-            caption_segments = [
-                CaptionSegment(
-                    start=e.get("start", 0), end=e.get("end", 0), text=e.get("word", "")
+            try:
+                enhanced = await self._llm_proxy.enhance_transcription(
+                    base_text=base_text, raw_transcription=raw_transcription
                 )
-                for e in enhanced
-            ]
+
+                caption_segments_enhanced = []
+                is_valid = isinstance(enhanced, list)
+
+                if is_valid:
+                    for e in enhanced:
+                        if isinstance(e, dict):
+                            caption_segments_enhanced.append(
+                                CaptionSegment(
+                                    start=e.get("start", 0),
+                                    end=e.get("end", 0),
+                                    text=e.get("word", ""),
+                                )
+                            )
+                        else:
+                            is_valid = False
+                            break
+
+                if is_valid and caption_segments_enhanced:
+                    caption_segments = caption_segments_enhanced
+                else:
+                    self._logger.warning(
+                        f"Invalid dict format returned by LLM enhancer. Falling back to raw transcription. Payload: {enhanced}"
+                    )
+            except Exception as e:
+                self._logger.warning(
+                    f"LLM enhancement failed with error: {e}. Falling back to raw transcription."
+                )
 
         captions = Captions(segments=caption_segments)
         clip = CaptionsClip(

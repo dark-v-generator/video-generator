@@ -77,6 +77,7 @@ class VideoService:
     ) -> video_clip.VideoClip:
         """Generate final video with all components"""
         config = self._video_config
+        size_rate = 1.0
         # Downscale config for preview natively inside VideoService
         if low_quality:
             size_rate = 400 / config.height
@@ -108,5 +109,5 @@ class VideoService:
             water_mark.set_duration(audio.clip.duration)
             background_video.merge(water_mark)
         if captions is not None:
-            background_video.insert_captions(captions)
+            background_video.insert_captions(captions, size_rate=size_rate)
         return background_video

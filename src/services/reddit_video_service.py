@@ -6,10 +6,12 @@ from typing import Literal, Optional
 from ..proxies.interfaces import ILLMProxy, IRedditProxy
 from ..entities.configs.services.captions import CaptionsConfig
 from ..entities.configs.services.video import VideoConfig
+from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
 from ..entities.editor.captions_clip import CaptionsClip
 from ..entities.language import Language
 from .captions_service import CaptionsService
+from .cover_service import CoverService
 from .speech_service import SpeechService
 from .video_service import VideoService
 
@@ -41,12 +43,14 @@ class RedditVideoService:
         llm_proxy: ILLMProxy,
         speech_service: SpeechService,
         captions_service: CaptionsService,
+        cover_service: CoverService,
         video_service: VideoService,
     ) -> None:
         self._reddit_proxy = reddit_proxy
         self._llm_proxy = llm_proxy
         self._speech_service = speech_service
         self._captions_service = captions_service
+        self._cover_service = cover_service
         self._video_service = video_service
 
     # ------------------------------------------------------------------
@@ -62,8 +66,6 @@ class RedditVideoService:
         language: Language = Language.PORTUGUESE,
         speech_gender: Literal["male", "female"] = "male",
         speech_rate: float = 1.0,
-        font_bytes: Optional[bytes] = None,
-        cover_bytes: Optional[bytes] = None,
         low_quality: bool = False,
     ) -> TwoPartVideoResult:
         """Full pipeline: scrape → two-part story → speech → captions → videos."""
@@ -110,10 +112,20 @@ class RedditVideoService:
             base_text=part2_text,
         )
 
+        # ------------------------------------------------------------------ 5. Generate cover from post data
+        cover_result = await self._cover_service.generate_cover(
+            RedditCover(
+                title=story.get("title", post.title),
+                community=post.community,
+                author=post.author,
+                image_url=post.community_url_photo,
+            )
+        )
+
         await self._generate_single_video(
             speech=speech_result_1.clip,
             captions_clip_obj=captions_result_1.clip,
-            cover_bytes=cover_bytes,
+            cover=cover_result.clip,
             output_path=output_path_part1,
             low_quality=low_quality,
         )
@@ -121,7 +133,7 @@ class RedditVideoService:
         await self._generate_single_video(
             speech=speech_result_2.clip,
             captions_clip_obj=captions_result_2.clip,
-            cover_bytes=cover_bytes,
+            cover=cover_result.clip,
             output_path=output_path_part2,
             low_quality=low_quality,
         )
@@ -139,12 +151,11 @@ class RedditVideoService:
         *,
         speech,
         captions_clip_obj: Optional[CaptionsClip],
-        cover_bytes: Optional[bytes],
+        cover: Optional[image_clip.ImageClip],
         output_path: str,
         low_quality: bool,
     ) -> str:
         """Compile a single video from speech + captions + YouTube background."""
-        cover = image_clip.ImageClip(bytes=cover_bytes) if cover_bytes else None
 
         # Download YouTube compilation background
         compilation_result = await self._video_service.create_youtube_video_compilation(

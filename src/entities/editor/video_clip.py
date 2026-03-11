@@ -37,8 +37,8 @@ class VideoClip:
     def merge(self, video_clip):
         self.clip = CompositeVideoClip([self.clip, video_clip.clip])
 
-    def insert_captions(self, captions: CaptionsClip):
-        self.clip = CompositeVideoClip([self.clip, *captions.clips])
+    def insert_captions(self, captions: CaptionsClip, size_rate: float = 1.0):
+        self.clip = CompositeVideoClip([self.clip, *captions.get_clips(size_rate)])
 
     def resize(self, width, height):
         original_aspect_ratio = self.clip.size[0] / self.clip.size[1]

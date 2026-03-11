@@ -212,7 +212,7 @@ class DSPyLLMProxy(ILLMProxy):
         else:
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
 
-        dspy.secrets.configure(lm=lm)
+        dspy.settings.configure(lm=lm)
 
     async def translate_and_adapt(
         self, text: str, target_language: Language
