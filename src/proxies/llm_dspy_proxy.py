@@ -32,13 +32,15 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     Take the provided original Reddit post (title and text) and transform it into a 2-part engaging TikTok story script.
 
     Requirements:
-    1. Translate the story into the requested target_language, keeping a natural, conversational tone.
-    2. Add an engaging, short, viral-style translated title.
-    3. Part 1 must end on a major suspense cliffhanger and include a call to action (e.g., "Like and follow for part 2").
-    4. Part 2 must resolve the story naturally and end with a final call to action asking for the viewer's opinion.
-    5. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
-    6. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
-    7. Reddit posts use specific conventions you MUST handle:
+    1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
+    2. Add a short, natural-sounding title. The title should sound like something a real person would say, NOT forced or clickbaity. Avoid dramatic words like "épica", "inacreditável", "chocante" etc.
+    3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
+    4. CRITICAL RULE FOR PART SPLITTING: Part 1 MUST end BEFORE the climax of the story. The climax (the most dramatic or satisfying moment) MUST be in Part 2. Part 1 is the setup, Part 2 is the payoff. If the story is about revenge, the revenge itself goes in Part 2. If it's about a confrontation, the confrontation goes in Part 2.
+    5. Part 1 must end on a moment of suspense or anticipation, with a natural call to action (e.g., "Curta e me siga para a parte 2.").
+    6. Part 2 must contain the climax, resolve the story naturally, and end with a final call to action asking for the viewer's opinion.
+    7. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
+    8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
+    9. Reddit posts use specific conventions you MUST handle:
        - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
        - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
        - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
@@ -53,15 +55,17 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     reddit_post_title = dspy.InputField(desc="The original title of the story.")
     reddit_post_text = dspy.InputField(desc="The original content of the story.")
 
-    viral_title = dspy.OutputField(desc="A catchy translated title for the story.")
+    viral_title = dspy.OutputField(
+        desc="A natural, conversational translated title. Must sound like something a real person would say, not forced or clickbaity."
+    )
     narrator_gender = dspy.OutputField(
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     part1_script = dspy.OutputField(
-        desc="Part 1 of the story ending with suspense and 'Like for part 2'."
+        desc="Part 1 of the story: the setup and context, ending BEFORE the climax with suspense and a call to action like 'Curta e me siga para a parte 2'."
     )
     part2_script = dspy.OutputField(
-        desc="Part 2 consisting of the resolution and ending question."
+        desc="Part 2 of the story: contains the CLIMAX and resolution of the story, ending with a question for the viewer."
     )
 
 
