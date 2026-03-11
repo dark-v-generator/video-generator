@@ -1,7 +1,7 @@
 from typing import AsyncIterable
 import litellm
 
-from src.adapters.proxies.interfaces import ILLMProxy
+from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.llm import PromptLLMConfig
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger

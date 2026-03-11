@@ -2,7 +2,7 @@ import os
 import tempfile
 import whisper
 from typing import Optional
-from src.adapters.proxies.interfaces import ITranscriptionProxy
+from src.proxies.interfaces import ITranscriptionProxy
 from src.entities.language import Language
 from src.entities.transcription import TranscriptionResult, TranscriptionWord
 from src.entities.configs.transcription import LocalTranscriptionConfig

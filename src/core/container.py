@@ -7,7 +7,7 @@ from ..services.video_service import VideoService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.speech_service import SpeechService
-from ..adapters.proxies import factories as proxies_factories
+from ..proxies import factories as proxies_factories
 
 
 class ApplicationContainer(containers.DeclarativeContainer):

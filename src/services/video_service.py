@@ -2,7 +2,7 @@ import random
 from dataclasses import dataclass
 from typing import Optional, List
 
-from ..adapters.proxies.interfaces import IYouTubeProxy
+from ..proxies.interfaces import IYouTubeProxy
 
 
 from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip

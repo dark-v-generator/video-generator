@@ -2,7 +2,7 @@ import os
 import yaml
 import dspy
 from typing import AsyncIterable
-from src.adapters.proxies.interfaces import ILLMProxy
+from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger

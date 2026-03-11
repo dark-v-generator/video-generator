@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-from ..adapters.proxies.interfaces import ITranscriptionProxy, ILLMProxy
+from ..proxies.interfaces import ITranscriptionProxy, ILLMProxy
 
 from ..entities.captions import Captions, CaptionSegment
 from ..entities.config import CaptionsConfig

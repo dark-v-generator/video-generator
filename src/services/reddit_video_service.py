@@ -4,7 +4,7 @@ import threading
 from dataclasses import dataclass
 from typing import AsyncIterable, Literal, Optional, Union
 
-from ..adapters.proxies.interfaces import (
+from ..proxies.interfaces import (
     ILLMProxy,
     IRedditProxy,
 )

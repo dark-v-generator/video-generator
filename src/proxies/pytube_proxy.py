@@ -1,6 +1,6 @@
 from typing import List
 from pytubefix import YouTube, Channel, Playlist
-from src.adapters.proxies.interfaces import IYouTubeProxy
+from src.proxies.interfaces import IYouTubeProxy
 from src.entities.configs.youtube import PyTubeYouTubeConfig
 import logging
 import tempfile

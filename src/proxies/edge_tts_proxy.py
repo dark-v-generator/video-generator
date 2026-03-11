@@ -1,5 +1,5 @@
 from typing import Literal, Optional
-from src.adapters.proxies.interfaces import ISpeechProxy
+from src.proxies.interfaces import ISpeechProxy
 from src.entities.configs.speech import EdgeTTSSpeechConfig
 from src.entities.language import Language
 from src.core.logging_config import get_logger

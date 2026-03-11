@@ -5,7 +5,7 @@ from typing import List, Optional, AsyncIterable
 from pydantic import BaseModel
 
 from ...services.history_service import HistoryService
-from ...adapters.proxies.interfaces import ISpeechProxy
+from ...proxies.interfaces import ISpeechProxy
 from ...services.llm.interfaces import ILLMService
 from ...entities.language import Language
 from ...entities.progress import ProgressEvent

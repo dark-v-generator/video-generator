@@ -3,41 +3,41 @@ from src.entities.configs.image_generation import (
     LeonardoImageGenerationConfig,
     LocalImageGenerationConfig,
 )
-from src.adapters.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
-from src.adapters.proxies.leonardo_proxy import LeonardoImageProxy
-from src.adapters.proxies.local_sdxl_proxy import LocalSDXLImageProxy
+from src.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
+from src.proxies.leonardo_proxy import LeonardoImageProxy
+from src.proxies.local_sdxl_proxy import LocalSDXLImageProxy
 
 from src.entities.configs.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
     OpenAITranscriptionConfig,
 )
-from src.adapters.proxies.local_whisper_proxy import LocalWhisperProxy
-from src.adapters.proxies.openai_whisper_proxy import OpenAIWhisperProxy
+from src.proxies.local_whisper_proxy import LocalWhisperProxy
+from src.proxies.openai_whisper_proxy import OpenAIWhisperProxy
 from src.entities.configs.speech import (
     SpeechConfigType,
     EdgeTTSSpeechConfig,
     ElevenLabsSpeechConfig,
 )
-from src.adapters.proxies.edge_tts_proxy import EdgeTTSSpeechProxy
-from src.adapters.proxies.elevenlabs_proxy import ElevenLabsSpeechProxy
-from src.adapters.proxies.interfaces import (
+from src.proxies.edge_tts_proxy import EdgeTTSSpeechProxy
+from src.proxies.elevenlabs_proxy import ElevenLabsSpeechProxy
+from src.proxies.interfaces import (
     IImageGeneratorProxy,
     ITranscriptionProxy,
     ISpeechProxy,
     IRedditProxy,
 )
 from src.entities.configs.reddit import RedditConfigType, BS4RedditConfig
-from src.adapters.proxies.reddit_proxy import BS4RedditProxy
+from src.proxies.reddit_proxy import BS4RedditProxy
 from src.entities.configs.llm import LLMConfigType, PromptLLMConfig, DSPyLLMConfig
-from src.adapters.proxies.llm_prompt_proxy import PromptLLMProxy
-from src.adapters.proxies.llm_dspy_proxy import DSPyLLMProxy
-from src.adapters.proxies.interfaces import ILLMProxy, IYouTubeProxy
+from src.proxies.llm_prompt_proxy import PromptLLMProxy
+from src.proxies.llm_dspy_proxy import DSPyLLMProxy
+from src.proxies.interfaces import ILLMProxy, IYouTubeProxy
 from src.entities.configs.youtube import YouTubeConfigType, PyTubeYouTubeConfig
-from src.adapters.proxies.pytube_proxy import PyTubeProxy
+from src.proxies.pytube_proxy import PyTubeProxy
 
-from src.adapters.proxies.interfaces import ICoverProxy
-from src.adapters.proxies.playwright_cover_proxy import PlaywrightCoverProxy
+from src.proxies.interfaces import ICoverProxy
+from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.cover import CoverConfigType, PlaywrightCoverConfig
 
 class ImageGeneratorFactory:
