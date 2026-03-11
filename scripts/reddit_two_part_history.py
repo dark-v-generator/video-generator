@@ -41,8 +41,6 @@ async def main():
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
-    out_part1 = os.path.join(args.output_dir, "part1.mp4")
-    out_part2 = os.path.join(args.output_dir, "part2.mp4")
 
     print(f"Resolving dependencies...")
     # Trigger wiring of the entire application
@@ -55,17 +53,37 @@ async def main():
     print(f"Starting pipeline for post: {args.post_url}")
     result = await reddit_video_service.generate_two_part_history_video(
         post_url=args.post_url,
-        output_path_part1=out_part1,
-        output_path_part2=out_part2,
         language=lang_enum,
         speech_gender=args.gender,
         speech_rate=args.rate,
         low_quality=args.low_quality,
     )
 
+    # Save all artifacts to the output directory
+    out = args.output_dir
+
+    with open(os.path.join(out, "part1.mp4"), "wb") as f:
+        f.write(result.part1_video)
+    with open(os.path.join(out, "part2.mp4"), "wb") as f:
+        f.write(result.part2_video)
+    with open(os.path.join(out, "story.md"), "w", encoding="utf-8") as f:
+        f.write(result.story_md)
+    with open(os.path.join(out, "original_post.md"), "w", encoding="utf-8") as f:
+        f.write(result.original_post_md)
+    with open(os.path.join(out, "audio_part1.mp3"), "wb") as f:
+        f.write(result.audio_part1)
+    with open(os.path.join(out, "audio_part2.mp3"), "wb") as f:
+        f.write(result.audio_part2)
+    with open(os.path.join(out, "captions_part1.json"), "w", encoding="utf-8") as f:
+        f.write(result.captions_part1_json)
+    with open(os.path.join(out, "captions_part2.json"), "w", encoding="utf-8") as f:
+        f.write(result.captions_part2_json)
+    if result.cover_png:
+        with open(os.path.join(out, "cover.png"), "wb") as f:
+            f.write(result.cover_png)
+
     print("\nGeneration Complete!")
-    print(f"Part 1 saved at: {result.part1_path}")
-    print(f"Part 2 saved at: {result.part2_path}")
+    print(f"All artifacts saved to: {out}")
 
 
 if __name__ == "__main__":

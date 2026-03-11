@@ -1,7 +1,9 @@
 import os
+import json
 import yaml
 import dspy
-from typing import AsyncIterable
+from typing import AsyncIterable, List
+from pydantic import BaseModel, Field
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
@@ -63,6 +65,12 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     )
 
 
+class TranscriptionWord(BaseModel):
+    word: str = Field(description="The corrected word text")
+    start: float = Field(description="Start timestamp in seconds")
+    end: float = Field(description="End timestamp in seconds")
+
+
 class EnhanceTranscriptionSignature(dspy.Signature):
     """
     You are an AI specialized in correcting timestamped text transcriptions.
@@ -75,7 +83,7 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     2. Maintain the timestamp information as accurately as possible.
     3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
     4. If modifying a word, keep its original 'start' and 'end'.
-    5. Return the modified JSON array of objects.
+    5. Return the modified list of word segments.
     """
 
     base_text = dspy.InputField(desc="The correct, ground truth text.")
@@ -83,8 +91,8 @@ class EnhanceTranscriptionSignature(dspy.Signature):
         desc="A JSON string of the raw transcription word segments from the speech-to-text model."
     )
 
-    enhanced_transcription = dspy.OutputField(
-        desc="The corrected JSON list containing 'word', 'start', and 'end'."
+    enhanced_transcription: List[TranscriptionWord] = dspy.OutputField(
+        desc="The corrected list of word segments with 'word', 'start', and 'end'."
     )
 
 
@@ -171,14 +179,20 @@ class DSPyLLMProxy(ILLMProxy):
                             post = entry.get("original_post", {})
                             # Extract viral title from part1 (first sentence)
                             part1_text = entry.get("part1", "")
-                            viral_title = part1_text.split(". Parte 1.")[0].strip() if ". Parte 1." in part1_text else post.get("title", "")
+                            viral_title = (
+                                part1_text.split(". Parte 1.")[0].strip()
+                                if ". Parte 1." in part1_text
+                                else post.get("title", "")
+                            )
                             examples.append(
                                 dspy.Example(
                                     target_language="Portuguese",
                                     reddit_post_title=post.get("title", ""),
                                     reddit_post_text=post.get("text", ""),
                                     viral_title=viral_title,
-                                    narrator_gender=entry.get("narrator_gender", "unknown"),
+                                    narrator_gender=entry.get(
+                                        "narrator_gender", "unknown"
+                                    ),
                                     part1_script=part1_text,
                                     part2_script=entry.get("part2", ""),
                                 ).with_inputs(
@@ -293,23 +307,16 @@ class DSPyLLMProxy(ILLMProxy):
         )
 
         enhancer = self._get_transcription_enhancer()
-        import json
 
         result = enhancer(
             base_text=base_text,
             raw_transcription=json.dumps(raw_transcription, ensure_ascii=False),
+            config={"max_tokens": 16000},
         )
 
-        response_text = result.enhanced_transcription
-        if response_text.startswith("```json"):
-            response_text = response_text.strip("```json").strip("```").strip()
-        if response_text.startswith("```"):
-            response_text = response_text.strip("```").strip()
-
-        try:
-            return json.loads(response_text)
-        except json.JSONDecodeError as e:
-            self._logger.error(
-                f"Failed to parse enhanced transcription JSON: {response_text}"
-            )
-            raise RuntimeError(f"Could not parse valid JSON from DSPy enhancer: {e}")
+        # DSPy returns typed output as list[TranscriptionWord] Pydantic models
+        enhanced = result.enhanced_transcription
+        return [
+            {"word": item.word, "start": item.start, "end": item.end}
+            for item in enhanced
+        ]
