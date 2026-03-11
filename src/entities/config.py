@@ -23,6 +23,7 @@ from src.entities.configs.cover import CoverConfigType, PlaywrightCoverConfig
 class CaptionsConfig(BaseYAMLModel):
     upper: bool = Field(True)
     font_file_id: Optional[str] = Field(None)
+    font_path: str = Field("default_font.ttf", title="Path to the font file")
     font_size: int = Field(110)
     color: str = Field("#FFFFFF")
     stroke_color: str = Field("#000000")

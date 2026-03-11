@@ -3,13 +3,14 @@ import threading
 from typing import List, AsyncIterable, Union
 import uuid
 
-from ..adapters.proxies.interfaces import IRedditProxy, ISpeechProxy
+from ..adapters.proxies.interfaces import IRedditProxy
 
 from ..core.proglog_logger import AsyncProgressLogger
 from ..core.logging_config import get_logger
 
 from .captions_service import CaptionsService
 from .cover_service import CoverService
+from .speech_service import SpeechService
 from .video_service import VideoService
 from ..entities.captions import Captions
 from ..entities.config import MainConfig
@@ -33,7 +34,7 @@ class HistoryService:
         self,
         history_repository: IHistoryRepository,
         config_repository: IConfigRepository,
-        speech_proxy: ISpeechProxy,
+        speech_service: SpeechService,
         captions_service: CaptionsService,
         cover_service: CoverService,
         video_service: VideoService,
@@ -42,7 +43,7 @@ class HistoryService:
     ):
         self._history_repository = history_repository
         self._config_repository = config_repository
-        self._speech_proxy = speech_proxy
+        self._speech_service = speech_service
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
@@ -112,12 +113,16 @@ class HistoryService:
             "Generating speech",
             details={"text_length": len(text), "rate": rate},
         )
-        speech_bytes = await self._speech_service.generate_speech(text, voice_id, rate)
+        speech_result = await self._speech_service.generate_speech(
+            text=text,
+            override_voice_id=voice_id,
+            rate=rate,
+        )
         yield ProgressEvent.create(
             "saving",
             "Saving audio file",
         )
-        self._history_repository.save_speech_file(reddit_history.id, speech_bytes)
+        self._history_repository.save_speech_file(reddit_history.id, speech_result.bytes)
         yield self._history_repository.load_reddit_history(reddit_history.id)
 
     async def generate_captions(
@@ -135,14 +140,15 @@ class HistoryService:
         if not speech_bytes:
             raise Exception("No speech audio available for captions generation")
 
-        captions = await self._captions_service.generate_captions(
+        captions_result = await self._captions_service.generate_captions(
             audio_bytes=speech_bytes,
             enhance_captions=enhance_captions,
             language=reddit_history.get_language(),
             base_text=reddit_history.history.content,
         )
         self._history_repository.save_captions_file(
-            history_id=reddit_history.id, captions_bytes=captions.to_bytes()
+            history_id=reddit_history.id,
+            captions_bytes=captions_result.captions.to_bytes(),
         )
 
     async def generate_cover(
@@ -161,8 +167,8 @@ class HistoryService:
             },
         )
 
-        cover_bytes = await self._cover_service.generate_cover(reddit_history.cover)
-        if not cover_bytes:
+        cover_result = await self._cover_service.generate_cover(reddit_history.cover)
+        if not cover_result:
             raise Exception("No cover data received from cover service")
 
         yield ProgressEvent.create(
@@ -170,7 +176,7 @@ class HistoryService:
             "Saving cover file",
         )
         self._history_repository.save_cover_file(
-            history_id=reddit_history.id, cover_bytes=cover_bytes
+            history_id=reddit_history.id, cover_bytes=cover_result.bytes
         )
 
         yield self._history_repository.load_reddit_history(reddit_history.id)
@@ -214,7 +220,6 @@ class HistoryService:
         speech_bytes = self._history_repository.get_speech_bytes(reddit_history.id)
         captions_bytes = self._history_repository.get_captions_bytes(reddit_history.id)
         cover_bytes = self._history_repository.get_cover_bytes(reddit_history.id)
-        font_bytes = self._get_font_bytes()
 
         if not speech_bytes:
             raise Exception("No speech audio available for video generation")
@@ -224,23 +229,20 @@ class HistoryService:
             captions_clip.CaptionsClip(
                 captions=Captions.from_bytes(captions_bytes),
                 config=config.captions_config,
-                font_bytes=font_bytes,
+                font_bytes=self._get_font_bytes(),
             )
-            if captions_bytes and font_bytes
+            if captions_bytes
             else None
         )
         cover = image_clip.ImageClip(bytes=cover_bytes) if cover_bytes else None
 
-        background_video = None
-        async for event in self._video_service.create_youtube_video_compilation(
+        yield ProgressEvent.create("downloading", "Downloading YouTube compilation background")
+        compilation_result = await self._video_service.create_youtube_video_compilation(
             youtube_channel_url=config.video_config.youtube_channel_url,
             min_duration=speech.clip.duration,
             low_quality=low_quality,
-        ):
-            if isinstance(event, ProgressEvent):
-                yield event
-            else:
-                background_video = event
+        )
+        background_video = compilation_result.clip
 
         if not background_video:
             raise Exception("Failed to create background video")
@@ -320,10 +322,7 @@ class HistoryService:
         return history.content
 
     def _get_font_bytes(self) -> bytes:
-        """Get font bytes from storage"""
-        font_id = self._config_repository.load_config().captions_config.font_file_id
-        if not font_id:
-            with open("default_font.ttf", "rb") as f:
-                font_bytes = f.read()
-            return font_bytes
-        return self._file_storage.load_file(font_id)
+        """Get font bytes from config path"""
+        config = self._config_repository.load_config()
+        with open(config.captions_config.font_path, "rb") as f:
+            return f.read()

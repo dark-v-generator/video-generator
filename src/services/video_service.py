@@ -1,12 +1,18 @@
 import random
-from typing import Optional, AsyncIterable, Union
+from dataclasses import dataclass
+from typing import Optional, List
 
 from ..adapters.proxies.interfaces import IYouTubeProxy
 
 
 from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
-from ..entities.progress import ProgressEvent
 from ..core.logging_config import get_logger
+
+
+@dataclass
+class YouTubeCompilationResult:
+    clip: video_clip.VideoClip
+    downloaded_bytes: List[bytes]
 
 
 class VideoService:
@@ -21,40 +27,23 @@ class VideoService:
 
     async def create_youtube_video_compilation(
         self, youtube_channel_url: str, min_duration: int, low_quality: bool = False
-    ) -> AsyncIterable[Union[ProgressEvent, video_clip.VideoClip]]:
-        """Create video compilation from YouTube content with streaming progress events"""
-        yield ProgressEvent.create(
-            "initializing",
-            "Starting video compilation creation",
-            details={"min_duration": min_duration},
-        )
+    ) -> YouTubeCompilationResult:
+        """Create video compilation from YouTube content"""
 
         video_ids = await self._youtube_proxy.list_video_ids(youtube_channel_url)
         random.shuffle(video_ids)
 
         video = video_clip.VideoClip()
+        downloaded_bytes: List[bytes] = []
         total_duration = 0
         processed_videos = 0
         total_videos_to_process = min(len(video_ids), 2)
 
         for video_id in video_ids[:total_videos_to_process]:
-            yield ProgressEvent.create(
-                "downloading",
-                f"Downloading video {video_id}",
-                progress=0,
-                details={"video_id": video_id},
-            )
-
             video_bytes = await self._youtube_proxy.download_video(
                 video_id, low_quality
             )
-
-            yield ProgressEvent.create(
-                "downloading",
-                f"Finished downloading video {video_id}",
-                progress=100,
-                details={"video_id": video_id},
-            )
+            downloaded_bytes.append(video_bytes)
 
             new_video = video_clip.VideoClip(bytes=video_bytes)
             video.concat(new_video)
@@ -65,13 +54,14 @@ class VideoService:
             self._logger.info(f"min_duration: {min_duration}")
 
             if total_duration >= min_duration:
-                yield video
-                return
+                return YouTubeCompilationResult(
+                    clip=video, downloaded_bytes=downloaded_bytes
+                )
         if total_duration < min_duration:
             raise Exception(
                 f"Video compilation completed with {total_duration:.1f}s duration (all available videos used)"
             )
-        yield video
+        return YouTubeCompilationResult(clip=video, downloaded_bytes=downloaded_bytes)
 
     def generate_video(
         self,

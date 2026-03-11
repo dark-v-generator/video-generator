@@ -1,24 +1,34 @@
+from dataclasses import dataclass
 from typing import Optional
 from ..adapters.proxies.interfaces import ITranscriptionProxy, ILLMProxy
 
-from ..adapters.repositories.interfaces import IFileStorage
 from ..entities.captions import Captions, CaptionSegment
+from ..entities.config import CaptionsConfig
+from ..entities.editor.captions_clip import CaptionsClip
 from ..entities.language import Language
 from ..core.logging_config import get_logger
 
 
+@dataclass
+class CaptionsResult:
+    clip: CaptionsClip
+    captions: Captions
+
+
 class CaptionsService:
-    """Captions generation service implementation"""
+    """Captions generation service that returns a CaptionsResult"""
 
     def __init__(
         self,
-        file_storage: IFileStorage,
         llm_proxy: ILLMProxy,
         transcription_proxy: ITranscriptionProxy,
+        captions_config: CaptionsConfig,
     ):
-        self._file_storage = file_storage
         self._llm_proxy = llm_proxy
         self._transcription_proxy = transcription_proxy
+        self._captions_config = captions_config
+        with open(self._captions_config.font_path, "rb") as f:
+            self._font_bytes = f.read()
         self._logger = get_logger(__name__)
 
     async def generate_captions(
@@ -27,9 +37,8 @@ class CaptionsService:
         enhance_captions: bool = False,
         language: Optional[Language] = None,
         base_text: Optional[str] = None,
-    ) -> Captions:
-        """Generate captions from audio bytes; optionally enhance via LLM"""
-        # Directly generate the TranscriptionResult from bytes
+    ) -> CaptionsResult:
+        """Generate captions from audio bytes and return a CaptionsResult"""
         transcription_result = self._transcription_proxy.transcribe(
             audio_bytes, language=language
         )
@@ -62,4 +71,9 @@ class CaptionsService:
             ]
 
         captions = Captions(segments=caption_segments)
-        return captions
+        clip = CaptionsClip(
+            captions=captions,
+            config=self._captions_config,
+            font_bytes=self._font_bytes,
+        )
+        return CaptionsResult(clip=clip, captions=captions)
