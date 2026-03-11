@@ -35,6 +35,7 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     3. Part 1 must end on a major suspense cliffhanger and include a call to action (e.g., "Like and follow for part 2").
     4. Part 2 must resolve the story naturally and end with a final call to action asking for the viewer's opinion.
     5. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
+    6. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
     """
 
     target_language = dspy.InputField(
@@ -44,6 +45,9 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     reddit_post_text = dspy.InputField(desc="The original content of the story.")
 
     viral_title = dspy.OutputField(desc="A catchy translated title for the story.")
+    narrator_gender = dspy.OutputField(
+        desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
+    )
     part1_script = dspy.OutputField(
         desc="Part 1 of the story ending with suspense and 'Like for part 2'."
     )
@@ -251,8 +255,13 @@ class DSPyLLMProxy(ILLMProxy):
             reddit_post_text=content,
         )
 
+        raw_gender = result.narrator_gender.strip().lower()
+        if raw_gender not in ("male", "female"):
+            raw_gender = "unknown"
+
         return {
             "title": result.viral_title,
+            "narrator_gender": raw_gender,
             "part1": result.part1_script,
             "part2": result.part2_script,
         }

@@ -4,8 +4,6 @@ import threading
 from dataclasses import dataclass
 from typing import Literal, Optional
 from ..proxies.interfaces import ILLMProxy, IRedditProxy
-from ..entities.configs.services.captions import CaptionsConfig
-from ..entities.configs.services.video import VideoConfig
 from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
 from ..entities.editor.captions_clip import CaptionsClip
@@ -64,7 +62,7 @@ class RedditVideoService:
         output_path_part1: str,
         output_path_part2: str,
         language: Language = Language.PORTUGUESE,
-        speech_gender: Literal["male", "female"] = "male",
+        speech_gender: Optional[Literal["male", "female"]] = None,
         speech_rate: float = 1.0,
         low_quality: bool = False,
     ) -> TwoPartVideoResult:
@@ -82,17 +80,23 @@ class RedditVideoService:
         part1_text: str = story["part1"]
         part2_text: str = story["part2"]
 
+        # Resolve TTS gender: manual override > LLM inference > default 'male'
+        narrator_gender = story.get("narrator_gender", "unknown")
+        resolved_gender: Literal["male", "female"] = speech_gender or (
+            narrator_gender if narrator_gender in ("male", "female") else "male"
+        )
+
         # ------------------------------------------------------------------ 3. Generate speech for both parts (returns SpeechResult)
         speech_result_1 = await self._speech_service.generate_speech(
             text=part1_text,
-            gender=speech_gender,
+            gender=resolved_gender,
             rate=speech_rate,
             language=language,
         )
 
         speech_result_2 = await self._speech_service.generate_speech(
             text=part2_text,
-            gender=speech_gender,
+            gender=resolved_gender,
             rate=speech_rate,
             language=language,
         )

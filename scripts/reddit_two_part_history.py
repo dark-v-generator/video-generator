@@ -28,12 +28,10 @@ async def main():
         "--gender",
         type=str,
         choices=["male", "female"],
-        default="male",
-        help="TTS voice gender",
+        default=None,
+        help="TTS voice gender (auto-detected from post if not specified)",
     )
-    parser.add_argument(
-        "--rate", type=float, default=1.0, help="TTS speech rate"
-    )
+    parser.add_argument("--rate", type=float, default=1.0, help="TTS speech rate")
     parser.add_argument(
         "--low-quality",
         action="store_true",
