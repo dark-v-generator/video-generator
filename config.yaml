@@ -16,3 +16,10 @@ services:
   video_config:
     call_to_action_path: assets/call_to_action.png
     youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+bots:
+  image_story_bot:
+    allowed_user_ids: []
+    low_quality: false
+  two_part_history_bot:
+    allowed_user_ids: []
+    low_quality: false

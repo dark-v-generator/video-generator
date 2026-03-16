@@ -85,11 +85,14 @@ class GenerateImageStorySignature(dspy.Signature):
     produce a visual timeline for the video as a JSON object.
 
     Rules:
-    1. introduction_end_time: timestamp where the opening/title narration ends and the story begins.
-    2. call_to_action_start_time: timestamp where the call-to-action starts (e.g. "Curta e me siga").
+    1. introduction_end_time: the exact `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
+    2. call_to_action_start_time: the exact `start` timestamp of the first CTA word (e.g. "Curta").
     3. images: 6-10 images illustrating different scenes. First must start at 0.0, each subsequent
        must have a strictly greater start_time, last must be before call_to_action_start_time.
-    4. Use transcription timestamps to align image changes with natural scene transitions.
+    4. CRITICAL: each image start_time MUST be the exact `end` timestamp of the last word of the
+       sentence/clause the PREVIOUS image illustrates. Find where a scene ends in the transcription
+       and use that word's `end` value. NEVER use round numbers — use exact transcription values
+       (e.g. 10.94, not 12.0).
     5. Image prompts should be cinematic with mood/lighting details for AI image generation.
     6. Return ONLY a JSON object, no commentary.
     """

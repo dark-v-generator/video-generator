@@ -22,6 +22,7 @@ from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverC
 
 from src.entities.configs.services.captions import CaptionsConfig
 from src.entities.configs.services.video import VideoConfig
+from src.entities.configs.bots import BotsConfig
 
 
 class ProxiesConfig(BaseYAMLModel):
@@ -58,6 +59,7 @@ class MainConfig(BaseYAMLModel):
 
     proxies: ProxiesConfig = Field(default_factory=ProxiesConfig)
     services: ServicesConfig = Field(default_factory=ServicesConfig)
+    bots: BotsConfig = Field(default_factory=BotsConfig)
 
     seed: Optional[str] = Field(None, title="Seed")
 

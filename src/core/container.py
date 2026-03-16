@@ -84,6 +84,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         RedditVideoService,
         reddit_proxy=reddit_proxy,
         llm_proxy=llm_proxy,
+        image_generation_proxy=image_generation_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
         cover_service=cover_service,

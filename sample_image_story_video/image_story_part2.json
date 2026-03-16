@@ -1,0 +1,46 @@
+{
+  "introduction_end_time": 3.78,
+  "call_to_action_start_time": 60.8,
+  "images": [
+    {
+      "start_time": 0.0,
+      "description": "Adolescente apaixonado olhando para colega de classe na escola",
+      "prompt": "Teenage boy looking at a girl classmate in a school hallway, warm nostalgic lighting, first love atmosphere"
+    },
+    {
+      "start_time": 3.78,
+      "description": "Casal jovem adolescente namorando feliz no ensino médio",
+      "prompt": "Young teenage couple holding hands at school, happy high school romance, golden hour, youthful love"
+    },
+    {
+      "start_time": 7.68,
+      "description": "Mulher partindo com malas para a cidade grande, homem ficando para trás",
+      "prompt": "Woman leaving with suitcases to the big city, man staying behind waving goodbye, bittersweet separation, dramatic lighting"
+    },
+    {
+      "start_time": 15.88,
+      "description": "Homem sozinho tentando ligar sem sucesso, tela do celular sem resposta",
+      "prompt": "Man alone desperately calling on phone with no answer, dark room, blue phone screen glow, loneliness and heartbreak"
+    },
+    {
+      "start_time": 28.42,
+      "description": "Homem lendo carta triste num café, expressão de dor",
+      "prompt": "Man reading a sad letter in a cafe, painful expression, tears forming, warm ambient lighting, emotional scene"
+    },
+    {
+      "start_time": 38.62,
+      "description": "Homem conhecendo nova garota num workshop, sorrindo juntos",
+      "prompt": "Man meeting a new woman at a workshop, both smiling, fresh start, bright hopeful lighting, natural chemistry"
+    },
+    {
+      "start_time": 45.8,
+      "description": "Família feliz, casal com filha pequena em casa",
+      "prompt": "Happy married couple with cute toddler daughter at home, warm cozy family portrait, loving atmosphere"
+    },
+    {
+      "start_time": 55.04,
+      "description": "Homem atendendo ligação misteriosa com expressão surpresa",
+      "prompt": "Man answering mysterious phone call with surprised expression, dramatic lighting, suspenseful mood, unknown caller"
+    }
+  ]
+}

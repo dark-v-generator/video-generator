@@ -14,6 +14,10 @@ class Secrets(BaseSettings):
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"
 
+    # Telegram bot tokens
+    telegram_image_story_bot_token: Optional[str] = None
+    telegram_two_part_history_bot_token: Optional[str] = None
+
     model_config = ConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 

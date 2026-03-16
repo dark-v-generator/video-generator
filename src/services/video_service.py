@@ -121,6 +121,8 @@ class VideoService:
             background_video.insert_captions(captions, size_rate=size_rate)
         return background_video
 
+    CROSSFADE_DURATION = 0.5
+
     def generate_image_story_video(
         self,
         audio: audio_clip.AudioClip,
@@ -136,6 +138,7 @@ class VideoService:
         1. Introduction: first image is blurred with cover overlay on top.
            At introduction_end_time the image unblurs and cover fades out.
         2. Story: images appear at their scheduled times filling the background.
+           Crossfade transitions between images.
         3. Call-to-action: the active image blurs and a CTA overlay appears.
         """
         config = self._video_config
@@ -161,14 +164,24 @@ class VideoService:
             image_story, generated_images, total_duration, intro_end, cta_start
         )
 
+        fade = self.CROSSFADE_DURATION
         moviepy_clips = []
-        for start, end, img_bytes, is_blurred in segments:
+        for idx, (start, end, img_bytes, is_blurred) in enumerate(segments):
             if is_blurred:
                 img_bytes = self._blur_image_bytes(img_bytes)
             clip = image_clip.ImageClip(bytes=img_bytes)
             clip.clip = clip.clip.resized(new_size=(width, height))
+
+            extended_end = (
+                min(end + fade, total_duration) if idx < len(segments) - 1 else end
+            )
             clip.set_start(start)
-            clip.set_duration(end - start)
+            clip.set_duration(extended_end - start)
+
+            is_scene_transition = not is_blurred and start > 0
+            if is_scene_transition:
+                clip.apply_fadein(fade)
+
             moviepy_clips.append(clip.clip)
 
         if cover is not None and intro_end > 0:
@@ -185,7 +198,7 @@ class VideoService:
             cta_clip.center(width, height)
             cta_clip.set_start(cta_start)
             cta_clip.set_duration(total_duration - cta_start)
-            cta_clip.apply_fadein(0.5)
+            cta_clip.apply_fadein(fade)
             moviepy_clips.append(cta_clip.clip)
 
         result = video_clip.VideoClip()

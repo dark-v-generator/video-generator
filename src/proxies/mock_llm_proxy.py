@@ -57,52 +57,95 @@ MOCK_STORY = {
     ),
 }
 
-MOCK_IMAGE_STORY = ImageStory(
-    introduction_end_time=5.0,
-    call_to_action_start_time=95.0,
-    images=[
-        StoryImage(
-            start_time=0.0,
-            description="Adolescente apaixonado olhando para colega de classe na escola",
-            prompt="Teenage boy looking at a girl classmate in a school hallway, warm nostalgic lighting, first love atmosphere",
-        ),
-        StoryImage(
-            start_time=12.0,
-            description="Casal jovem adolescente namorando feliz no ensino médio",
-            prompt="Young teenage couple holding hands at school, happy high school romance, golden hour, youthful love",
-        ),
-        StoryImage(
-            start_time=25.0,
-            description="Mulher partindo com malas para a cidade grande, homem ficando para trás",
-            prompt="Woman leaving with suitcases to the big city, man staying behind waving goodbye, bittersweet separation, dramatic lighting",
-        ),
-        StoryImage(
-            start_time=38.0,
-            description="Homem sozinho tentando ligar sem sucesso, tela do celular sem resposta",
-            prompt="Man alone desperately calling on phone with no answer, dark room, blue phone screen glow, loneliness and heartbreak",
-        ),
-        StoryImage(
-            start_time=50.0,
-            description="Homem lendo carta triste num café, expressão de dor",
-            prompt="Man reading a sad letter in a cafe, painful expression, tears forming, warm ambient lighting, emotional scene",
-        ),
-        StoryImage(
-            start_time=60.0,
-            description="Homem conhecendo nova garota num workshop, sorrindo juntos",
-            prompt="Man meeting a new woman at a workshop, both smiling, fresh start, bright hopeful lighting, natural chemistry",
-        ),
-        StoryImage(
-            start_time=75.0,
-            description="Família feliz, casal com filha pequena em casa",
-            prompt="Happy married couple with cute toddler daughter at home, warm cozy family portrait, loving atmosphere",
-        ),
-        StoryImage(
-            start_time=85.0,
-            description="Homem atendendo ligação misteriosa com expressão surpresa",
-            prompt="Man answering mysterious phone call with surprised expression, dramatic lighting, suspenseful mood, unknown caller",
-        ),
-    ],
-)
+MOCK_IMAGE_SCENES = [
+    StoryImage(
+        start_time=0.0,
+        description="Adolescente apaixonado olhando para colega de classe na escola",
+        prompt="Teenage boy looking at a girl classmate in a school hallway, warm nostalgic lighting, first love atmosphere",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Casal jovem adolescente namorando feliz no ensino médio",
+        prompt="Young teenage couple holding hands at school, happy high school romance, golden hour, youthful love",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Mulher partindo com malas para a cidade grande, homem ficando para trás",
+        prompt="Woman leaving with suitcases to the big city, man staying behind waving goodbye, bittersweet separation, dramatic lighting",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem sozinho tentando ligar sem sucesso, tela do celular sem resposta",
+        prompt="Man alone desperately calling on phone with no answer, dark room, blue phone screen glow, loneliness and heartbreak",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem lendo carta triste num café, expressão de dor",
+        prompt="Man reading a sad letter in a cafe, painful expression, tears forming, warm ambient lighting, emotional scene",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem conhecendo nova garota num workshop, sorrindo juntos",
+        prompt="Man meeting a new woman at a workshop, both smiling, fresh start, bright hopeful lighting, natural chemistry",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Família feliz, casal com filha pequena em casa",
+        prompt="Happy married couple with cute toddler daughter at home, warm cozy family portrait, loving atmosphere",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem atendendo ligação misteriosa com expressão surpresa",
+        prompt="Man answering mysterious phone call with surprised expression, dramatic lighting, suspenseful mood, unknown caller",
+    ),
+]
+
+
+def _find_sentence_boundaries(transcription: List[dict]) -> List[float]:
+    """Find `end` timestamps of words that end sentences (period, !, ?)."""
+    boundaries = []
+    for w in transcription:
+        text = w.get("word", "").strip()
+        if text and text[-1] in ".!?":
+            boundaries.append(w["end"])
+    return boundaries
+
+
+def _build_mock_image_story(transcription: List[dict]) -> ImageStory:
+    """Build an ImageStory with start_times aligned to sentence boundaries."""
+    boundaries = _find_sentence_boundaries(transcription)
+    if not boundaries:
+        total = transcription[-1]["end"] if transcription else 60.0
+        step = total / (len(MOCK_IMAGE_SCENES) + 2)
+        boundaries = [step * i for i in range(1, len(MOCK_IMAGE_SCENES) + 2)]
+
+    intro_end = boundaries[0] if boundaries else 5.0
+
+    cta_boundary = boundaries[-1] if boundaries else 90.0
+    for b in reversed(boundaries):
+        cta_boundary = b
+        if b < boundaries[-1]:
+            break
+
+    scene_boundaries = [b for b in boundaries if intro_end <= b < cta_boundary]
+
+    num_scenes = len(MOCK_IMAGE_SCENES)
+    if len(scene_boundaries) >= num_scenes - 1:
+        step = max(1, len(scene_boundaries) // (num_scenes - 1))
+        picked = [scene_boundaries[i * step] for i in range(num_scenes - 1)]
+    else:
+        picked = scene_boundaries[: num_scenes - 1]
+
+    images = []
+    for i, scene in enumerate(MOCK_IMAGE_SCENES[: len(picked) + 1]):
+        t = 0.0 if i == 0 else picked[i - 1]
+        images.append(scene.model_copy(update={"start_time": t}))
+
+    return ImageStory(
+        introduction_end_time=intro_end,
+        call_to_action_start_time=cta_boundary,
+        images=images,
+    )
 
 
 class MockLLMProxy(ILLMProxy):
@@ -121,4 +164,4 @@ class MockLLMProxy(ILLMProxy):
     async def generate_image_story(
         self, story_text: str, transcription: List[dict]
     ) -> ImageStory:
-        return MOCK_IMAGE_STORY.model_copy(deep=True)
+        return _build_mock_image_story(transcription)
