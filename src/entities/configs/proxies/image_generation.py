@@ -13,6 +13,10 @@ class LocalImageGenerationConfig(BaseYAMLModel):
     model_id: str = Field("stabilityai/sdxl-turbo", title="Local HuggingFace Model ID")
 
 
+class MockImageGenerationConfig(BaseYAMLModel):
+    type: Literal["mock"] = "mock"
+
+
 ImageGenerationConfigType = Union[
-    LeonardoImageGenerationConfig, LocalImageGenerationConfig
+    LeonardoImageGenerationConfig, LocalImageGenerationConfig, MockImageGenerationConfig
 ]

@@ -1,10 +1,14 @@
+import io
 import random
 from dataclasses import dataclass
 from typing import Optional, List
 
+from moviepy import CompositeVideoClip
+from PIL import Image, ImageFilter
+
 from ..proxies.interfaces import IYouTubeProxy
 from ..entities.configs.services.video import VideoConfig
-
+from ..entities.image_story import ImageStory
 
 from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
 
@@ -29,6 +33,11 @@ class VideoService:
         if self._video_config.watermark_path:
             with open(self._video_config.watermark_path, "rb") as f:
                 self._watermark_bytes = f.read()
+
+        self._call_to_action_bytes = None
+        if self._video_config.call_to_action_path:
+            with open(self._video_config.call_to_action_path, "rb") as f:
+                self._call_to_action_bytes = f.read()
 
     async def create_youtube_video_compilation(
         self, min_duration: int, low_quality: bool = False
@@ -111,3 +120,133 @@ class VideoService:
         if captions is not None:
             background_video.insert_captions(captions, size_rate=size_rate)
         return background_video
+
+    def generate_image_story_video(
+        self,
+        audio: audio_clip.AudioClip,
+        image_story: ImageStory,
+        generated_images: List[bytes],
+        cover: Optional[image_clip.ImageClip] = None,
+        captions: Optional[captions_clip.CaptionsClip] = None,
+        low_quality: bool = False,
+    ) -> video_clip.VideoClip:
+        """Generate a video from a timed sequence of AI-generated images.
+
+        The video has three phases:
+        1. Introduction: first image is blurred with cover overlay on top.
+           At introduction_end_time the image unblurs and cover fades out.
+        2. Story: images appear at their scheduled times filling the background.
+        3. Call-to-action: the active image blurs and a CTA overlay appears.
+        """
+        config = self._video_config
+        size_rate = 1.0
+        if low_quality:
+            size_rate = 400 / config.height
+            config = config.model_copy(
+                update=dict(
+                    width=int(round(config.width * size_rate)),
+                    height=int(round(config.height * size_rate)),
+                    padding=int(round(config.padding * size_rate)),
+                )
+            )
+
+        width, height = config.width, config.height
+        audio.add_end_silence(config.end_silece_seconds)
+        total_duration = audio.clip.duration
+
+        intro_end = image_story.introduction_end_time
+        cta_start = image_story.call_to_action_start_time
+
+        segments = self._build_image_segments(
+            image_story, generated_images, total_duration, intro_end, cta_start
+        )
+
+        moviepy_clips = []
+        for start, end, img_bytes, is_blurred in segments:
+            if is_blurred:
+                img_bytes = self._blur_image_bytes(img_bytes)
+            clip = image_clip.ImageClip(bytes=img_bytes)
+            clip.clip = clip.clip.resized(new_size=(width, height))
+            clip.set_start(start)
+            clip.set_duration(end - start)
+            moviepy_clips.append(clip.clip)
+
+        if cover is not None and intro_end > 0:
+            cover.fit_width(width, config.padding)
+            cover.center(width, height)
+            cover.set_start(0)
+            cover.set_duration(intro_end)
+            cover.apply_fadeout(1)
+            moviepy_clips.append(cover.clip)
+
+        if self._call_to_action_bytes is not None and cta_start < total_duration:
+            cta_clip = image_clip.ImageClip(bytes=self._call_to_action_bytes)
+            cta_clip.fit_width(width, config.padding)
+            cta_clip.center(width, height)
+            cta_clip.set_start(cta_start)
+            cta_clip.set_duration(total_duration - cta_start)
+            cta_clip.apply_fadein(0.5)
+            moviepy_clips.append(cta_clip.clip)
+
+        result = video_clip.VideoClip()
+        result.clip = CompositeVideoClip(moviepy_clips, size=(width, height))
+        result.clip = result.clip.with_duration(total_duration)
+        result.clip = result.clip.with_audio(audio.clip)
+
+        if self._watermark_bytes is not None:
+            water_mark = image_clip.ImageClip(bytes=self._watermark_bytes)
+            water_mark.fit_width(width, config.padding)
+            water_mark.center(width, height)
+            water_mark.set_duration(total_duration)
+            result.merge(water_mark)
+
+        if captions is not None:
+            result.insert_captions(captions, size_rate=size_rate)
+
+        return result
+
+    @staticmethod
+    def _build_image_segments(
+        image_story: ImageStory,
+        generated_images: List[bytes],
+        total_duration: float,
+        intro_end: float,
+        cta_start: float,
+    ) -> List[tuple]:
+        """Return (start, end, image_bytes, is_blurred) segments."""
+        segments: List[tuple] = []
+        images = image_story.images
+
+        for i, (story_img, img_bytes) in enumerate(zip(images, generated_images)):
+            img_start = story_img.start_time
+            img_end = (
+                images[i + 1].start_time if i + 1 < len(images) else total_duration
+            )
+            if img_end <= img_start:
+                continue
+
+            if i == 0 and intro_end > img_start:
+                blur_end = min(intro_end, img_end)
+                segments.append((img_start, blur_end, img_bytes, True))
+                if intro_end < img_end:
+                    img_start = intro_end
+                else:
+                    continue
+
+            if img_start < cta_start < img_end:
+                segments.append((img_start, cta_start, img_bytes, False))
+                segments.append((cta_start, img_end, img_bytes, True))
+            elif img_start >= cta_start:
+                segments.append((img_start, img_end, img_bytes, True))
+            else:
+                segments.append((img_start, img_end, img_bytes, False))
+
+        return segments
+
+    @staticmethod
+    def _blur_image_bytes(img_bytes: bytes, radius: int = 20) -> bytes:
+        img = Image.open(io.BytesIO(img_bytes))
+        blurred = img.filter(ImageFilter.GaussianBlur(radius=radius))
+        buf = io.BytesIO()
+        blurred.save(buf, format="PNG")
+        return buf.getvalue()

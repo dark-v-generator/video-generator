@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional, Literal
 
+from ..entities.image_story import ImageStory
 from ..entities.reddit_post import RedditPost
 from ..entities.transcription import TranscriptionResult
 from ..entities.language import Language
 from ..entities.speech_voice import SpeechVoice
-from typing import List, Optional, Literal, AsyncIterable
 
 
 class IRedditProxy(ABC):
@@ -59,13 +59,6 @@ class ISpeechProxy(ABC):
 
 class ILLMProxy(ABC):
     @abstractmethod
-    async def translate_and_adapt(
-        self, text: str, target_language: Language
-    ) -> AsyncIterable[str]:
-        """Translate and adapt text to the target language via LLM"""
-        ...
-
-    @abstractmethod
     async def generate_two_part_story(
         self, title: str, content: str, target_language: Language
     ) -> dict:
@@ -80,6 +73,14 @@ class ILLMProxy(ABC):
         """Enhance a raw transcription word list using a base script as ground truth.
         Returns the corrected list of dictionaries with 'word', 'start', 'end', 'probability'.
         """
+        ...
+
+    @abstractmethod
+    async def generate_image_story(
+        self, story_text: str, transcription: List[dict]
+    ) -> ImageStory:
+        """Analyse a narrated story and its word-level transcription to produce
+        a timed image-story with introduction, call-to-action, and scene images."""
         ...
 
 

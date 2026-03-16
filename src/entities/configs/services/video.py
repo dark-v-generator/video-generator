@@ -6,6 +6,9 @@ class VideoConfig(BaseYAMLModel):
     watermark_path: Optional[str] = Field(
         None, title="Path to the watermark image file"
     )
+    call_to_action_path: Optional[str] = Field(
+        None, title="Path to the call-to-action overlay image"
+    )
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
     cover_duration: int = Field(5, title="Cover duration")

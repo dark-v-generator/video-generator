@@ -2,13 +2,9 @@ proxies:
   cover_config:
     title_font_size: 150
   image_generation_config:
-    type: local
-    model_id: stabilityai/sdxl-turbo
+    type: mock
   llm_config:
-    type: dspy
-    provider_config:
-      model: gemma-3-27b-it
-      provider: google
+    type: mock
   speech_config:
     type: edge-tts
   transcription_config:
@@ -18,4 +14,5 @@ services:
   captions_config:
     font_path: default_font.ttf
   video_config:
+    call_to_action_path: assets/call_to_action.png
     youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ

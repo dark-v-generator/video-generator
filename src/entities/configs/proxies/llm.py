@@ -22,4 +22,8 @@ class PromptLLMConfig(BaseYAMLModel):
     provider_config: LLMProviderConfig = Field(default_factory=LLMProviderConfig)
 
 
-LLMConfigType = Union[DSPyLLMConfig, PromptLLMConfig]
+class MockLLMConfig(BaseYAMLModel):
+    type: Literal["mock"] = "mock"
+
+
+LLMConfigType = Union[DSPyLLMConfig, PromptLLMConfig, MockLLMConfig]

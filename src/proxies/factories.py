@@ -2,10 +2,12 @@ from src.entities.configs.proxies.image_generation import (
     ImageGenerationConfigType,
     LeonardoImageGenerationConfig,
     LocalImageGenerationConfig,
+    MockImageGenerationConfig,
 )
 from src.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
 from src.proxies.leonardo_proxy import LeonardoImageProxy
 from src.proxies.local_sdxl_proxy import LocalSDXLImageProxy
+from src.proxies.mock_image_proxy import MockImageGeneratorProxy
 
 from src.entities.configs.proxies.transcription import (
     TranscriptionConfigType,
@@ -33,9 +35,11 @@ from src.entities.configs.proxies.llm import (
     LLMConfigType,
     PromptLLMConfig,
     DSPyLLMConfig,
+    MockLLMConfig,
 )
 from src.proxies.llm_prompt_proxy import PromptLLMProxy
 from src.proxies.llm_dspy_proxy import DSPyLLMProxy
+from src.proxies.mock_llm_proxy import MockLLMProxy
 from src.proxies.interfaces import ILLMProxy, IYouTubeProxy
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.proxies.pytube_proxy import PyTubeProxy
@@ -55,6 +59,8 @@ class ImageGeneratorFactory:
             return LeonardoImageProxy(config=config)
         elif isinstance(config, LocalImageGenerationConfig):
             return LocalSDXLImageProxy(config=config)
+        elif isinstance(config, MockImageGenerationConfig):
+            return MockImageGeneratorProxy()
         else:
             raise ValueError(f"Unknown Image Generation Configuration: {type(config)}")
 
@@ -102,6 +108,9 @@ class LLMProxyFactory:
         ollama_base_url: str = None,
         google_api_key: str = None,
     ) -> ILLMProxy:
+        if isinstance(config, MockLLMConfig):
+            return MockLLMProxy()
+
         if config.provider_config.provider == "openai":
             config.provider_config.api_key = openai_api_key
         elif config.provider_config.provider == "ollama":

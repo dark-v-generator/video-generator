@@ -171,8 +171,12 @@ class RedditVideoService:
             original_post_md=original_post_md,
             audio_part1=speech_result_1.bytes,
             audio_part2=speech_result_2.bytes,
-            captions_part1_json=json.dumps(captions_1_data, ensure_ascii=False, indent=2),
-            captions_part2_json=json.dumps(captions_2_data, ensure_ascii=False, indent=2),
+            captions_part1_json=json.dumps(
+                captions_1_data, ensure_ascii=False, indent=2
+            ),
+            captions_part2_json=json.dumps(
+                captions_2_data, ensure_ascii=False, indent=2
+            ),
             cover_png=cover_result.bytes,
         )
 
@@ -215,7 +219,6 @@ class RedditVideoService:
             final_video.clip.write_videofile(
                 tmp_path,
                 ffmpeg_params=self._video_service._video_config.ffmpeg_params,
-                logger=None,
             )
             with open(tmp_path, "rb") as f:
                 return f.read()

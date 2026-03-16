@@ -2,28 +2,11 @@ import os
 import json
 import yaml
 import dspy
-from typing import AsyncIterable, List
-from pydantic import BaseModel, Field
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
+from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
-
-
-class TranslateAndAdaptSignature(dspy.Signature):
-    """
-    You are an expert translator and text adapter.
-    Your task is to take the user's raw input text and translate/adapt it into naturally flowing text, mantaining the same meaning and context.
-    Make the tone suitable and conversational, ensuring the core message translates accurately and adaptively.
-    """
-
-    target_language = dspy.InputField(
-        desc="The language to translate and adapt the text into."
-    )
-    raw_text = dspy.InputField(desc="Raw text content to be translated and adapted.")
-    adapted_script = dspy.OutputField(
-        desc="The final translated text as a single fluid paragraph without outside commentary."
-    )
 
 
 class TwoPartTikTokStorySignature(dspy.Signature):
@@ -69,12 +52,6 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     )
 
 
-class TranscriptionWord(BaseModel):
-    word: str = Field(description="The corrected word text")
-    start: float = Field(description="Start timestamp in seconds")
-    end: float = Field(description="End timestamp in seconds")
-
-
 class EnhanceTranscriptionSignature(dspy.Signature):
     """
     You are an AI specialized in correcting timestamped text transcriptions.
@@ -87,7 +64,7 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     2. Maintain the timestamp information as accurately as possible.
     3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
     4. If modifying a word, keep its original 'start' and 'end'.
-    5. Return the modified list of word segments.
+    5. Return ONLY a JSON array of objects with 'word', 'start', and 'end' keys.
     """
 
     base_text = dspy.InputField(desc="The correct, ground truth text.")
@@ -95,8 +72,35 @@ class EnhanceTranscriptionSignature(dspy.Signature):
         desc="A JSON string of the raw transcription word segments from the speech-to-text model."
     )
 
-    enhanced_transcription: List[TranscriptionWord] = dspy.OutputField(
-        desc="The corrected list of word segments with 'word', 'start', and 'end'."
+    enhanced_transcription = dspy.OutputField(
+        desc="A JSON array string of corrected word segments: [{\"word\": ..., \"start\": ..., \"end\": ...}, ...]"
+    )
+
+
+class GenerateImageStorySignature(dspy.Signature):
+    """
+    You are an expert at creating visual storyboards for narrated video content.
+
+    Given a narrated story text and its word-level transcription with timestamps,
+    produce a visual timeline for the video as a JSON object.
+
+    Rules:
+    1. introduction_end_time: timestamp where the opening/title narration ends and the story begins.
+    2. call_to_action_start_time: timestamp where the call-to-action starts (e.g. "Curta e me siga").
+    3. images: 6-10 images illustrating different scenes. First must start at 0.0, each subsequent
+       must have a strictly greater start_time, last must be before call_to_action_start_time.
+    4. Use transcription timestamps to align image changes with natural scene transitions.
+    5. Image prompts should be cinematic with mood/lighting details for AI image generation.
+    6. Return ONLY a JSON object, no commentary.
+    """
+
+    story_text = dspy.InputField(desc="The full narrated story text.")
+    transcription = dspy.InputField(
+        desc="JSON string of word-level transcription: [{word, start, end}, ...]"
+    )
+
+    image_story_json = dspy.OutputField(
+        desc='A JSON object string: {"introduction_end_time": <float>, "call_to_action_start_time": <float>, "images": [{"start_time": <float>, "description": "...", "prompt": "..."}, ...]}'
     )
 
 
@@ -105,9 +109,6 @@ class DSPyLLMProxy(ILLMProxy):
         self._logger = get_logger(__name__)
         self.config = config.provider_config
         self._configure_dspy()
-
-        # dspy.Predict allows us to generate based on the Signature
-        self.translator = dspy.Predict(TranslateAndAdaptSignature)
 
         # We use dspy.ChainOfThought or just Predict for the 2-part story.
         self._story_generator = None
@@ -255,28 +256,6 @@ class DSPyLLMProxy(ILLMProxy):
 
         dspy.settings.configure(lm=lm)
 
-    async def translate_and_adapt(
-        self, text: str, target_language: Language
-    ) -> AsyncIterable[str]:
-
-        self._logger.info(
-            f"Using DSPy to translate and adapt via {self.config.provider}/{self.config.model}"
-        )
-
-        # DSPy doesn't natively expose an abstract Async Streaming API universally
-        # across all of its module types out of the box without complex custom LM extensions.
-        # So we process it entirely and yield the block.
-
-        result = self.translator(
-            target_language=get_language_name(target_language), raw_text=text
-        )
-
-        # Fake streaming behavior to maintain interface consistency
-        content = result.adapted_script
-        chunk_size = 20
-        for i in range(0, len(content), chunk_size):
-            yield content[i : i + chunk_size]
-
     async def generate_two_part_story(
         self, title: str, content: str, target_language: Language
     ) -> dict:
@@ -318,9 +297,29 @@ class DSPyLLMProxy(ILLMProxy):
             config={"max_tokens": 16000},
         )
 
-        # DSPy returns typed output as list[TranscriptionWord] Pydantic models
-        enhanced = result.enhanced_transcription
-        return [
-            {"word": item.word, "start": item.start, "end": item.end}
-            for item in enhanced
-        ]
+        response_text = result.enhanced_transcription
+        return self._parse_json_text(response_text)
+
+    async def generate_image_story(
+        self, story_text: str, transcription: list[dict]
+    ) -> ImageStory:
+        self._logger.info(
+            f"Generating image story via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        generator = dspy.Predict(GenerateImageStorySignature)
+        result = generator(
+            story_text=story_text,
+            transcription=json.dumps(transcription, ensure_ascii=False),
+        )
+
+        data = self._parse_json_text(result.image_story_json)
+        return ImageStory(**data)
+
+    @staticmethod
+    def _parse_json_text(text: str):
+        if text.startswith("```json"):
+            text = text.strip("```json").strip("```").strip()
+        if text.startswith("```"):
+            text = text.strip("```").strip()
+        return json.loads(text)
