@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def is_user_allowed(user_id: int, allowed_ids: List[int]) -> bool:
-    if not allowed_ids:
-        return True
     return user_id in allowed_ids
 
 

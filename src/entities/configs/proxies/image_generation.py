@@ -10,7 +10,7 @@ class LeonardoImageGenerationConfig(BaseYAMLModel):
 
 class LocalImageGenerationConfig(BaseYAMLModel):
     type: Literal["local"] = "local"
-    model_id: str = Field("stabilityai/sdxl-turbo", title="Local HuggingFace Model ID")
+    model_id: str = Field("Lykon/dreamshaper-8", title="Local HuggingFace Model ID")
 
 
 class MockImageGenerationConfig(BaseYAMLModel):

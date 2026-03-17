@@ -1,14 +1,18 @@
 import io
 from typing import List
 import torch
-from diffusers import AutoPipelineForText2Image
+from diffusers import StableDiffusionPipeline
+from PIL import Image
 from .interfaces import IImageGeneratorProxy
 from src.entities.configs.proxies.image_generation import LocalImageGenerationConfig
+
+GENERATION_WIDTH = 512
+GENERATION_HEIGHT = 768
+NUM_INFERENCE_STEPS = 20
 
 
 class LocalSDXLImageProxy(IImageGeneratorProxy):
     def __init__(self, config: LocalImageGenerationConfig):
-        # Choose device: mps if Apple Silicon, else cuda, else cpu
         if torch.backends.mps.is_available():
             self.device = "mps"
         elif torch.cuda.is_available():
@@ -16,18 +20,18 @@ class LocalSDXLImageProxy(IImageGeneratorProxy):
         else:
             self.device = "cpu"
 
-        # Use float16 on MPS/CUDA to save memory and speed up, float32 on CPU
         self.dtype = torch.float16 if self.device in ["mps", "cuda"] else torch.float32
 
         print(
             f"Loading {config.model_id} pipeline on {self.device} with {self.dtype}..."
         )
-        self.pipeline = AutoPipelineForText2Image.from_pretrained(
+        self.pipeline = StableDiffusionPipeline.from_pretrained(
             config.model_id,
             torch_dtype=self.dtype,
-            variant="fp16" if self.dtype == torch.float16 else None,
+            safety_checker=None,
         )
         self.pipeline.to(self.device)
+        self.pipeline.enable_attention_slicing()
         print("Pipeline loaded successfully.")
 
     def generate_image(
@@ -40,30 +44,29 @@ class LocalSDXLImageProxy(IImageGeneratorProxy):
     ) -> List[bytes]:
 
         print(
-            f"Generating {num_images} image(s) of size {width}x{height} for prompt: '{prompt}'"
+            f"Generating {num_images} image(s) at {GENERATION_WIDTH}x{GENERATION_HEIGHT} "
+            f"(upscale to {width}x{height}) for prompt: '{prompt[:80]}...'"
         )
 
-        # Prepare inputs for batched generation
         prompts = [prompt] * num_images
         negative_prompts = [negative_prompt] * num_images if negative_prompt else None
 
-        # SDXL Turbo is optimized for 1-4 inference steps and 0.0 guidance scale.
-        # Height and width must be supported by the model (e.g. multiples of 8).
-        # On MPS, batch generation sometimes can cause memory issues depending on standard RAM, but 1-2 images should be fine.
         images = self.pipeline(
             prompt=prompts,
             negative_prompt=negative_prompts,
-            num_inference_steps=4,
-            guidance_scale=0.0,
-            height=height,
-            width=width,
+            num_inference_steps=NUM_INFERENCE_STEPS,
+            guidance_scale=7.5,
+            height=GENERATION_HEIGHT,
+            width=GENERATION_WIDTH,
         ).images
 
         results = []
         for img in images:
+            if (width, height) != (GENERATION_WIDTH, GENERATION_HEIGHT):
+                img = img.resize((width, height), Image.LANCZOS)
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             results.append(buf.getvalue())
 
-        print(f"Generation complete.")
+        print("Generation complete.")
         return results

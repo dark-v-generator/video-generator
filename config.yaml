@@ -2,7 +2,7 @@ proxies:
   cover_config:
     title_font_size: 150
   image_generation_config:
-    type: mock
+    type: local
   llm_config:
     type: mock
   speech_config:
@@ -18,8 +18,8 @@ services:
     youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
 bots:
   image_story_bot:
-    allowed_user_ids: []
+    allowed_user_ids: [627370641]
     low_quality: false
   two_part_history_bot:
-    allowed_user_ids: []
+    allowed_user_ids: [627370641]
     low_quality: false
