@@ -7,16 +7,10 @@ proxies:
   llm_config:
     type: prompt
     provider_config:
-      provider: google
-      model: gemma-3-27b-it
-      temperature: 0.7
-      max_tokens: 8192
+      provider: openai
+      model: gpt-5.4-mini
   speech_config:
-    type: elevenlabs
-    voices:
-      pt:
-        male_voice_id: "96cLX3dkyNUmTHwkNXeS"    # Thiago Realista
-        female_voice_id: "CZD4BJ803C6T0alQxsR7"  # Andreia I.
+    type: edge-tts
   transcription_config:
     model: base
     type: local

@@ -16,6 +16,13 @@ litellm.telemetry = False
 
 
 class PromptLLMProxy(ILLMProxy):
+    GEMINI_SAFETY_SETTINGS = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+
     def __init__(self, config: PromptLLMConfig):
         self._logger = get_logger(__name__)
         self.config = config.provider_config
@@ -24,12 +31,24 @@ class PromptLLMProxy(ILLMProxy):
         provider = self.config.provider
         model = self.config.model
         if provider == "openai":
-            return model
+            return f"openai/{model}"
         elif provider == "ollama":
             return f"ollama/{model}"
         elif provider == "google":
             return f"gemini/{model}"
         return model
+
+    def _get_extra_kwargs(self, model_str: str, json_mode: bool = True) -> dict:
+        kwargs = {}
+        if (
+            json_mode
+            and ("gpt" in model_str or "gemini" in model_str or "openai/" in model_str)
+            and "gemma" not in model_str
+        ):
+            kwargs["response_format"] = {"type": "json_object"}
+        if self.config.provider == "google":
+            kwargs["safety_settings"] = self.GEMINI_SAFETY_SETTINGS
+        return kwargs
 
     async def generate_two_part_story(
         self, title: str, content: str, target_language: Language
@@ -64,23 +83,26 @@ class PromptLLMProxy(ILLMProxy):
             {"role": "user", "content": prompt},
         ]
 
-        # 3. Call LiteLLM
-        kwargs = {}
-        # Simple JSON mode enforcer for models that support it
-        # Gemma 3 on Google/Vertex AI might NOT support JSON mode yet (INVALID_ARGUMENT)
-        if ("gpt" in model_str or "gemini" in model_str) and "gemma" not in model_str:
-            kwargs["response_format"] = {"type": "json_object"}
-
         response = await litellm.acompletion(
             model=model_str,
             messages=messages,
             api_key=self.config.api_key,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
-            **kwargs,
+            **self._get_extra_kwargs(model_str),
         )
 
         response_text = response.choices[0].message.content
+
+        if not response_text:
+            self._logger.error(
+                f"LLM returned empty response. "
+                f"Finish reason: {response.choices[0].finish_reason}"
+            )
+            raise RuntimeError(
+                "LLM returned empty content for story generation. "
+                "This may be caused by a safety filter. Check the post content."
+            )
 
         # 4. Parse the JSON response
         try:
@@ -137,9 +159,20 @@ class PromptLLMProxy(ILLMProxy):
             api_key=self.config.api_key,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
+            **self._get_extra_kwargs(model_str, json_mode=False),
         )
 
         response_text = response.choices[0].message.content
+
+        if not response_text:
+            self._logger.error(
+                f"LLM returned empty response. "
+                f"Finish reason: {response.choices[0].finish_reason}"
+            )
+            raise RuntimeError(
+                "LLM returned empty content for transcription enhancement. "
+                "This may be caused by a safety filter."
+            )
 
         try:
             if response_text.startswith("```json"):
@@ -148,6 +181,12 @@ class PromptLLMProxy(ILLMProxy):
                 response_text = response_text.strip("```").strip()
 
             result = json.loads(response_text)
+            if isinstance(result, list):
+                return result
+            if isinstance(result, dict):
+                for v in result.values():
+                    if isinstance(v, list):
+                        return v
             return result
         except json.JSONDecodeError as e:
             self._logger.error(
@@ -156,7 +195,10 @@ class PromptLLMProxy(ILLMProxy):
             raise RuntimeError(f"Could not parse valid JSON from LLM enhancer: {e}")
 
     async def generate_image_story(
-        self, story_text: str, transcription: list[dict]
+        self,
+        story_text: str,
+        transcription: list[dict],
+        style_context: str | None = None,
     ) -> ImageStory:
         model_str = self._get_model_string()
         self._logger.info(f"Generating image story via LiteLLM {model_str}")
@@ -168,13 +210,10 @@ class PromptLLMProxy(ILLMProxy):
         prompt = template.render(
             story_text=story_text,
             transcription=json.dumps(transcription, ensure_ascii=False),
+            style_context=style_context,
         )
 
         messages = [{"role": "user", "content": prompt}]
-
-        kwargs = {}
-        if ("gpt" in model_str or "gemini" in model_str) and "gemma" not in model_str:
-            kwargs["response_format"] = {"type": "json_object"}
 
         response = await litellm.acompletion(
             model=model_str,
@@ -182,10 +221,20 @@ class PromptLLMProxy(ILLMProxy):
             api_key=self.config.api_key,
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
-            **kwargs,
+            **self._get_extra_kwargs(model_str),
         )
 
         response_text = response.choices[0].message.content
+
+        if not response_text:
+            self._logger.error(
+                f"LLM returned empty response. "
+                f"Finish reason: {response.choices[0].finish_reason}"
+            )
+            raise RuntimeError(
+                "LLM returned empty content for image story generation. "
+                "This may be caused by a safety filter. Check the story text."
+            )
 
         try:
             if response_text.startswith("```json"):

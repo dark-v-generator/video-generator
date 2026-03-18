@@ -271,9 +271,13 @@ class RedditVideoService:
             story_text=part1_text,
             transcription=captions_1_data,
         )
+
+        style_context = self._extract_style_context(image_story_1)
+
         image_story_2 = await self._llm_proxy.generate_image_story(
             story_text=part2_text,
             transcription=captions_2_data,
+            style_context=style_context,
         )
 
         # 6. Generate images
@@ -345,12 +349,29 @@ class RedditVideoService:
     # Private helpers
     # ------------------------------------------------------------------
 
+    SFW_NEGATIVE_PROMPT = (
+        "nsfw, nudity, sexual, gore, violence, blood, "
+        "explicit, inappropriate, offensive"
+    )
+
+    @staticmethod
+    def _extract_style_context(image_story) -> str:
+        """Build a style guide from part 1's image prompts so part 2 stays consistent."""
+        prompts = [img.prompt for img in image_story.images[:5]]
+        lines = [f"- Image {i + 1}: {p}" for i, p in enumerate(prompts)]
+        return (
+            "The following image prompts were used in Part 1. "
+            "Reuse the exact same character descriptions (age, hair, build, clothing) "
+            "and the exact same art style suffix for all prompts in Part 2.\n\n"
+            + "\n".join(lines)
+        )
+
     def _generate_images_for_story(self, image_story, width: int, height: int) -> list:
         generated = []
         for img_def in image_story.images:
             result = self._image_generation_proxy.generate_image(
                 prompt=img_def.prompt,
-                negative_prompt=None,
+                negative_prompt=self.SFW_NEGATIVE_PROMPT,
                 width=width,
                 height=height,
                 num_images=1,

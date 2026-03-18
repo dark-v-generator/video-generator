@@ -77,10 +77,15 @@ class ILLMProxy(ABC):
 
     @abstractmethod
     async def generate_image_story(
-        self, story_text: str, transcription: List[dict]
+        self,
+        story_text: str,
+        transcription: List[dict],
+        style_context: Optional[str] = None,
     ) -> ImageStory:
         """Analyse a narrated story and its word-level transcription to produce
-        a timed image-story with introduction, call-to-action, and scene images."""
+        a timed image-story with introduction, call-to-action, and scene images.
+        style_context: optional text describing characters and art style from a
+        previous part, to maintain visual consistency across parts."""
         ...
 
 

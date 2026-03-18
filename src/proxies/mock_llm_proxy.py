@@ -304,6 +304,9 @@ class MockLLMProxy(ILLMProxy):
         return _strip_introduction(raw_transcription)
 
     async def generate_image_story(
-        self, story_text: str, transcription: List[dict]
+        self,
+        story_text: str,
+        transcription: List[dict],
+        style_context: str | None = None,
     ) -> ImageStory:
         return _build_mock_image_story(transcription)

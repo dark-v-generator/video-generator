@@ -20,7 +20,12 @@ Your task is to produce a JSON object that defines the visual timeline for the v
 6. Visual consistency across prompts:
    - Describe each character the same way in every prompt (age, hair, build, clothing).
    - Pick one art style and append it identically to every prompt (e.g. "digital illustration, soft anime style, cinematic lighting").
-7. Return only the JSON object, no commentary or markdown.
+7. All image prompts must be appropriate for a general audience. Use creative, indirect visuals:
+   - For romantic moments: a dimly lit room, rumpled sheets, silhouettes, hands holding.
+   - For conflict: the aftermath (a broken object, a shocked expression) or the tension before.
+   - For emotional moments: focus on facial expressions, body language, and the environment.
+   - The goal is to suggest what happened through context and setting, not to depict it directly.
+8. Return only the JSON object, no commentary or markdown.
 
 ## Timestamp alignment example
 
@@ -29,6 +34,12 @@ Given:
   {"word": "Ela", "start": 11.2, "end": 11.32},
 
 If the scene changes after "classe.", the next image `start_time` should be 10.94 (the `end` of "classe.").
+
+{% if style_context %}
+## Style guide (from previous part — follow strictly for consistency)
+
+{{ style_context }}
+{% endif %}
 
 ## Story text
 

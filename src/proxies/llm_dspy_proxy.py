@@ -24,6 +24,9 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     7. Part 2 must contain the climax, resolve the story, and end with a call to action asking for the viewer's opinion.
     7. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
+    10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
+       strong or sensitive moments with milder, everyday words. If the original post contains strong
+       language or insults, rephrase the situation without repeating those words.
     9. Reddit posts use specific conventions you MUST handle:
        - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
        - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
@@ -75,7 +78,7 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     )
 
     enhanced_transcription = dspy.OutputField(
-        desc="A JSON array string of corrected word segments: [{\"word\": ..., \"start\": ..., \"end\": ...}, ...]"
+        desc='A JSON array string of corrected word segments: [{"word": ..., "start": ..., "end": ...}, ...]'
     )
 
 
@@ -98,12 +101,22 @@ class GenerateImageStorySignature(dspy.Signature):
        angles or moments.
     6. Visual consistency: describe every character identically across prompts (age, hair, build,
        clothing). Pick one art style and append it to every prompt.
-    7. Return only a JSON object, no commentary.
+    7. All image prompts must be appropriate for a general audience. Use creative, indirect visuals:
+       romantic moments → dimly lit room, silhouettes, hands holding.
+       conflict → aftermath (broken object, shocked expression) or tension before.
+       emotional moments → facial expressions, body language, environment.
+       Suggest what happened through context and setting, not directly.
+    8. Return only a JSON object, no commentary.
     """
 
     story_text = dspy.InputField(desc="The full narrated story text.")
     transcription = dspy.InputField(
         desc="JSON string of word-level transcription: [{word, start, end}, ...]"
+    )
+    style_context = dspy.InputField(
+        desc="Optional style guide from a previous part describing characters and art style. "
+        "If provided, follow it strictly for visual consistency. Empty string if not available.",
+        default="",
     )
 
     image_story_json = dspy.OutputField(
@@ -308,7 +321,10 @@ class DSPyLLMProxy(ILLMProxy):
         return self._parse_json_text(response_text)
 
     async def generate_image_story(
-        self, story_text: str, transcription: list[dict]
+        self,
+        story_text: str,
+        transcription: list[dict],
+        style_context: str | None = None,
     ) -> ImageStory:
         self._logger.info(
             f"Generating image story via DSPy {self.config.provider}/{self.config.model}"
@@ -318,6 +334,7 @@ class DSPyLLMProxy(ILLMProxy):
         result = generator(
             story_text=story_text,
             transcription=json.dumps(transcription, ensure_ascii=False),
+            style_context=style_context or "",
         )
 
         data = self._parse_json_text(result.image_story_json)

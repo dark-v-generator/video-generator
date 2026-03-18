@@ -5,7 +5,7 @@ from src.entities.base_yaml_model import BaseYAMLModel
 
 class LeonardoImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo"] = "leonardo"
-    api_key: str = Field(..., title="Leonardo API Key")
+    api_key: Optional[str] = Field(None, title="Leonardo API Key")
     model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Flux Dev)")
 
 

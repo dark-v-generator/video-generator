@@ -1,0 +1,3 @@
+uv run python scripts/image_story_video.py https://www.reddit.com/r/pettyrevenge/comments/1rvorca/cut_exs_internet_off_for_the_whole_family_after/ \
+    --output-dir cut_exs_internet_off_for_the_whole_family_after \
+    --rate 1.2
