@@ -8,24 +8,27 @@ Your task is to produce a JSON object that defines the visual timeline for the v
 
 ## Rules
 
-1. **introduction_end_time**: Find the exact `end` timestamp of the last word before the actual story begins. This is usually the end of the title/opening sentence (e.g. "Parte 1."). Use the EXACT `end` value from the transcription.
-2. **call_to_action_start_time**: Find the exact `start` timestamp of the first word of the call-to-action phrase (e.g. "Curta", "Curta e me siga"). Use the EXACT `start` value from the transcription.
-3. **images**: Create 6-10 images that illustrate different scenes of the story.
-   - The first image **must** have `start_time: 0.0`.
-   - Each subsequent image must have a `start_time` strictly greater than the previous one.
-   - The last image `start_time` must be **before** `call_to_action_start_time`.
-   - Each image needs a `description` (a short scene description in the story language) and a `prompt` (an English image-generation prompt with style/mood details).
-4. **CRITICAL — Timestamp alignment**: Each image `start_time` MUST be the exact `end` timestamp of the last word of the sentence or clause that the PREVIOUS image illustrates. Look at the transcription, find where a scene/sentence ends, and use that word's `end` value as the `start_time` for the next image. This ensures images transition precisely when the narration moves to a new scene. NEVER use round numbers — use the exact values from the transcription (e.g. 10.94, not 12.0).
-5. Image prompts should be cinematic, descriptive, and include mood/lighting details suitable for AI image generation.
-6. Return **only** the JSON object, no commentary or markdown formatting.
+1. `introduction_end_time` — the `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
+2. `call_to_action_start_time` — the `start` timestamp of the first call-to-action word (e.g. "Curta").
+3. Create 10-15 images illustrating scenes from the story:
+   - First image at `start_time: 0.0`. It will be shown blurred during the introduction, so treat it as a mood-setting background.
+   - The second image should start a few sentences after `introduction_end_time`, giving the viewer time to see the first image unblurred.
+   - Each image has a strictly increasing `start_time`, and the last one must be before `call_to_action_start_time`.
+   - Each image has a `description` (scene summary in the story language) and a `prompt` (English image-generation prompt).
+4. Timestamp alignment — each image `start_time` should be the `end` timestamp of the last word of the sentence the previous image illustrates. Use exact transcription values (e.g. 10.94), not rounded numbers.
+5. Duration — each image should last roughly 4 to 8 seconds. If a scene runs longer, split it into multiple images showing different angles or moments.
+6. Visual consistency across prompts:
+   - Describe each character the same way in every prompt (age, hair, build, clothing).
+   - Pick one art style and append it identically to every prompt (e.g. "digital illustration, soft anime style, cinematic lighting").
+7. Return only the JSON object, no commentary or markdown.
 
-## Example of correct timestamp alignment
+## Timestamp alignment example
 
-If the transcription has:
+Given:
   {"word": "classe.", "start": 10.68, "end": 10.94},
   {"word": "Ela", "start": 11.2, "end": 11.32},
 
-And the scene changes after "classe.", then the next image start_time should be 10.94 (the `end` of "classe."), NOT 11.2 or 12.0.
+If the scene changes after "classe.", the next image `start_time` should be 10.94 (the `end` of "classe.").
 
 ## Story text
 

@@ -18,9 +18,10 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
     2. Add a short, natural-sounding title. The title should sound like something a real person would say, NOT forced or clickbaity. Avoid dramatic words like "épica", "inacreditável", "chocante" etc.
     3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
-    4. CRITICAL RULE FOR PART SPLITTING: Part 1 MUST end BEFORE the climax of the story. The climax (the most dramatic or satisfying moment) MUST be in Part 2. Part 1 is the setup, Part 2 is the payoff. If the story is about revenge, the revenge itself goes in Part 2. If it's about a confrontation, the confrontation goes in Part 2.
-    5. Part 1 must end on a moment of suspense or anticipation, with a natural call to action (e.g., "Curta e me siga para a parte 2.").
-    6. Part 2 must contain the climax, resolve the story naturally, and end with a final call to action asking for the viewer's opinion.
+    4. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. Example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...".
+    5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
+    6. Part 1 must end on suspense, with a call to action (e.g., "Curta e me siga para a parte 2.").
+    7. Part 2 must contain the climax, resolve the story, and end with a call to action asking for the viewer's opinion.
     7. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
     9. Reddit posts use specific conventions you MUST handle:
@@ -45,10 +46,10 @@ class TwoPartTikTokStorySignature(dspy.Signature):
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     part1_script = dspy.OutputField(
-        desc="Part 1 of the story: the setup and context, ending BEFORE the climax with suspense and a call to action like 'Curta e me siga para a parte 2'."
+        desc="Part 1: starts with '{title}. Parte 1.' then the setup and context, ending before the climax with suspense and a call to action."
     )
     part2_script = dspy.OutputField(
-        desc="Part 2 of the story: contains the CLIMAX and resolution of the story, ending with a question for the viewer."
+        desc="Part 2: starts with '{title}. Parte 2.' then the climax and resolution, ending with a question for the viewer."
     )
 
 
@@ -60,11 +61,12 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     Your task is to merge, split, or alter the words in the raw transcription so their sequences perfectly match the base text.
 
     Rules:
-    1. ONLY modify the transcription so it perfectly matches the base text.
+    1. Only modify the transcription so it perfectly matches the base text.
     2. Maintain the timestamp information as accurately as possible.
     3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
     4. If modifying a word, keep its original 'start' and 'end'.
-    5. Return ONLY a JSON array of objects with 'word', 'start', and 'end' keys.
+    5. Remove the introduction (title and "Parte N." marker) from the output. Start from the first word after "Parte N." since the title is shown as a cover image.
+    6. Return only a JSON array of objects with 'word', 'start', and 'end' keys.
     """
 
     base_text = dspy.InputField(desc="The correct, ground truth text.")
@@ -85,16 +87,18 @@ class GenerateImageStorySignature(dspy.Signature):
     produce a visual timeline for the video as a JSON object.
 
     Rules:
-    1. introduction_end_time: the exact `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
-    2. call_to_action_start_time: the exact `start` timestamp of the first CTA word (e.g. "Curta").
-    3. images: 6-10 images illustrating different scenes. First must start at 0.0, each subsequent
-       must have a strictly greater start_time, last must be before call_to_action_start_time.
-    4. CRITICAL: each image start_time MUST be the exact `end` timestamp of the last word of the
-       sentence/clause the PREVIOUS image illustrates. Find where a scene ends in the transcription
-       and use that word's `end` value. NEVER use round numbers — use exact transcription values
-       (e.g. 10.94, not 12.0).
-    5. Image prompts should be cinematic with mood/lighting details for AI image generation.
-    6. Return ONLY a JSON object, no commentary.
+    1. introduction_end_time: the `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
+    2. call_to_action_start_time: the `start` timestamp of the first CTA word (e.g. "Curta").
+    3. 10-15 images illustrating scenes. First at 0.0 (blurred during intro, mood background).
+       Second image a few sentences after introduction_end_time so the viewer sees image 1 unblurred.
+       Strictly increasing start_times, last before call_to_action_start_time.
+    4. Each image start_time should be the `end` timestamp of the last word of the sentence the
+       previous image illustrates. Use exact transcription values (e.g. 10.94), not rounded numbers.
+    5. Each image lasts roughly 4-8 seconds. Split longer scenes into multiple images with different
+       angles or moments.
+    6. Visual consistency: describe every character identically across prompts (age, hair, build,
+       clothing). Pick one art style and append it to every prompt.
+    7. Return only a JSON object, no commentary.
     """
 
     story_text = dspy.InputField(desc="The full narrated story text.")

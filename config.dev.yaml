@@ -2,21 +2,11 @@ proxies:
   cover_config:
     title_font_size: 150
   image_generation_config:
-    type: leonardo
-    model_id: "b2614463-296c-462a-9586-aafdb8f00e36"  # Flux Dev
+    type: mock
   llm_config:
-    type: prompt
-    provider_config:
-      provider: google
-      model: gemma-3-27b-it
-      temperature: 0.7
-      max_tokens: 8192
+    type: mock
   speech_config:
-    type: elevenlabs
-    voices:
-      pt:
-        male_voice_id: "96cLX3dkyNUmTHwkNXeS"    # Thiago Realista
-        female_voice_id: "CZD4BJ803C6T0alQxsR7"  # Andreia I.
+    type: edge-tts
   transcription_config:
     model: base
     type: local

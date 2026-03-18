@@ -4,11 +4,12 @@ You will be provided with a base text (the absolute ground truth text that shoul
 Your task is to merge, split, or alter the words in the raw transcription so their sequences perfectly match the base text.
 
 Rules:
-1. ONLY modify the transcription so it perfectly matches the base text.
+1. Only modify the transcription so it perfectly matches the base text.
 2. Maintain the timestamp information as accurately as possible.
 3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
 4. If modifying a word, keep its original 'start' and 'end'.
-5. ONLY return the modified JSON array of objects. Do not wrap it in markdown or add outside commentary.
+5. Remove the introduction (the title and "Parte 1." or "Parte 2." marker) from the output. These words are displayed as a cover image so they should not appear in the captions. Start the output from the first word after "Parte N.".
+6. Only return the modified JSON array of objects. Do not wrap it in markdown or add outside commentary.
 
 {% if examples %}
 {% for example in examples %}

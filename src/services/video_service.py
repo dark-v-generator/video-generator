@@ -3,7 +3,9 @@ import random
 from dataclasses import dataclass
 from typing import Optional, List
 
-from moviepy import CompositeVideoClip
+import numpy as np
+from moviepy import CompositeVideoClip, VideoClip as MoviepyVideoClip
+from moviepy.video.fx import CrossFadeIn
 from PIL import Image, ImageFilter
 
 from ..proxies.interfaces import IYouTubeProxy
@@ -122,6 +124,7 @@ class VideoService:
         return background_video
 
     CROSSFADE_DURATION = 0.5
+    KEN_BURNS_MAX_SCALE = 1.12
 
     def generate_image_story_video(
         self,
@@ -138,7 +141,7 @@ class VideoService:
         1. Introduction: first image is blurred with cover overlay on top.
            At introduction_end_time the image unblurs and cover fades out.
         2. Story: images appear at their scheduled times filling the background.
-           Crossfade transitions between images.
+           Ken Burns zoom + crossfade transitions between images.
         3. Call-to-action: the active image blurs and a CTA overlay appears.
         """
         config = self._video_config
@@ -167,22 +170,27 @@ class VideoService:
         fade = self.CROSSFADE_DURATION
         moviepy_clips = []
         for idx, (start, end, img_bytes, is_blurred) in enumerate(segments):
-            if is_blurred:
-                img_bytes = self._blur_image_bytes(img_bytes)
-            clip = image_clip.ImageClip(bytes=img_bytes)
-            clip.clip = clip.clip.resized(new_size=(width, height))
-
             extended_end = (
                 min(end + fade, total_duration) if idx < len(segments) - 1 else end
             )
-            clip.set_start(start)
-            clip.set_duration(extended_end - start)
+            clip_duration = extended_end - start
 
-            is_scene_transition = not is_blurred and start > 0
-            if is_scene_transition:
-                clip.apply_fadein(fade)
-
-            moviepy_clips.append(clip.clip)
+            if is_blurred:
+                img_bytes = self._blur_image_bytes(img_bytes)
+                clip = image_clip.ImageClip(bytes=img_bytes)
+                clip.clip = clip.clip.resized(new_size=(width, height))
+                clip.set_start(start)
+                clip.set_duration(clip_duration)
+                moviepy_clips.append(clip.clip)
+            else:
+                zoom_in = random.choice([True, False])
+                kb_clip = self._create_ken_burns_clip(
+                    img_bytes, width, height, clip_duration, zoom_in
+                )
+                kb_clip = kb_clip.with_start(start)
+                if start > 0:
+                    kb_clip = CrossFadeIn(duration=fade).apply(kb_clip)
+                moviepy_clips.append(kb_clip)
 
         if cover is not None and intro_end > 0:
             cover.fit_width(width, config.padding)
@@ -255,6 +263,34 @@ class VideoService:
                 segments.append((img_start, img_end, img_bytes, False))
 
         return segments
+
+    @classmethod
+    def _create_ken_burns_clip(
+        cls, img_bytes: bytes, width: int, height: int, duration: float, zoom_in: bool
+    ) -> MoviepyVideoClip:
+        max_s = cls.KEN_BURNS_MAX_SCALE
+        img = Image.open(io.BytesIO(img_bytes)).resize(
+            (int(width * max_s), int(height * max_s)), Image.LANCZOS
+        )
+        img_array = np.array(img)
+        base_h, base_w = img_array.shape[:2]
+
+        def make_frame(t):
+            progress = t / max(duration, 0.001)
+            if zoom_in:
+                scale = max_s - (max_s - 1.0) * progress
+            else:
+                scale = 1.0 + (max_s - 1.0) * progress
+            crop_w = int(width * scale)
+            crop_h = int(height * scale)
+            x = (base_w - crop_w) // 2
+            y = (base_h - crop_h) // 2
+            cropped = img_array[y : y + crop_h, x : x + crop_w]
+            return np.array(
+                Image.fromarray(cropped).resize((width, height), Image.LANCZOS)
+            )
+
+        return MoviepyVideoClip(make_frame, duration=duration)
 
     @staticmethod
     def _blur_image_bytes(img_bytes: bytes, radius: int = 20) -> bytes:

@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 from .interfaces import ILLMProxy
@@ -57,48 +58,154 @@ MOCK_STORY = {
     ),
 }
 
+STYLE_SUFFIX = (
+    "digital illustration, soft watercolor anime style, cinematic lighting, "
+    "warm color palette with teal and amber tones, detailed background"
+)
+
+CHAR_LUCAS = (
+    "a 24-year-old Brazilian man with short brown wavy hair, light stubble, "
+    "brown eyes, wearing a navy blue hoodie and jeans"
+)
+CHAR_LUCAS_TEEN = (
+    "a 14-year-old Brazilian boy with short brown wavy hair, brown eyes, "
+    "wearing a white school uniform shirt and dark pants"
+)
+CHAR_ANA = (
+    "a 14-year-old Brazilian girl with long black hair in a ponytail, "
+    "bright dark eyes, wearing a white school uniform shirt and plaid skirt"
+)
+CHAR_WIFE = (
+    "a 23-year-old Brazilian woman with shoulder-length curly dark hair, "
+    "warm smile, wearing a yellow sundress"
+)
+
 MOCK_IMAGE_SCENES = [
     StoryImage(
         start_time=0.0,
-        description="Adolescente apaixonado olhando para colega de classe na escola",
-        prompt="Teenage boy looking at a girl classmate in a school hallway, warm nostalgic lighting, first love atmosphere",
+        description="Corredor de escola com luz dourada, clima nostálgico",
+        prompt=f"Empty school hallway bathed in golden afternoon light, lockers on both sides, nostalgic atmosphere, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Casal jovem adolescente namorando feliz no ensino médio",
-        prompt="Young teenage couple holding hands at school, happy high school romance, golden hour, youthful love",
+        description="Adolescente apaixonado olhando para colega de classe",
+        prompt=f"{CHAR_LUCAS_TEEN} looking shyly at {CHAR_ANA} across a school classroom, desks and chalkboard, warm nostalgic light, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Mulher partindo com malas para a cidade grande, homem ficando para trás",
-        prompt="Woman leaving with suitcases to the big city, man staying behind waving goodbye, bittersweet separation, dramatic lighting",
+        description="Garota rindo das piadas do garoto na escola",
+        prompt=f"{CHAR_ANA} laughing while {CHAR_LUCAS_TEEN} tells a joke, school courtyard, cherry blossom trees, joyful mood, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Homem sozinho tentando ligar sem sucesso, tela do celular sem resposta",
-        prompt="Man alone desperately calling on phone with no answer, dark room, blue phone screen glow, loneliness and heartbreak",
+        description="Casal adolescente de mãos dadas comemorando namoro",
+        prompt=f"{CHAR_LUCAS_TEEN} and {CHAR_ANA} holding hands walking through school hallway, happy high school romance, golden hour, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Homem lendo carta triste num café, expressão de dor",
-        prompt="Man reading a sad letter in a cafe, painful expression, tears forming, warm ambient lighting, emotional scene",
+        description="Formatura do ensino médio, casal feliz",
+        prompt=f"{CHAR_LUCAS_TEEN} and {CHAR_ANA} in graduation caps and gowns, hugging and smiling, school auditorium, confetti falling, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Homem conhecendo nova garota num workshop, sorrindo juntos",
-        prompt="Man meeting a new woman at a workshop, both smiling, fresh start, bright hopeful lighting, natural chemistry",
+        description="Mulher partindo com malas para a capital",
+        prompt=f"{CHAR_ANA} walking away pulling a suitcase toward a bus, {CHAR_LUCAS} standing behind waving goodbye, rainy bus station, bittersweet mood, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
-        description="Família feliz, casal com filha pequena em casa",
-        prompt="Happy married couple with cute toddler daughter at home, warm cozy family portrait, loving atmosphere",
+        description="Homem estudando sozinho na universidade local",
+        prompt=f"{CHAR_LUCAS} studying alone at a university library desk, books piled up, empty seat next to him, melancholic atmosphere, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Casal conversando por videochamada à distância",
+        prompt=f"{CHAR_LUCAS} on a video call on his laptop, {CHAR_ANA}'s face on the screen smiling, small apartment room, late night, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="No aniversário de namoro, ela pede pra ele esperar",
+        prompt=f"Close-up of a phone screen showing a long call timer, {CHAR_LUCAS} pressing the phone to his ear with a serious expression, bedroom at night, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Meses depois, celular não chama mais",
+        prompt=f"{CHAR_LUCAS} sitting alone in a dark room staring at phone screen showing 'no answer', blue phone glow on his face, loneliness, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Redes sociais inativas, homem devastado",
+        prompt=f"{CHAR_LUCAS} scrolling through empty social media profiles on phone, slumped on a couch, dim room, devastated expression, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Ser ignorado o destruiu por dentro",
+        prompt=f"{CHAR_LUCAS} sitting on a park bench alone in the rain, head in his hands, puddles reflecting streetlights, raw grief, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Ela virou alguém que ele costumava conhecer",
+        prompt=f"{CHAR_LUCAS} standing alone at a window looking out at rain, faded photo of {CHAR_ANA} on the desk behind him, melancholic blue tones, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Amiga entrega carta da ex num café",
+        prompt=f"A young woman handing a sealed envelope to {CHAR_LUCAS} across a cafe table, two coffee cups, awkward atmosphere, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem lendo carta de despedida, expressão de dor",
+        prompt=f"{CHAR_LUCAS} reading a handwritten letter in a cozy cafe, painful expression, a coffee cup beside him, warm ambient lighting, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem decidindo seguir em frente, andando ao pôr do sol",
+        prompt=f"{CHAR_LUCAS} walking alone down a long road at sunset, determined expression, leaving the past behind, golden and orange sky, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Homem conhecendo nova garota num workshop",
+        prompt=f"{CHAR_LUCAS} meeting {CHAR_WIFE} at a workshop table, both smiling at each other, bright classroom, hopeful fresh-start mood, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Casal começando a namorar, passeando de mãos dadas",
+        prompt=f"{CHAR_LUCAS} and {CHAR_WIFE} walking together in a park at golden hour, holding hands, autumn leaves, romantic and peaceful, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Casamento feliz, casal na cerimônia",
+        prompt=f"{CHAR_LUCAS} in a dark suit and {CHAR_WIFE} in a white wedding dress exchanging vows, small chapel, flower arrangements, tears of joy, {STYLE_SUFFIX}",
     ),
     StoryImage(
         start_time=0.0,
         description="Homem atendendo ligação misteriosa com expressão surpresa",
-        prompt="Man answering mysterious phone call with surprised expression, dramatic lighting, suspenseful mood, unknown caller",
+        prompt=f"{CHAR_LUCAS} answering a phone call with wide surprised eyes, standing in kitchen, dramatic side lighting, suspenseful mood, {STYLE_SUFFIX}",
+    ),
+    StoryImage(
+        start_time=0.0,
+        description="Família feliz, casal com filha pequena em casa",
+        prompt=f"{CHAR_LUCAS} and {CHAR_WIFE} sitting on a couch with a cute toddler daughter, cozy living room, family portrait feel, warm lamplight, {STYLE_SUFFIX}",
     ),
 ]
+
+
+def _strip_introduction(transcription: List[dict]) -> List[dict]:
+    """Remove words up to and including 'Parte N.' from the transcription.
+
+    The title and "Parte 1/2" are spoken at the beginning but shown as
+    a cover image, so subtitles for them are redundant.
+    """
+    parte_idx = -1
+    for i, w in enumerate(transcription):
+        word = w.get("word", "").strip()
+        if re.match(r"^\d+[.,]?$", word):
+            prev = transcription[i - 1].get("word", "").strip().lower() if i > 0 else ""
+            if prev in ("parte", "part"):
+                parte_idx = i
+                break
+    if parte_idx >= 0:
+        return transcription[parte_idx + 1 :]
+    return transcription
 
 
 def _find_sentence_boundaries(transcription: List[dict]) -> List[float]:
@@ -111,8 +218,19 @@ def _find_sentence_boundaries(transcription: List[dict]) -> List[float]:
     return boundaries
 
 
+MAX_IMAGE_DURATION = 8.0
+
+
+MIN_IMAGE_DURATION = 4.0
+
+
 def _build_mock_image_story(transcription: List[dict]) -> ImageStory:
-    """Build an ImageStory with start_times aligned to sentence boundaries."""
+    """Build an ImageStory with start_times aligned to sentence boundaries.
+
+    Guarantees: first image at 0.0 (blurred intro background), second image
+    starts a few sentences AFTER intro_end so the first image is visible
+    unblurred, each image lasts 4-8 seconds.
+    """
     boundaries = _find_sentence_boundaries(transcription)
     if not boundaries:
         total = transcription[-1]["end"] if transcription else 60.0
@@ -127,14 +245,38 @@ def _build_mock_image_story(transcription: List[dict]) -> ImageStory:
         if b < boundaries[-1]:
             break
 
-    scene_boundaries = [b for b in boundaries if intro_end <= b < cta_boundary]
+    story_boundaries = [b for b in boundaries if intro_end < b < cta_boundary]
+    if not story_boundaries:
+        story_boundaries = [intro_end + 5.0]
 
-    num_scenes = len(MOCK_IMAGE_SCENES)
-    if len(scene_boundaries) >= num_scenes - 1:
-        step = max(1, len(scene_boundaries) // (num_scenes - 1))
-        picked = [scene_boundaries[i * step] for i in range(num_scenes - 1)]
-    else:
-        picked = scene_boundaries[: num_scenes - 1]
+    # Greedily pick every boundary that's >= MIN_IMAGE_DURATION from the last
+    picked: List[float] = []
+    last_time = 0.0
+    for b in story_boundaries:
+        if b - last_time >= MIN_IMAGE_DURATION:
+            picked.append(b)
+            last_time = b
+
+    # Also ensure the last image doesn't stretch too long to CTA
+    if picked and cta_boundary - picked[-1] > MAX_IMAGE_DURATION:
+        tail_candidates = [b for b in story_boundaries if b > picked[-1]]
+        while tail_candidates and cta_boundary - picked[-1] > MAX_IMAGE_DURATION:
+            picked.append(tail_candidates.pop(0))
+
+    # Cap to available scene count minus 1 (first scene is always at 0.0).
+    # When trimming, remove the pick that causes the smallest duration increase.
+    max_picks = len(MOCK_IMAGE_SCENES) - 1
+    while len(picked) > max_picks:
+        best_idx = -1
+        best_cost = float("inf")
+        for i in range(len(picked)):
+            prev_t = 0.0 if i == 0 else picked[i - 1]
+            next_t = cta_boundary if i == len(picked) - 1 else picked[i + 1]
+            merged_gap = next_t - prev_t
+            if merged_gap < best_cost:
+                best_cost = merged_gap
+                best_idx = i
+        picked.pop(best_idx)
 
     images = []
     for i, scene in enumerate(MOCK_IMAGE_SCENES[: len(picked) + 1]):
@@ -159,7 +301,7 @@ class MockLLMProxy(ILLMProxy):
     async def enhance_transcription(
         self, base_text: str, raw_transcription: List[dict]
     ) -> List[dict]:
-        return raw_transcription
+        return _strip_introduction(raw_transcription)
 
     async def generate_image_story(
         self, story_text: str, transcription: List[dict]

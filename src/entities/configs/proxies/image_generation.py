@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
@@ -6,6 +6,7 @@ from src.entities.base_yaml_model import BaseYAMLModel
 class LeonardoImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo"] = "leonardo"
     api_key: str = Field(..., title="Leonardo API Key")
+    model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Flux Dev)")
 
 
 class LocalImageGenerationConfig(BaseYAMLModel):

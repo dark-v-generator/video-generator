@@ -1,4 +1,6 @@
 import io
+import os
+import tempfile
 from typing import List
 import torch
 from diffusers import StableDiffusionPipeline
@@ -20,7 +22,8 @@ class LocalSDXLImageProxy(IImageGeneratorProxy):
         else:
             self.device = "cpu"
 
-        self.dtype = torch.float16 if self.device in ["mps", "cuda"] else torch.float32
+        # MPS float16 produces NaN in the VAE decoder → black images. Use float32.
+        self.dtype = torch.float16 if self.device == "cuda" else torch.float32
 
         print(
             f"Loading {config.model_id} pipeline on {self.device} with {self.dtype}..."
@@ -33,6 +36,10 @@ class LocalSDXLImageProxy(IImageGeneratorProxy):
         self.pipeline.to(self.device)
         self.pipeline.enable_attention_slicing()
         print("Pipeline loaded successfully.")
+
+        self._preview_dir = os.path.join(tempfile.gettempdir(), "video_gen_images")
+        os.makedirs(self._preview_dir, exist_ok=True)
+        self._image_counter = 0
 
     def generate_image(
         self,
@@ -62,6 +69,13 @@ class LocalSDXLImageProxy(IImageGeneratorProxy):
 
         results = []
         for img in images:
+            self._image_counter += 1
+            preview_path = os.path.join(
+                self._preview_dir, f"img_{self._image_counter:03d}.png"
+            )
+            img.save(preview_path, format="PNG")
+            print(f"  Preview saved: {preview_path}")
+
             if (width, height) != (GENERATION_WIDTH, GENERATION_HEIGHT):
                 img = img.resize((width, height), Image.LANCZOS)
             buf = io.BytesIO()

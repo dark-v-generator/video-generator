@@ -28,53 +28,32 @@ uv sync
 
 Toda a configuração é feita via `config.yaml` na raiz do projeto. Valores omitidos usam os defaults definidos nos modelos Pydantic.
 
-### Configuração para teste local (sem APIs externas)
+Existem dois templates de configuração prontos para copiar:
 
-```yaml
-proxies:
-  llm_config:
-    type: mock            # mock | prompt | dspy
-  image_generation_config:
-    type: mock            # mock | local | leonardo
-  speech_config:
-    type: edge-tts        # edge-tts | elevenlabs
-  transcription_config:
-    type: local           # local | openai
-    model: base           # tiny | base | small | medium | large
-  cover_config:
-    title_font_size: 150
-services:
-  captions_config:
-    font_path: default_font.ttf
-  video_config:
-    call_to_action_path: assets/call_to_action.png
-    youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+```bash
+# Dev / teste local (mock LLM, mock images, edge-tts, whisper local)
+cp config.dev.yaml config.yaml
+
+# Produção (Leonardo Flux Dev, ElevenLabs, Google Gemma, whisper local)
+cp config.prod.yaml config.yaml
 ```
 
-Com `mock` para LLM e image generation, nenhuma API key é necessária. O speech usa `edge-tts` (gratuito) e a transcrição usa Whisper local.
+### Proxies disponíveis
 
-### Configuração para produção
+| Proxy | Opções | Notas |
+|-------|--------|-------|
+| `llm_config.type` | `mock`, `prompt`, `dspy` | `mock` não precisa de API key |
+| `image_generation_config.type` | `mock`, `local`, `leonardo` | `leonardo` usa Flux Dev por padrão |
+| `speech_config.type` | `edge-tts`, `elevenlabs` | `edge-tts` é gratuito |
+| `transcription_config.type` | `local`, `openai` | `local` usa Whisper (`base`/`small`/`medium`/`large`) |
 
-```yaml
-proxies:
-  llm_config:
-    type: prompt          # ou dspy
-    provider_config:
-      provider: google    # google | openai | ollama
-      model: gemini-2.0-flash
-  image_generation_config:
-    type: leonardo        # ou local
-  speech_config:
-    type: elevenlabs
-  transcription_config:
-    type: openai
-```
+### Variáveis de ambiente (produção)
 
-Variáveis de ambiente necessárias para produção:
+Crie um arquivo `.env` na raiz ou exporte as variáveis:
 
 ```
-GOOGLE_API_KEY=...        # se provider: google
-OPENAI_API_KEY=...        # se provider: openai ou transcription: openai
+GOOGLE_API_KEY=...        # se llm provider: google
+OPENAI_API_KEY=...        # se llm provider: openai ou transcription: openai
 ELEVENLABS_API_KEY=...    # se speech: elevenlabs
 LEONARDO_API_KEY=...      # se image_generation: leonardo
 ```

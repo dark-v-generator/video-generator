@@ -6,9 +6,10 @@ Take the provided original Reddit post and transform it into a 2-part engaging T
 2. Add a short, natural-sounding title. The title should sound like something a real person would say, NOT forced or clickbaity. Avoid dramatic words like "épica", "inacreditável", "chocante" etc. Keep it simple and conversational.
 3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
 4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
-5. Part 1 MUST end BEFORE the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution MUST be saved for Part 2. End Part 1 with a natural call to action (e.g., "Curta e me siga para a parte 2.").
-6. Part 2 must contain the climax and resolve the story naturally. End with a final call to action asking for the viewer's opinion.
-7. Provide your output in a JSON format matching this structure:
+5. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. For example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...". This is spoken as an intro while a cover image is shown.
+6. Part 1 must end before the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution are saved for Part 2. End Part 1 with a natural call to action (e.g., "Curta e me siga para a parte 2.").
+7. Part 2 must contain the climax and resolve the story naturally. End with a final call to action asking for the viewer's opinion.
+8. Provide your output in a JSON format matching this structure:
 ```json
 {
   "title": "<Natural translated Title>",
