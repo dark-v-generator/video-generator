@@ -2,8 +2,8 @@ proxies:
   cover_config:
     title_font_size: 150
   image_generation_config:
-    type: leonardo
-    model_id: "b2614463-296c-462a-9586-aafdb8f00e36"  # Flux Dev
+    type: runpod
+    endpoint_id: "ipgjjtsxkkyogn"
   llm_config:
     type: prompt
     provider_config:

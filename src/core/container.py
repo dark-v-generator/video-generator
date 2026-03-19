@@ -30,6 +30,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.ImageGeneratorFactory.create,
         config=main_config.provided.proxies.image_generation_config,
         leonardo_api_key=secrets.leonardo_api_key,
+        runpod_api_key=secrets.runpod_api_key,
     )
     speech_proxy = providers.Singleton(
         proxies_factories.SpeechProxyFactory.create,

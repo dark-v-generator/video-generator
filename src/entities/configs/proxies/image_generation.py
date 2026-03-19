@@ -14,10 +14,19 @@ class LocalImageGenerationConfig(BaseYAMLModel):
     model_id: str = Field("Lykon/dreamshaper-8", title="Local HuggingFace Model ID")
 
 
+class RunPodImageGenerationConfig(BaseYAMLModel):
+    type: Literal["runpod"] = "runpod"
+    api_key: Optional[str] = Field(None, title="RunPod API Key")
+    endpoint_id: str = Field("ipgjjtsxkkyogn", title="RunPod Serverless Endpoint ID")
+
+
 class MockImageGenerationConfig(BaseYAMLModel):
     type: Literal["mock"] = "mock"
 
 
 ImageGenerationConfigType = Union[
-    LeonardoImageGenerationConfig, LocalImageGenerationConfig, MockImageGenerationConfig
+    LeonardoImageGenerationConfig,
+    LocalImageGenerationConfig,
+    RunPodImageGenerationConfig,
+    MockImageGenerationConfig,
 ]

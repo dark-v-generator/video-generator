@@ -2,11 +2,13 @@ from src.entities.configs.proxies.image_generation import (
     ImageGenerationConfigType,
     LeonardoImageGenerationConfig,
     LocalImageGenerationConfig,
+    RunPodImageGenerationConfig,
     MockImageGenerationConfig,
 )
 from src.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
 from src.proxies.leonardo_proxy import LeonardoImageProxy
 from src.proxies.local_sdxl_proxy import LocalSDXLImageProxy
+from src.proxies.runpod_comfyui_proxy import RunPodComfyUIProxy
 from src.proxies.mock_image_proxy import MockImageGeneratorProxy
 
 from src.entities.configs.proxies.transcription import (
@@ -52,11 +54,16 @@ from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverC
 class ImageGeneratorFactory:
     @staticmethod
     def create(
-        config: ImageGenerationConfigType, leonardo_api_key: str = None
+        config: ImageGenerationConfigType,
+        leonardo_api_key: str = None,
+        runpod_api_key: str = None,
     ) -> IImageGeneratorProxy:
         if isinstance(config, LeonardoImageGenerationConfig):
             config.api_key = leonardo_api_key
             return LeonardoImageProxy(config=config)
+        elif isinstance(config, RunPodImageGenerationConfig):
+            config.api_key = runpod_api_key
+            return RunPodComfyUIProxy(config=config)
         elif isinstance(config, LocalImageGenerationConfig):
             return LocalSDXLImageProxy(config=config)
         elif isinstance(config, MockImageGenerationConfig):
