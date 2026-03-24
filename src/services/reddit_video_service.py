@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from typing import Literal, Optional
@@ -160,14 +161,18 @@ class RedditVideoService:
         story_md += f"## Part 1\n\n{part1_text}\n\n"
         story_md += f"## Part 2\n\n{part2_text}\n"
 
-        captions_1_data = [
-            {"word": s.text, "start": s.start, "end": s.end}
-            for s in captions_result_1.captions.segments
-        ]
-        captions_2_data = [
-            {"word": s.text, "start": s.start, "end": s.end}
-            for s in captions_result_2.captions.segments
-        ]
+        captions_1_data = self._strip_introduction(
+            [
+                {"word": s.text, "start": s.start, "end": s.end}
+                for s in captions_result_1.captions.segments
+            ]
+        )
+        captions_2_data = self._strip_introduction(
+            [
+                {"word": s.text, "start": s.start, "end": s.end}
+                for s in captions_result_2.captions.segments
+            ]
+        )
 
         # ------------------------------------------------------------------ 7. Compose videos (write to temp files, read back as bytes)
         video_bytes_1 = await self._render_video_to_bytes(
@@ -257,14 +262,18 @@ class RedditVideoService:
             base_text=part2_text,
         )
 
-        captions_1_data = [
-            {"word": s.text, "start": s.start, "end": s.end}
-            for s in captions_result_1.captions.segments
-        ]
-        captions_2_data = [
-            {"word": s.text, "start": s.start, "end": s.end}
-            for s in captions_result_2.captions.segments
-        ]
+        captions_1_data = self._strip_introduction(
+            [
+                {"word": s.text, "start": s.start, "end": s.end}
+                for s in captions_result_1.captions.segments
+            ]
+        )
+        captions_2_data = self._strip_introduction(
+            [
+                {"word": s.text, "start": s.start, "end": s.end}
+                for s in captions_result_2.captions.segments
+            ]
+        )
 
         # 5. LLM: generate image stories from captions
         image_story_1 = await self._llm_proxy.generate_image_story(
@@ -353,6 +362,29 @@ class RedditVideoService:
         "nsfw, nudity, sexual, gore, violence, blood, "
         "explicit, inappropriate, offensive"
     )
+
+    @staticmethod
+    def _strip_introduction(transcription: list[dict]) -> list[dict]:
+        """Remove words up to and including 'Parte N.' from the transcription.
+
+        The title and "Parte 1/2" are spoken at the beginning but shown as
+        a cover image, so subtitles for them are redundant.
+        """
+        parte_idx = -1
+        for i, w in enumerate(transcription):
+            word = w.get("word", "").strip()
+            if re.match(r"^\d+[.,]?$", word):
+                prev = (
+                    transcription[i - 1].get("word", "").strip().lower()
+                    if i > 0
+                    else ""
+                )
+                if prev in ("parte", "part"):
+                    parte_idx = i
+                    break
+        if parte_idx >= 0:
+            return transcription[parte_idx + 1 :]
+        return transcription
 
     @staticmethod
     def _extract_style_context(image_story) -> str:

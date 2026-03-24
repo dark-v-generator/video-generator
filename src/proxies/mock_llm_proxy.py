@@ -1,4 +1,3 @@
-import re
 from typing import List
 
 from .interfaces import ILLMProxy
@@ -189,25 +188,6 @@ MOCK_IMAGE_SCENES = [
 ]
 
 
-def _strip_introduction(transcription: List[dict]) -> List[dict]:
-    """Remove words up to and including 'Parte N.' from the transcription.
-
-    The title and "Parte 1/2" are spoken at the beginning but shown as
-    a cover image, so subtitles for them are redundant.
-    """
-    parte_idx = -1
-    for i, w in enumerate(transcription):
-        word = w.get("word", "").strip()
-        if re.match(r"^\d+[.,]?$", word):
-            prev = transcription[i - 1].get("word", "").strip().lower() if i > 0 else ""
-            if prev in ("parte", "part"):
-                parte_idx = i
-                break
-    if parte_idx >= 0:
-        return transcription[parte_idx + 1 :]
-    return transcription
-
-
 def _find_sentence_boundaries(transcription: List[dict]) -> List[float]:
     """Find `end` timestamps of words that end sentences (period, !, ?)."""
     boundaries = []
@@ -301,7 +281,7 @@ class MockLLMProxy(ILLMProxy):
     async def enhance_transcription(
         self, base_text: str, raw_transcription: List[dict]
     ) -> List[dict]:
-        return _strip_introduction(raw_transcription)
+        return raw_transcription
 
     async def generate_image_story(
         self,

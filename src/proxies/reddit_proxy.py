@@ -19,6 +19,10 @@ class BS4RedditProxy(IRedditProxy):
         soup = BeautifulSoup(html_doc, "html.parser")
         reddit_post_params = {}
         post = soup.find("shreddit-post")
+        if post is None:
+            raise ValueError(
+                f"Could not find post content. Reddit may have blocked the request (status {response.status_code})."
+            )
         reddit_post_params["title"] = post.find("h1").text.strip()
         reddit_post_params["community"] = post.find(
             "a", class_="subreddit-name"
