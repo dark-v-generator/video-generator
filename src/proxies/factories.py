@@ -50,6 +50,13 @@ from src.proxies.interfaces import ICoverProxy
 from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 
+from src.proxies.interfaces import IVideoGeneratorProxy
+from src.proxies.comfyui_video_proxy import ComfyUIVideoProxy
+from src.entities.configs.proxies.video_generation import (
+    VideoGenerationConfigType,
+    ComfyUIVideoGenerationConfig,
+)
+
 
 class ImageGeneratorFactory:
     @staticmethod
@@ -140,6 +147,15 @@ class YouTubeProxyFactory:
             return PyTubeProxy(config=config)
         else:
             raise ValueError(f"Unknown YouTube Configuration: {type(config)}")
+
+
+class VideoGeneratorFactory:
+    @staticmethod
+    def create(config: VideoGenerationConfigType) -> IVideoGeneratorProxy:
+        if isinstance(config, ComfyUIVideoGenerationConfig):
+            return ComfyUIVideoProxy(config=config)
+        else:
+            raise ValueError(f"Unknown Video Generation Configuration: {type(config)}")
 
 
 class CoverProxyFactory:

@@ -38,6 +38,19 @@ class IImageGeneratorProxy(ABC):
         ...
 
 
+class IVideoGeneratorProxy(ABC):
+    @abstractmethod
+    def generate_video(
+        self,
+        prompt: str,
+        reference_image: bytes,
+        width: int = 1360,
+        height: int = 768,
+    ) -> bytes:
+        """Generate a video from a prompt using a reference image. Returns video bytes."""
+        ...
+
+
 class ISpeechProxy(ABC):
     @abstractmethod
     async def generate_speech(
