@@ -278,6 +278,11 @@ class MockLLMProxy(ILLMProxy):
     ) -> dict:
         return dict(MOCK_STORY)
 
+    async def revise_story(
+        self, current_script: dict, feedback: str, target_language: Language
+    ) -> dict:
+        return dict(current_script)
+
     async def enhance_transcription(
         self, base_text: str, raw_transcription: List[dict]
     ) -> List[dict]:

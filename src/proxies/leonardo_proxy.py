@@ -12,6 +12,8 @@ class LeonardoImageProxy(IImageGeneratorProxy):
             raise ValueError("Leonardo API key is not set")
 
         self.model_id = config.model_id
+        self.style_uuid = config.style_uuid
+        self.contrast = config.contrast
         self.base_url = "https://cloud.leonardo.ai/api/rest/v1"
         self.headers = {
             "accept": "application/json",
@@ -39,6 +41,10 @@ class LeonardoImageProxy(IImageGeneratorProxy):
         }
         if self.model_id:
             payload["modelId"] = self.model_id
+        if self.style_uuid:
+            payload["styleUUID"] = self.style_uuid
+        if self.contrast is not None:
+            payload["contrast"] = self.contrast
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt
 

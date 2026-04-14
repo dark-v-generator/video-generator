@@ -3,21 +3,19 @@ proxies:
     title_font_size: 150
   image_generation_config:
     type: leonardo
-    model_id: "b2614463-296c-462a-9586-aafdb8f00e36"  # Flux Dev
+    model_id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e"  # Lucid Realism
+    style_uuid: "a5632c7c-ddbb-4e2f-ba34-8456ab3ac436"  # Cinematic
+    contrast: 3.5
+  reddit_config:
+    type: json
   llm_config:
     type: prompt
     provider_config:
       provider: openai
-      model: gpt-5.4-mini
-  # To use ElevenLabs (paid plan required for API access):
-  # speech_config:
-  #   type: elevenlabs
-  #   voices:
-  #     pt:
-  #       male_voice_id: "pNInz6obpgDQGcFmaJgB"    # Adam
-  #       female_voice_id: "21m00Tcm4TlvDq8ikWAM"  # Rachel
+      model: gpt-5.2
   speech_config:
     type: edge-tts
+    default_rate: 1.2
   transcription_config:
     model: base
     type: local
@@ -27,6 +25,7 @@ services:
   video_config:
     call_to_action_path: assets/call_to_action.png
     youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+    ffmpeg_params: ["-crf", "23", "-preset", "medium"]
 bots:
   image_story_bot:
     allowed_user_ids: [627370641]

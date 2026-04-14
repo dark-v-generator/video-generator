@@ -1,3 +1,5 @@
+import os
+
 from dependency_injector import containers, providers
 from .secrets import secrets
 
@@ -9,6 +11,8 @@ from ..services.cover_service import CoverService
 from ..services.speech_service import SpeechService
 from ..proxies import factories as proxies_factories
 
+_CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
+
 
 class ApplicationContainer(containers.DeclarativeContainer):
     """Dependency injection container for the application"""
@@ -16,9 +20,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     # Configuration
     config = providers.Configuration()
 
-    main_config = providers.Singleton(
-        MainConfig.from_yaml, file_path="config.yaml"
-    )
+    main_config = providers.Singleton(MainConfig.from_yaml, file_path=_CONFIG_PATH)
 
     # Proxies configs
     transcription_proxy = providers.Singleton(

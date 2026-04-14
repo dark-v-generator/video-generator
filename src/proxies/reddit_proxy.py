@@ -13,8 +13,14 @@ class BS4RedditProxy(IRedditProxy):
         self.logger = get_logger(__name__)
         self.config = config
 
+    _HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/131.0.0.0 Safari/537.36",
+    }
+
     def get_reddit_post(self, url: str) -> RedditPost:
-        response = requests.get(url)
+        response = requests.get(url, headers=self._HEADERS)
         html_doc = response.text
         soup = BeautifulSoup(html_doc, "html.parser")
         reddit_post_params = {}

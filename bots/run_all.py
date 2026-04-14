@@ -10,8 +10,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_image_story_bot():
-    from bots.image_story_bot import main
+def run_interactive_bot():
+    from bots.interactive_bot import main
     main()
 
 
@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     logger.info("Starting Telegram bots...")
 
-    p1 = multiprocessing.Process(target=run_image_story_bot, name="image-story-bot")
+    p1 = multiprocessing.Process(target=run_interactive_bot, name="interactive-bot")
     p2 = multiprocessing.Process(target=run_two_part_history_bot, name="two-part-history-bot")
 
     p1.start()

@@ -60,10 +60,10 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         )
 
         await update.message.reply_text("Uploading Part 1...")
-        await send_video_bytes(update, context, result.part1_video, "Part 1")
+        await send_video_bytes(update.message, result.part1_video, "Part 1")
 
         await update.message.reply_text("Uploading Part 2...")
-        await send_video_bytes(update, context, result.part2_video, "Part 2")
+        await send_video_bytes(update.message, result.part2_video, "Part 2")
 
         await update.message.reply_text("Done!")
 

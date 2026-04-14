@@ -31,8 +31,9 @@ from src.proxies.interfaces import (
     ISpeechProxy,
     IRedditProxy,
 )
-from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig
+from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig, JsonRedditConfig
 from src.proxies.reddit_proxy import BS4RedditProxy
+from src.proxies.json_reddit_proxy import JsonRedditProxy
 from src.entities.configs.proxies.llm import (
     LLMConfigType,
     PromptLLMConfig,
@@ -110,6 +111,8 @@ class RedditProxyFactory:
     def create(config: RedditConfigType) -> IRedditProxy:
         if isinstance(config, BS4RedditConfig):
             return BS4RedditProxy(config=config)
+        elif isinstance(config, JsonRedditConfig):
+            return JsonRedditProxy(config=config)
         else:
             raise ValueError(f"Unknown Reddit Configuration: {type(config)}")
 

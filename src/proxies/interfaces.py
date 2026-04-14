@@ -89,6 +89,14 @@ class ILLMProxy(ABC):
         ...
 
     @abstractmethod
+    async def revise_story(
+        self, current_script: dict, feedback: str, target_language: Language
+    ) -> dict:
+        """Revise an existing two-part story script based on user feedback.
+        Returns a dict with the same shape as generate_two_part_story."""
+        ...
+
+    @abstractmethod
     async def generate_image_story(
         self,
         story_text: str,

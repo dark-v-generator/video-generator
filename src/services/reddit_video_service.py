@@ -4,20 +4,65 @@ import re
 import tempfile
 from dataclasses import dataclass
 from typing import Literal, Optional
-from ..proxies.interfaces import IImageGeneratorProxy, ILLMProxy, IRedditProxy
+
 from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
+from ..entities.image_story import ImageStory
 from ..entities.editor.audio_clip import AudioClip
 from ..entities.editor.captions_clip import CaptionsClip
 from ..entities.language import Language
-from .captions_service import CaptionsService
-from .cover_service import CoverService
-from .speech_service import SpeechService
+from ..entities.reddit_post import RedditPost
+from ..proxies.interfaces import IImageGeneratorProxy, ILLMProxy, IRedditProxy
+from .captions_service import CaptionsResult, CaptionsService
+from .cover_service import CoverResult, CoverService
+from .speech_service import SpeechResult, SpeechService
 from .video_service import VideoService
 
 
 # ---------------------------------------------------------------------------
-# Output data-classes
+# Intermediate data-classes (used by the checkpoint flow)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class StoryScript:
+    title: str
+    part1: str
+    part2: str
+    narrator_gender: str
+    resolved_gender: Literal["male", "female"]
+
+
+@dataclass
+class AudioPair:
+    part1: SpeechResult
+    part2: SpeechResult
+
+
+@dataclass
+class CaptionsPair:
+    part1: CaptionsResult
+    part2: CaptionsResult
+    part1_data: list[dict]
+    part2_data: list[dict]
+
+
+@dataclass
+class ImageStoryPair:
+    part1: ImageStory
+    part2: ImageStory
+    generated_images_1: list[bytes]
+    generated_images_2: list[bytes]
+
+
+@dataclass
+class VideoPair:
+    part1_video: bytes
+    part2_video: bytes
+
+
+# ---------------------------------------------------------------------------
+# Final output data-classes
 # ---------------------------------------------------------------------------
 
 
@@ -80,7 +125,197 @@ class RedditVideoService:
         self._video_service = video_service
 
     # ------------------------------------------------------------------
-    # Public API
+    # Step methods (used individually by the interactive bot)
+    # ------------------------------------------------------------------
+
+    def scrape_post(self, url: str) -> RedditPost:
+        return self._reddit_proxy.get_reddit_post(url)
+
+    async def generate_script(
+        self,
+        post: RedditPost,
+        language: Language = Language.PORTUGUESE,
+        speech_gender: Optional[Literal["male", "female"]] = None,
+    ) -> StoryScript:
+        story = await self._llm_proxy.generate_two_part_story(
+            title=post.title,
+            content=post.content,
+            target_language=language,
+        )
+        narrator_gender = story.get("narrator_gender", "unknown")
+        resolved_gender: Literal["male", "female"] = speech_gender or (
+            narrator_gender if narrator_gender in ("male", "female") else "male"
+        )
+        return StoryScript(
+            title=story.get("title", post.title),
+            part1=story["part1"],
+            part2=story["part2"],
+            narrator_gender=narrator_gender,
+            resolved_gender=resolved_gender,
+        )
+
+    async def revise_script(
+        self,
+        script: StoryScript,
+        feedback: str,
+        language: Language = Language.PORTUGUESE,
+    ) -> StoryScript:
+        revised = await self._llm_proxy.revise_story(
+            current_script={
+                "title": script.title,
+                "part1": script.part1,
+                "part2": script.part2,
+                "narrator_gender": script.narrator_gender,
+            },
+            feedback=feedback,
+            target_language=language,
+        )
+        return StoryScript(
+            title=revised.get("title", script.title),
+            part1=revised["part1"],
+            part2=revised["part2"],
+            narrator_gender=revised.get("narrator_gender", script.narrator_gender),
+            resolved_gender=script.resolved_gender,
+        )
+
+    async def generate_audio(
+        self,
+        script: StoryScript,
+        speech_rate: float = 1.0,
+        language: Language = Language.PORTUGUESE,
+    ) -> AudioPair:
+        part1 = await self._speech_service.generate_speech(
+            text=script.part1,
+            gender=script.resolved_gender,
+            rate=speech_rate,
+            language=language,
+        )
+        part2 = await self._speech_service.generate_speech(
+            text=script.part2,
+            gender=script.resolved_gender,
+            rate=speech_rate,
+            language=language,
+        )
+        return AudioPair(part1=part1, part2=part2)
+
+    async def generate_captions_pair(
+        self,
+        audio: AudioPair,
+        script: StoryScript,
+        language: Language = Language.PORTUGUESE,
+    ) -> CaptionsPair:
+        cap1 = await self._captions_service.generate_captions(
+            audio_bytes=audio.part1.bytes,
+            enhance_captions=True,
+            language=language,
+            base_text=script.part1,
+        )
+        cap2 = await self._captions_service.generate_captions(
+            audio_bytes=audio.part2.bytes,
+            enhance_captions=True,
+            language=language,
+            base_text=script.part2,
+        )
+        data1 = self._strip_introduction(
+            [{"word": s.text, "start": s.start, "end": s.end}
+             for s in cap1.captions.segments]
+        )
+        data2 = self._strip_introduction(
+            [{"word": s.text, "start": s.start, "end": s.end}
+             for s in cap2.captions.segments]
+        )
+        return CaptionsPair(part1=cap1, part2=cap2, part1_data=data1, part2_data=data2)
+
+    async def generate_cover(
+        self, post: RedditPost, script: StoryScript
+    ) -> CoverResult:
+        return await self._cover_service.generate_cover(
+            RedditCover(
+                title=script.title,
+                community=post.community,
+                author=post.author,
+                image_url=post.community_url_photo,
+            )
+        )
+
+    async def compose_two_part_video(
+        self,
+        audio: AudioPair,
+        captions: CaptionsPair,
+        cover: CoverResult,
+        low_quality: bool = False,
+    ) -> VideoPair:
+        video_bytes_1 = await self._render_video_to_bytes(
+            speech=audio.part1.clip,
+            captions_clip_obj=captions.part1.clip,
+            cover=cover.clip,
+            low_quality=low_quality,
+        )
+        video_bytes_2 = await self._render_video_to_bytes(
+            speech=audio.part2.clip,
+            captions_clip_obj=captions.part2.clip,
+            cover=cover.clip,
+            low_quality=low_quality,
+        )
+        return VideoPair(part1_video=video_bytes_1, part2_video=video_bytes_2)
+
+    async def generate_image_stories(
+        self,
+        script: StoryScript,
+        captions: CaptionsPair,
+    ) -> ImageStoryPair:
+        """LLM plans timed image descriptions + prompts for both parts."""
+        image_story_1 = await self._llm_proxy.generate_image_story(
+            story_text=script.part1,
+            transcription=captions.part1_data,
+        )
+        style_context = self._extract_style_context(image_story_1)
+        image_story_2 = await self._llm_proxy.generate_image_story(
+            story_text=script.part2,
+            transcription=captions.part2_data,
+            style_context=style_context,
+        )
+        config = self._video_service._video_config
+        img_w, img_h = config.width, config.height
+
+        generated_1 = self._generate_images_for_story(image_story_1, img_w, img_h)
+        generated_2 = self._generate_images_for_story(image_story_2, img_w, img_h)
+
+        return ImageStoryPair(
+            part1=image_story_1,
+            part2=image_story_2,
+            generated_images_1=generated_1,
+            generated_images_2=generated_2,
+        )
+
+    def compose_image_story_video(
+        self,
+        audio: AudioPair,
+        captions: CaptionsPair,
+        image_stories: ImageStoryPair,
+        cover: CoverResult,
+        low_quality: bool = False,
+    ) -> VideoPair:
+        video_bytes_1 = self._render_image_story_to_bytes(
+            audio=audio.part1.clip,
+            image_story=image_stories.part1,
+            generated_images=image_stories.generated_images_1,
+            cover=cover.clip,
+            captions=captions.part1.clip,
+            low_quality=low_quality,
+        )
+        video_bytes_2 = self._render_image_story_to_bytes(
+            audio=audio.part2.clip,
+            image_story=image_stories.part2,
+            generated_images=image_stories.generated_images_2,
+            cover=cover.clip,
+            captions=captions.part2.clip,
+            low_quality=low_quality,
+        )
+        return VideoPair(part1_video=video_bytes_1, part2_video=video_bytes_2)
+
+    # ------------------------------------------------------------------
+    # Public API (monolithic, kept for backward compat)
     # ------------------------------------------------------------------
 
     async def generate_two_part_history_video(
@@ -92,117 +327,36 @@ class RedditVideoService:
         speech_rate: float = 1.0,
         low_quality: bool = False,
     ) -> TwoPartVideoResult:
-        """Full pipeline: scrape → two-part story → speech → captions → videos."""
+        """Full pipeline: scrape -> story -> speech -> captions -> videos."""
 
-        # ------------------------------------------------------------------ 1. Scrape
-        post = self._reddit_proxy.get_reddit_post(post_url)
-
-        # Build original post markdown
+        post = self.scrape_post(post_url)
         original_post_md = f"# {post.title}\n\n{post.content}\n"
 
-        # ------------------------------------------------------------------ 2. LLM: generate two-part story
-        story = await self._llm_proxy.generate_two_part_story(
-            title=post.title,
-            content=post.content,
-            target_language=language,
-        )
-        part1_text: str = story["part1"]
-        part2_text: str = story["part2"]
+        script = await self.generate_script(post, language, speech_gender)
+        audio = await self.generate_audio(script, speech_rate, language)
+        captions = await self.generate_captions_pair(audio, script, language)
+        cover = await self.generate_cover(post, script)
+        videos = await self.compose_two_part_video(audio, captions, cover, low_quality)
 
-        # Resolve TTS gender: manual override > LLM inference > default 'male'
-        narrator_gender = story.get("narrator_gender", "unknown")
-        resolved_gender: Literal["male", "female"] = speech_gender or (
-            narrator_gender if narrator_gender in ("male", "female") else "male"
-        )
-
-        # ------------------------------------------------------------------ 3. Generate speech for both parts (returns SpeechResult)
-        speech_result_1 = await self._speech_service.generate_speech(
-            text=part1_text,
-            gender=resolved_gender,
-            rate=speech_rate,
-            language=language,
-        )
-
-        speech_result_2 = await self._speech_service.generate_speech(
-            text=part2_text,
-            gender=resolved_gender,
-            rate=speech_rate,
-            language=language,
-        )
-
-        # ------------------------------------------------------------------ 4. Transcribe + enhance captions (returns CaptionsResult)
-        captions_result_1 = await self._captions_service.generate_captions(
-            audio_bytes=speech_result_1.bytes,
-            enhance_captions=True,
-            language=language,
-            base_text=part1_text,
-        )
-
-        captions_result_2 = await self._captions_service.generate_captions(
-            audio_bytes=speech_result_2.bytes,
-            enhance_captions=True,
-            language=language,
-            base_text=part2_text,
-        )
-
-        # ------------------------------------------------------------------ 5. Generate cover from post data
-        cover_result = await self._cover_service.generate_cover(
-            RedditCover(
-                title=story.get("title", post.title),
-                community=post.community,
-                author=post.author,
-                image_url=post.community_url_photo,
-            )
-        )
-
-        # ------------------------------------------------------------------ 6. Build artifact data
-        story_md = f"# {story.get('title', 'Untitled')}\n\n"
-        story_md += f"**Narrator gender:** {story.get('narrator_gender', 'unknown')} → resolved: {resolved_gender}\n\n"
-        story_md += f"## Part 1\n\n{part1_text}\n\n"
-        story_md += f"## Part 2\n\n{part2_text}\n"
-
-        captions_1_data = self._strip_introduction(
-            [
-                {"word": s.text, "start": s.start, "end": s.end}
-                for s in captions_result_1.captions.segments
-            ]
-        )
-        captions_2_data = self._strip_introduction(
-            [
-                {"word": s.text, "start": s.start, "end": s.end}
-                for s in captions_result_2.captions.segments
-            ]
-        )
-
-        # ------------------------------------------------------------------ 7. Compose videos (write to temp files, read back as bytes)
-        video_bytes_1 = await self._render_video_to_bytes(
-            speech=speech_result_1.clip,
-            captions_clip_obj=captions_result_1.clip,
-            cover=cover_result.clip,
-            low_quality=low_quality,
-        )
-
-        video_bytes_2 = await self._render_video_to_bytes(
-            speech=speech_result_2.clip,
-            captions_clip_obj=captions_result_2.clip,
-            cover=cover_result.clip,
-            low_quality=low_quality,
-        )
+        story_md = f"# {script.title}\n\n"
+        story_md += f"**Narrator gender:** {script.narrator_gender} → resolved: {script.resolved_gender}\n\n"
+        story_md += f"## Part 1\n\n{script.part1}\n\n"
+        story_md += f"## Part 2\n\n{script.part2}\n"
 
         return TwoPartVideoResult(
-            part1_video=video_bytes_1,
-            part2_video=video_bytes_2,
+            part1_video=videos.part1_video,
+            part2_video=videos.part2_video,
             story_md=story_md,
             original_post_md=original_post_md,
-            audio_part1=speech_result_1.bytes,
-            audio_part2=speech_result_2.bytes,
+            audio_part1=audio.part1.bytes,
+            audio_part2=audio.part2.bytes,
             captions_part1_json=json.dumps(
-                captions_1_data, ensure_ascii=False, indent=2
+                captions.part1_data, ensure_ascii=False, indent=2
             ),
             captions_part2_json=json.dumps(
-                captions_2_data, ensure_ascii=False, indent=2
+                captions.part2_data, ensure_ascii=False, indent=2
             ),
-            cover_png=cover_result.bytes,
+            cover_png=cover.bytes,
         )
 
     async def generate_image_story_video(

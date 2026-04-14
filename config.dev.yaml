@@ -5,8 +5,11 @@ proxies:
     type: mock
   llm_config:
     type: mock
+  reddit_config:
+    type: json
   speech_config:
     type: edge-tts
+    default_rate: 1.2
   transcription_config:
     model: base
     type: local
@@ -16,6 +19,7 @@ services:
   video_config:
     call_to_action_path: assets/call_to_action.png
     youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+    ffmpeg_params: ["-crf", "28", "-preset", "fast"]
 bots:
   image_story_bot:
     allowed_user_ids: [627370641]

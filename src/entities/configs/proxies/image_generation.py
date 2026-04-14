@@ -7,6 +7,8 @@ class LeonardoImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo"] = "leonardo"
     api_key: Optional[str] = Field(None, title="Leonardo API Key")
     model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Flux Dev)")
+    style_uuid: Optional[str] = Field(None, title="Leonardo Style UUID (e.g. Cinematic)")
+    contrast: Optional[float] = Field(None, title="Contrast level (3=Low, 3.5=Medium, 4=High)")
 
 
 class LocalImageGenerationConfig(BaseYAMLModel):

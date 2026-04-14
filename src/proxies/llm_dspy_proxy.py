@@ -302,6 +302,24 @@ class DSPyLLMProxy(ILLMProxy):
             "part2": result.part2_script,
         }
 
+    async def revise_story(
+        self, current_script: dict, feedback: str, target_language: Language
+    ) -> dict:
+        self._logger.info(
+            f"Revising story via DSPy {self.config.provider}/{self.config.model} "
+            "(falling back to generate_two_part_story with feedback in content)"
+        )
+        combined_content = (
+            f"ORIGINAL SCRIPT:\n{json.dumps(current_script, ensure_ascii=False, indent=2)}\n\n"
+            f"USER FEEDBACK:\n{feedback}\n\n"
+            "Rewrite the script incorporating the feedback above."
+        )
+        return await self.generate_two_part_story(
+            title=current_script.get("title", ""),
+            content=combined_content,
+            target_language=target_language,
+        )
+
     async def enhance_transcription(
         self, base_text: str, raw_transcription: list[dict]
     ) -> list[dict]:

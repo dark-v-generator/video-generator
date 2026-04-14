@@ -11,6 +11,7 @@ class SpeechVoiceConfig(BaseYAMLModel):
 
 class EdgeTTSSpeechConfig(BaseYAMLModel):
     type: Literal["edge-tts"] = "edge-tts"
+    default_rate: float = Field(1.0, title="Default speech rate multiplier")
     voices: Dict[Language, SpeechVoiceConfig] = Field(default_factory=dict)
 
 

@@ -48,8 +48,10 @@ class EdgeTTSSpeechProxy(ISpeechProxy):
 
         voice_id = self._get_voice_id(gender, language, override_voice_id)
 
+        effective_rate = rate * self.config.default_rate
+
         # Edge TTS rate takes string format e.g. "+0%" or "+50%"
-        rate_percent = int((rate - 1.0) * 100)
+        rate_percent = int((effective_rate - 1.0) * 100)
         rate_str = f"+{rate_percent}%" if rate_percent >= 0 else f"{rate_percent}%"
 
         communicate = edge_tts.Communicate(text=text, voice=voice_id, rate=rate_str)

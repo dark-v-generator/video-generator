@@ -123,6 +123,58 @@ class PromptLLMProxy(ILLMProxy):
             self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
             raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
 
+    async def revise_story(
+        self, current_script: dict, feedback: str, target_language: Language
+    ) -> dict:
+        model_str = self._get_model_string()
+        self._logger.info(f"Revising story via LiteLLM {model_str}")
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("revise_story.jinja2")
+
+        prompt = template.render(
+            current_script=json.dumps(current_script, ensure_ascii=False, indent=2),
+            feedback=feedback,
+            target_language=get_language_name(target_language),
+        )
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            max_tokens=self.config.max_tokens,
+            **self._get_extra_kwargs(model_str),
+        )
+
+        response_text = response.choices[0].message.content
+
+        if not response_text:
+            raise RuntimeError(
+                "LLM returned empty content for story revision. "
+                "This may be caused by a safety filter."
+            )
+
+        try:
+            if response_text.startswith("```json"):
+                response_text = response_text.strip("```json").strip("```").strip()
+            if response_text.startswith("```"):
+                response_text = response_text.strip("```").strip()
+
+            result = json.loads(response_text)
+            return {
+                "title": result.get("title", ""),
+                "narrator_gender": result.get("narrator_gender", "unknown"),
+                "part1": result.get("part1", ""),
+                "part2": result.get("part2", ""),
+            }
+        except json.JSONDecodeError as e:
+            self._logger.error(f"Failed to parse revised story JSON: {response_text}")
+            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
+
     async def enhance_transcription(
         self, base_text: str, raw_transcription: list[dict]
     ) -> list[dict]:
