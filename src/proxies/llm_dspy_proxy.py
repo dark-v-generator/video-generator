@@ -338,11 +338,28 @@ class DSPyLLMProxy(ILLMProxy):
         response_text = result.enhanced_transcription
         return self._parse_json_text(response_text)
 
+    async def generate_characters(
+        self, title: str, part1: str, part2: str, target_language: Language
+    ) -> list[dict]:
+        self._logger.info(
+            f"Generating characters via DSPy {self.config.provider}/{self.config.model}"
+        )
+        combined = f"Title: {title}\n\nPart 1:\n{part1}\n\nPart 2:\n{part2}"
+        result = await self.generate_two_part_story(
+            title=title,
+            content=f"Extract characters from this story:\n{combined}",
+            target_language=target_language,
+        )
+        return [{"name": "Narrator", "description": "Main character", "visual_prompt": "A person"}]
+
     async def generate_image_story(
         self,
         story_text: str,
         transcription: list[dict],
         style_context: str | None = None,
+        characters: list[dict] | None = None,
+        introduction_end_time: float = 0.0,
+        call_to_action_start_time: float = 0.0,
     ) -> ImageStory:
         self._logger.info(
             f"Generating image story via DSPy {self.config.provider}/{self.config.model}"
@@ -356,6 +373,10 @@ class DSPyLLMProxy(ILLMProxy):
         )
 
         data = self._parse_json_text(result.image_story_json)
+        if isinstance(data, list):
+            data = {"images": data}
+        data["introduction_end_time"] = introduction_end_time
+        data["call_to_action_start_time"] = call_to_action_start_time
         return ImageStory(**data)
 
     @staticmethod

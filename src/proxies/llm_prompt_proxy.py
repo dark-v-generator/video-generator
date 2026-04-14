@@ -50,6 +50,30 @@ class PromptLLMProxy(ILLMProxy):
             kwargs["safety_settings"] = self.GEMINI_SAFETY_SETTINGS
         return kwargs
 
+    def _get_completion_kwargs(
+        self,
+        model_str: str,
+        json_mode: bool = True,
+        default_max_tokens: int | None = None,
+    ) -> dict:
+        """Build kwargs for litellm.acompletion, using the correct token-limit
+        parameter for the model (max_completion_tokens for newer OpenAI models,
+        max_tokens for everything else)."""
+        kwargs = self._get_extra_kwargs(model_str, json_mode=json_mode)
+        max_tok = self.config.max_tokens or default_max_tokens
+        if max_tok is not None:
+            model = self.config.model
+            uses_completion_tokens = self.config.provider == "openai" and (
+                model.startswith("gpt-5")
+                or model.startswith("o3")
+                or model.startswith("o4")
+            )
+            if uses_completion_tokens:
+                kwargs["max_completion_tokens"] = max_tok
+            else:
+                kwargs["max_tokens"] = max_tok
+        return kwargs
+
     async def generate_two_part_story(
         self, title: str, content: str, target_language: Language
     ) -> dict:
@@ -88,8 +112,7 @@ class PromptLLMProxy(ILLMProxy):
             messages=messages,
             api_key=self.config.api_key,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            **self._get_extra_kwargs(model_str),
+            **self._get_completion_kwargs(model_str),
         )
 
         response_text = response.choices[0].message.content
@@ -146,8 +169,7 @@ class PromptLLMProxy(ILLMProxy):
             messages=messages,
             api_key=self.config.api_key,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            **self._get_extra_kwargs(model_str),
+            **self._get_completion_kwargs(model_str),
         )
 
         response_text = response.choices[0].message.content
@@ -210,8 +232,7 @@ class PromptLLMProxy(ILLMProxy):
             messages=messages,
             api_key=self.config.api_key,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            **self._get_extra_kwargs(model_str, json_mode=False),
+            **self._get_completion_kwargs(model_str, json_mode=False),
         )
 
         response_text = response.choices[0].message.content
@@ -232,7 +253,15 @@ class PromptLLMProxy(ILLMProxy):
             if response_text.startswith("```"):
                 response_text = response_text.strip("```").strip()
 
-            result = json.loads(response_text)
+            decoder = json.JSONDecoder()
+            stripped = response_text.strip()
+            result, end = decoder.raw_decode(stripped)
+            tail = stripped[end:].strip()
+            if tail:
+                self._logger.warning(
+                    "enhance_transcription: ignored %d trailing chars after first JSON value",
+                    len(tail),
+                )
             if isinstance(result, list):
                 return result
             if isinstance(result, dict):
@@ -246,11 +275,65 @@ class PromptLLMProxy(ILLMProxy):
             )
             raise RuntimeError(f"Could not parse valid JSON from LLM enhancer: {e}")
 
+    async def generate_characters(
+        self, title: str, part1: str, part2: str, target_language: Language
+    ) -> list[dict]:
+        model_str = self._get_model_string()
+        self._logger.info(f"Generating characters via LiteLLM {model_str}")
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("generate_characters.jinja2")
+
+        prompt = template.render(
+            title=title,
+            part1=part1,
+            part2=part2,
+            target_language=target_language.value,
+        )
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            **self._get_completion_kwargs(model_str),
+        )
+
+        response_text = response.choices[0].message.content
+        if not response_text:
+            raise RuntimeError("LLM returned empty content for character generation.")
+
+        try:
+            if response_text.startswith("```json"):
+                response_text = response_text.strip("```json").strip("```").strip()
+            if response_text.startswith("```"):
+                response_text = response_text.strip("```").strip()
+
+            data = json.loads(response_text)
+            if isinstance(data, dict) and "characters" in data:
+                data = data["characters"]
+            elif isinstance(data, dict) and all(
+                k in data for k in ("name", "visual_prompt")
+            ):
+                data = [data]
+            if not isinstance(data, list):
+                raise ValueError(f"Expected list of characters, got {type(data)}")
+            return data
+        except (json.JSONDecodeError, ValueError) as e:
+            self._logger.error(f"Failed to parse characters JSON: {response_text}")
+            raise RuntimeError(f"Could not parse characters from LLM: {e}")
+
     async def generate_image_story(
         self,
         story_text: str,
         transcription: list[dict],
         style_context: str | None = None,
+        characters: list[dict] | None = None,
+        introduction_end_time: float = 0.0,
+        call_to_action_start_time: float = 0.0,
     ) -> ImageStory:
         model_str = self._get_model_string()
         self._logger.info(f"Generating image story via LiteLLM {model_str}")
@@ -263,6 +346,7 @@ class PromptLLMProxy(ILLMProxy):
             story_text=story_text,
             transcription=json.dumps(transcription, ensure_ascii=False),
             style_context=style_context,
+            characters=characters,
         )
 
         messages = [{"role": "user", "content": prompt}]
@@ -272,16 +356,18 @@ class PromptLLMProxy(ILLMProxy):
             messages=messages,
             api_key=self.config.api_key,
             temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-            **self._get_extra_kwargs(model_str),
+            **self._get_completion_kwargs(model_str, default_max_tokens=8192),
         )
 
         response_text = response.choices[0].message.content
+        finish_reason = response.choices[0].finish_reason
+
+        if finish_reason == "length":
+            self._logger.warning("Image story response was truncated (hit token limit)")
 
         if not response_text:
             self._logger.error(
-                f"LLM returned empty response. "
-                f"Finish reason: {response.choices[0].finish_reason}"
+                "LLM returned empty response. Finish reason: %s", finish_reason
             )
             raise RuntimeError(
                 "LLM returned empty content for image story generation. "
@@ -294,7 +380,27 @@ class PromptLLMProxy(ILLMProxy):
             if response_text.startswith("```"):
                 response_text = response_text.strip("```").strip()
 
-            data = json.loads(response_text)
+            decoder = json.JSONDecoder()
+            stripped = response_text.strip()
+            data, end = decoder.raw_decode(stripped)
+            tail = stripped[end:].strip()
+            if tail:
+                self._logger.warning(
+                    "generate_image_story: ignored %d trailing chars",
+                    len(tail),
+                )
+
+            if isinstance(data, list):
+                data = {"images": data}
+            elif isinstance(data, dict) and "images" not in data:
+                if all(k in data for k in ("start_time", "description", "prompt")):
+                    data = {"images": [data]}
+
+            if not isinstance(data, dict):
+                raise ValueError(f"Expected object or array, got {type(data)}")
+
+            data["introduction_end_time"] = introduction_end_time
+            data["call_to_action_start_time"] = call_to_action_start_time
             return ImageStory(**data)
         except (json.JSONDecodeError, ValueError) as e:
             self._logger.error(f"Failed to parse image story JSON: {response_text}")

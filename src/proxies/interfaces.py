@@ -97,16 +97,26 @@ class ILLMProxy(ABC):
         ...
 
     @abstractmethod
+    async def generate_characters(
+        self, title: str, part1: str, part2: str, target_language: Language
+    ) -> list[dict]:
+        """Extract characters from a story and return visual descriptions.
+        Returns a list of dicts: [{"name": str, "description": str, "visual_prompt": str}]."""
+        ...
+
+    @abstractmethod
     async def generate_image_story(
         self,
         story_text: str,
         transcription: List[dict],
         style_context: Optional[str] = None,
+        characters: Optional[list[dict]] = None,
+        introduction_end_time: float = 0.0,
+        call_to_action_start_time: float = 0.0,
     ) -> ImageStory:
-        """Analyse a narrated story and its word-level transcription to produce
-        a timed image-story with introduction, call-to-action, and scene images.
-        style_context: optional text describing characters and art style from a
-        previous part, to maintain visual consistency across parts."""
+        """Generate timed scene images for the content portion of a narrated story.
+        introduction_end_time and call_to_action_start_time are pre-computed by
+        the caller; the LLM only generates the images array."""
         ...
 
 

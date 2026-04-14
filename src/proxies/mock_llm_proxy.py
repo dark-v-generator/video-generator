@@ -288,10 +288,32 @@ class MockLLMProxy(ILLMProxy):
     ) -> List[dict]:
         return raw_transcription
 
+    async def generate_characters(
+        self, title: str, part1: str, part2: str, target_language: Language
+    ) -> list[dict]:
+        return [
+            {
+                "name": "Narrador",
+                "description": "O protagonista da história",
+                "visual_prompt": "A 26-year-old man with short dark hair, light stubble, average build, wearing a navy hoodie and jeans",
+            },
+            {
+                "name": "Namorada",
+                "description": "A namorada do narrador",
+                "visual_prompt": "A 25-year-old woman with long dark hair, slim build, wearing a beige coat and scarf",
+            },
+        ]
+
     async def generate_image_story(
         self,
         story_text: str,
         transcription: List[dict],
         style_context: str | None = None,
+        characters: list[dict] | None = None,
+        introduction_end_time: float = 0.0,
+        call_to_action_start_time: float = 0.0,
     ) -> ImageStory:
-        return _build_mock_image_story(transcription)
+        mock = _build_mock_image_story(transcription)
+        mock.introduction_end_time = introduction_end_time or mock.introduction_end_time
+        mock.call_to_action_start_time = call_to_action_start_time or mock.call_to_action_start_time
+        return mock

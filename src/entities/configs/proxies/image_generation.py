@@ -3,12 +3,24 @@ from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
 
+class LeonardoElementConfig(BaseYAMLModel):
+    ak_uuid: str = Field(..., title="Element akUUID")
+    weight: float = Field(1.0, title="Element weight")
+
+
 class LeonardoImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo"] = "leonardo"
     api_key: Optional[str] = Field(None, title="Leonardo API Key")
     model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Flux Dev)")
-    style_uuid: Optional[str] = Field(None, title="Leonardo Style UUID (e.g. Cinematic)")
-    contrast: Optional[float] = Field(None, title="Contrast level (3=Low, 3.5=Medium, 4=High)")
+    style_uuid: Optional[str] = Field(
+        None, title="Leonardo Style UUID (e.g. Cinematic)"
+    )
+    contrast: Optional[float] = Field(
+        None, title="Contrast level (3=Low, 3.5=Medium, 4=High)"
+    )
+    elements: list[LeonardoElementConfig] = Field(
+        default_factory=list, title="Leonardo Elements (LoRAs)"
+    )
 
 
 class LocalImageGenerationConfig(BaseYAMLModel):

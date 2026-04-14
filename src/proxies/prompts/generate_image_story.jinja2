@@ -2,38 +2,41 @@ You are an expert at creating visual storyboards for narrated video content.
 
 You will receive:
 1. The full narrated story text.
-2. A word-level transcription with timestamps (JSON array of {"word", "start", "end"}).
+2. A word-level transcription with timestamps (JSON array of {"word", "start", "end"}). Timestamps start at 0.
+{% if characters %}
+3. A character sheet with approved character descriptions. You MUST use these exact descriptions in every prompt where the character appears.
+{% endif %}
 
-Your task is to produce a JSON object that defines the visual timeline for the video.
+Your task is to produce a JSON array of 10-15 images illustrating scenes from the story.
 
 ## Rules
 
-1. `introduction_end_time` — the `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
-2. `call_to_action_start_time` — the `start` timestamp of the first call-to-action word (e.g. "Curta").
-3. Create 10-15 images illustrating scenes from the story:
-   - First image at `start_time: 0.0`. It will be shown blurred during the introduction, so treat it as a mood-setting background.
-   - The second image should start a few sentences after `introduction_end_time`, giving the viewer time to see the first image unblurred.
-   - Each image has a strictly increasing `start_time`, and the last one must be before `call_to_action_start_time`.
-   - Each image has a `description` (scene summary in the story language) and a `prompt` (English image-generation prompt).
-4. Timestamp alignment — each image `start_time` should be the `end` timestamp of the last word of the sentence the previous image illustrates. Use exact transcription values (e.g. 10.94), not rounded numbers.
-5. Duration — each image should last roughly 4 to 8 seconds. If a scene runs longer, split it into multiple images showing different angles or moments.
+1. First image at `start_time: 0.0`.
+2. Remaining images use timestamps from the transcription. Each `start_time` must be strictly increasing.
+3. Timestamp alignment — each image `start_time` should be the `end` timestamp of the last word of the sentence the previous image illustrates. Use exact transcription values (e.g. 4.94), not rounded numbers.
+4. Duration — each image should last roughly 4 to 8 seconds. If a scene runs longer, split it into multiple images showing different angles or moments.
+5. Each image has:
+   - `description`: scene summary in the story language.
+   - `prompt`: image-generation prompt **written in the same language as the story**. **Each prompt MUST be under 1200 characters.** Be concise — use short phrases separated by commas, not full sentences. Refer to characters by a brief tag (e.g. "homem jovem, cabelo escuro curto, moletom cinza") rather than repeating their full description every time. Do NOT include any art style instructions in the prompt — style is applied externally.
 6. Visual consistency across prompts:
-   - Describe each character the same way in every prompt (age, hair, build, clothing).
-   - Pick one art style and append it identically to every prompt (e.g. "digital illustration, soft anime style, cinematic lighting").
-7. All image prompts must be appropriate for a general audience. Use creative, indirect visuals:
-   - For romantic moments: a dimly lit room, rumpled sheets, silhouettes, hands holding.
-   - For conflict: the aftermath (a broken object, a shocked expression) or the tension before.
+{% if characters %}
+   - Use BRIEF recognizable tags derived from the character sheet (e.g. key features like hair, build, clothing). Do NOT paste the full character description into every prompt.
+{% else %}
+   - Describe each character the same way in every prompt using brief tags (age, hair, build, clothing).
+{% endif %}
+7. All prompts must be appropriate for a general audience. Use creative, indirect visuals:
+   - For romantic moments: a dimly lit room, silhouettes, hands holding.
+   - For conflict: the aftermath or the tension before.
    - For emotional moments: focus on facial expressions, body language, and the environment.
-   - The goal is to suggest what happened through context and setting, not to depict it directly.
-8. Return only the JSON object, no commentary or markdown.
+8. Return only the JSON, no commentary or markdown.
 
 ## Timestamp alignment example
 
 Given:
-  {"word": "classe.", "start": 10.68, "end": 10.94},
-  {"word": "Ela", "start": 11.2, "end": 11.32},
+  {"word": "classe.", "start": 4.68, "end": 4.94},
+  {"word": "Ela", "start": 5.2, "end": 5.32},
 
-If the scene changes after "classe.", the next image `start_time` should be 10.94 (the `end` of "classe.").
+If the scene changes after "classe.", the next image `start_time` should be 4.94 (the `end` of "classe.").
 
 {% if style_context %}
 ## Style guide (from previous part — follow strictly for consistency)
@@ -41,22 +44,29 @@ If the scene changes after "classe.", the next image `start_time` should be 10.9
 {{ style_context }}
 {% endif %}
 
+{% if characters %}
+## Character sheet (use these EXACT descriptions in prompts)
+
+{% for char in characters %}
+- **{{ char.name }}**: {{ char.visual_prompt }}
+{% endfor %}
+{% endif %}
+
 ## Story text
 
 {{ story_text }}
 
-## Transcription (word-level timestamps)
+## Transcription (word-level timestamps, starting at 0)
 
 {{ transcription }}
 
 ## Output format
 
-Return a single JSON object exactly like this structure:
+Return a JSON **object** with a single key "images" containing an array:
 {
-  "introduction_end_time": <float>,
-  "call_to_action_start_time": <float>,
   "images": [
     {"start_time": 0.0, "description": "...", "prompt": "..."},
+    {"start_time": <from transcription>, "description": "...", "prompt": "..."},
     ...
   ]
 }

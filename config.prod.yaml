@@ -3,9 +3,12 @@ proxies:
     title_font_size: 150
   image_generation_config:
     type: leonardo
-    model_id: "05ce0082-2d80-4a2d-8653-4d1c85e2418e"  # Lucid Realism
-    style_uuid: "a5632c7c-ddbb-4e2f-ba34-8456ab3ac436"  # Cinematic
+    model_id: "b2614463-296c-462a-9586-aafdb8f00e36"  # Flux Dev
+    style_uuid: "556c1ee5-ec38-42e8-955a-1e82dad0ffa1"  # None
     contrast: 3.5
+    elements:
+      - ak_uuid: "1b900d40-e593-4abb-92b5-04ce96403a44"  # Rough Sketch
+        weight: 1
   reddit_config:
     type: json
   llm_config:

@@ -14,6 +14,7 @@ class LeonardoImageProxy(IImageGeneratorProxy):
         self.model_id = config.model_id
         self.style_uuid = config.style_uuid
         self.contrast = config.contrast
+        self.elements = config.elements
         self.base_url = "https://cloud.leonardo.ai/api/rest/v1"
         self.headers = {
             "accept": "application/json",
@@ -22,6 +23,7 @@ class LeonardoImageProxy(IImageGeneratorProxy):
         }
 
     LEONARDO_MAX_DIMENSION = 1536
+    LEONARDO_MAX_PROMPT_LENGTH = 1500
 
     def generate_image(
         self,
@@ -32,6 +34,7 @@ class LeonardoImageProxy(IImageGeneratorProxy):
         num_images: int = 1,
     ) -> List[bytes]:
         gen_w, gen_h = self._clamp_dimensions(width, height)
+        prompt = self._truncate_prompt(prompt)
 
         payload = {
             "prompt": prompt,
@@ -47,6 +50,10 @@ class LeonardoImageProxy(IImageGeneratorProxy):
             payload["contrast"] = self.contrast
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt
+        if self.elements:
+            payload["elements"] = [
+                {"akUUID": e.ak_uuid, "weight": e.weight} for e in self.elements
+            ]
 
         response = requests.post(
             f"{self.base_url}/generations", json=payload, headers=self.headers
@@ -55,7 +62,6 @@ class LeonardoImageProxy(IImageGeneratorProxy):
             raise Exception(
                 f"Leonardo AI generation failed ({response.status_code}): {response.text}"
             )
-
 
         data = response.json()
         generation_id = data.get("sdGenerationJob", {}).get("generationId")
@@ -94,6 +100,12 @@ class LeonardoImageProxy(IImageGeneratorProxy):
             results.append(img_resp.content)
 
         return results
+
+    def _truncate_prompt(self, prompt: str) -> str:
+        limit = self.LEONARDO_MAX_PROMPT_LENGTH
+        if len(prompt) <= limit:
+            return prompt
+        return prompt[: limit - 3] + "..."
 
     def _clamp_dimensions(self, width: int, height: int) -> tuple[int, int]:
         """Scale down dimensions proportionally if either exceeds Leonardo's limit."""

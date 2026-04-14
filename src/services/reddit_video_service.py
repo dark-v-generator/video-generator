@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import tempfile
@@ -17,6 +18,8 @@ from .captions_service import CaptionsResult, CaptionsService
 from .cover_service import CoverResult, CoverService
 from .speech_service import SpeechResult, SpeechService
 from .video_service import VideoService
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +48,14 @@ class CaptionsPair:
     part2: CaptionsResult
     part1_data: list[dict]
     part2_data: list[dict]
+    raw_part1_data: list[dict]
+    raw_part2_data: list[dict]
+
+
+@dataclass
+class CharacterSheet:
+    characters: list[dict]
+    reference_images: dict[str, bytes]
 
 
 @dataclass
@@ -216,15 +227,24 @@ class RedditVideoService:
             language=language,
             base_text=script.part2,
         )
-        data1 = self._strip_introduction(
-            [{"word": s.text, "start": s.start, "end": s.end}
-             for s in cap1.captions.segments]
+        raw1 = [
+            {"word": s.text, "start": s.start, "end": s.end}
+            for s in cap1.captions.segments
+        ]
+        raw2 = [
+            {"word": s.text, "start": s.start, "end": s.end}
+            for s in cap2.captions.segments
+        ]
+        data1 = self._strip_introduction(raw1)
+        data2 = self._strip_introduction(raw2)
+        return CaptionsPair(
+            part1=cap1,
+            part2=cap2,
+            part1_data=data1,
+            part2_data=data2,
+            raw_part1_data=raw1,
+            raw_part2_data=raw2,
         )
-        data2 = self._strip_introduction(
-            [{"word": s.text, "start": s.start, "end": s.end}
-             for s in cap2.captions.segments]
-        )
-        return CaptionsPair(part1=cap1, part2=cap2, part1_data=data1, part2_data=data2)
 
     async def generate_cover(
         self, post: RedditPost, script: StoryScript
@@ -259,22 +279,72 @@ class RedditVideoService:
         )
         return VideoPair(part1_video=video_bytes_1, part2_video=video_bytes_2)
 
+    async def generate_characters(
+        self,
+        script: StoryScript,
+        language: Language = Language.PORTUGUESE,
+    ) -> CharacterSheet:
+        """LLM extracts characters, then we generate a reference image for each."""
+        characters = await self._llm_proxy.generate_characters(
+            title=script.title,
+            part1=script.part1,
+            part2=script.part2,
+            target_language=language,
+        )
+        config = self._video_service._video_config
+        img_w, img_h = config.width, config.height
+
+        reference_images: dict[str, bytes] = {}
+        for char in characters:
+            prompt = (
+                char["visual_prompt"]
+                + ", character portrait, centered, neutral background"
+            )
+            result = self._image_generation_proxy.generate_image(
+                prompt=prompt,
+                negative_prompt=self.SFW_NEGATIVE_PROMPT,
+                width=img_w,
+                height=img_h,
+                num_images=1,
+            )
+            reference_images[char["name"]] = result[0]
+
+        return CharacterSheet(characters=characters, reference_images=reference_images)
+
     async def generate_image_stories(
         self,
         script: StoryScript,
         captions: CaptionsPair,
+        character_sheet: CharacterSheet | None = None,
     ) -> ImageStoryPair:
         """LLM plans timed image descriptions + prompts for both parts."""
+        chars = character_sheet.characters if character_sheet else None
+
+        intro1, cta1, offset1, content1 = self._compute_content_boundaries(
+            captions.raw_part1_data
+        )
         image_story_1 = await self._llm_proxy.generate_image_story(
             story_text=script.part1,
-            transcription=captions.part1_data,
+            transcription=content1,
+            characters=chars,
+            introduction_end_time=intro1,
+            call_to_action_start_time=cta1,
         )
+        self._shift_images_back(image_story_1, offset1)
         style_context = self._extract_style_context(image_story_1)
+
+        intro2, cta2, offset2, content2 = self._compute_content_boundaries(
+            captions.raw_part2_data
+        )
         image_story_2 = await self._llm_proxy.generate_image_story(
             story_text=script.part2,
-            transcription=captions.part2_data,
+            transcription=content2,
             style_context=style_context,
+            characters=chars,
+            introduction_end_time=intro2,
+            call_to_action_start_time=cta2,
         )
+        self._shift_images_back(image_story_2, offset2)
         config = self._video_service._video_config
         img_w, img_h = config.width, config.height
 
@@ -416,32 +486,43 @@ class RedditVideoService:
             base_text=part2_text,
         )
 
-        captions_1_data = self._strip_introduction(
-            [
-                {"word": s.text, "start": s.start, "end": s.end}
-                for s in captions_result_1.captions.segments
-            ]
-        )
-        captions_2_data = self._strip_introduction(
-            [
-                {"word": s.text, "start": s.start, "end": s.end}
-                for s in captions_result_2.captions.segments
-            ]
-        )
+        raw_captions_1 = [
+            {"word": s.text, "start": s.start, "end": s.end}
+            for s in captions_result_1.captions.segments
+        ]
+        raw_captions_2 = [
+            {"word": s.text, "start": s.start, "end": s.end}
+            for s in captions_result_2.captions.segments
+        ]
+
+        captions_1_data = self._strip_introduction(raw_captions_1)
+        captions_2_data = self._strip_introduction(raw_captions_2)
 
         # 5. LLM: generate image stories from captions
+        intro1, cta1, offset1, content1 = self._compute_content_boundaries(
+            raw_captions_1
+        )
         image_story_1 = await self._llm_proxy.generate_image_story(
             story_text=part1_text,
-            transcription=captions_1_data,
+            transcription=content1,
+            introduction_end_time=intro1,
+            call_to_action_start_time=cta1,
         )
+        self._shift_images_back(image_story_1, offset1)
 
         style_context = self._extract_style_context(image_story_1)
 
+        intro2, cta2, offset2, content2 = self._compute_content_boundaries(
+            raw_captions_2
+        )
         image_story_2 = await self._llm_proxy.generate_image_story(
             story_text=part2_text,
-            transcription=captions_2_data,
+            transcription=content2,
             style_context=style_context,
+            introduction_end_time=intro2,
+            call_to_action_start_time=cta2,
         )
+        self._shift_images_back(image_story_2, offset2)
 
         # 6. Generate images
         config = self._video_service._video_config
@@ -516,6 +597,82 @@ class RedditVideoService:
         "nsfw, nudity, sexual, gore, violence, blood, "
         "explicit, inappropriate, offensive"
     )
+
+    PART1_CTA = "Curta e me siga para a parte 2."
+    PART2_CTA = "Curta, comente e me siga para mais histórias."
+
+    @classmethod
+    def _compute_content_boundaries(
+        cls, raw_transcription: list[dict]
+    ) -> tuple[float, float, float, list[dict]]:
+        """Slice content from raw transcription and shift timestamps to zero-based.
+
+        Returns (intro_end_time, cta_start_time, offset, zero_based_content).
+        """
+        n = len(raw_transcription)
+
+        # --- intro: find "Parte N." near the start ---
+        intro_end_idx = 0
+        intro_end_time = raw_transcription[4]["end"] if n > 4 else 2.0
+        for i, w in enumerate(raw_transcription[:30]):
+            word = w.get("word", "").strip()
+            if re.match(r"^\d+[.,]?$", word):
+                prev = (
+                    raw_transcription[i - 1].get("word", "").strip().lower()
+                    if i > 0
+                    else ""
+                )
+                if prev in ("parte", "part"):
+                    intro_end_idx = i
+                    intro_end_time = w["end"]
+                    break
+
+        # --- CTA: find "Curta" in the last 20 words ---
+        cta_start_idx = n
+        cta_start_time = (
+            raw_transcription[-3]["start"] if n > 3 else intro_end_time + 10
+        )
+        search_start = max(intro_end_idx + 1, n - 20)
+        for i in range(search_start, n):
+            word = raw_transcription[i].get("word", "").strip().lower().rstrip(".,!?")
+            if word == "curta":
+                cta_start_idx = i
+                cta_start_time = raw_transcription[i]["start"]
+                break
+
+        # --- slice content ---
+        content = raw_transcription[intro_end_idx + 1 : cta_start_idx]
+
+        if len(content) < 5:
+            logger.warning(
+                "Content slice too short (%d words), falling back to full transcription",
+                len(content),
+            )
+            content = list(raw_transcription)
+            intro_end_time = content[4]["end"] if len(content) > 4 else 2.0
+            cta_start_time = (
+                content[-3]["start"] if len(content) > 3 else intro_end_time + 10
+            )
+
+        # --- shift to zero-based ---
+        offset = content[0]["start"]
+        zero_based = [
+            {
+                "word": w["word"],
+                "start": round(w["start"] - offset, 3),
+                "end": round(w["end"] - offset, 3),
+            }
+            for w in content
+        ]
+
+        return intro_end_time, cta_start_time, offset, zero_based
+
+    @staticmethod
+    def _shift_images_back(image_story: ImageStory, offset: float) -> None:
+        """Shift all image start_times back by offset, then pin first image to 0.0."""
+        for img in image_story.images:
+            img.start_time = round(img.start_time + offset, 3)
+        image_story.images[0].start_time = 0.0
 
     @staticmethod
     def _strip_introduction(transcription: list[dict]) -> list[dict]:
