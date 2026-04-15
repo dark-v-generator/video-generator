@@ -18,6 +18,7 @@ class MockImageGeneratorProxy(IImageGeneratorProxy):
         width: int = 1024,
         height: int = 1024,
         num_images: int = 1,
+        character_references: dict[str, bytes] | None = None,
     ) -> List[bytes]:
         images: List[bytes] = []
         for _ in range(num_images):

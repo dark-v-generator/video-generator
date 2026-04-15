@@ -18,6 +18,9 @@ Your task is to produce a JSON array of 10-15 images illustrating scenes from th
 5. Each image has:
    - `description`: scene summary in the story language.
    - `prompt`: image-generation prompt **written in the same language as the story**. **Each prompt MUST be under 1200 characters.** Be concise — use short phrases separated by commas, not full sentences. Refer to characters by a brief tag (e.g. "homem jovem, cabelo escuro curto, moletom cinza") rather than repeating their full description every time. Do NOT include any art style instructions in the prompt — style is applied externally.
+{% if characters %}
+   - `characters`: array of character **names** (matching the character sheet) that appear in this scene. Only include characters who are visually present. **Order by visual prominence** — the most important/focal character in the scene comes first. Example: `["Ana", "Pedro"]` means Ana is the focal character.
+{% endif %}
 6. Visual consistency across prompts:
 {% if characters %}
    - Use BRIEF recognizable tags derived from the character sheet (e.g. key features like hair, build, clothing). Do NOT paste the full character description into every prompt.
@@ -63,6 +66,15 @@ If the scene changes after "classe.", the next image `start_time` should be 4.94
 ## Output format
 
 Return a JSON **object** with a single key "images" containing an array:
+{% if characters %}
+{
+  "images": [
+    {"start_time": 0.0, "description": "...", "prompt": "...", "characters": ["Name1"]},
+    {"start_time": <from transcription>, "description": "...", "prompt": "...", "characters": ["Name1", "Name2"]},
+    ...
+  ]
+}
+{% else %}
 {
   "images": [
     {"start_time": 0.0, "description": "...", "prompt": "..."},
@@ -70,3 +82,4 @@ Return a JSON **object** with a single key "images" containing an array:
     ...
   ]
 }
+{% endif %}

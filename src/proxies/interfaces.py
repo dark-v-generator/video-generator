@@ -33,8 +33,14 @@ class IImageGeneratorProxy(ABC):
         width: int = 1024,
         height: int = 1024,
         num_images: int = 1,
+        character_references: dict[str, bytes] | None = None,
     ) -> List[bytes]:
-        """Generate a list of images from a prompt"""
+        """Generate a list of images from a prompt.
+
+        character_references: optional mapping of character name → portrait PNG bytes.
+        Backends that support character conditioning (e.g. Leonardo Phoenix) will use
+        these as visual references; others silently ignore them.
+        """
         ...
 
 

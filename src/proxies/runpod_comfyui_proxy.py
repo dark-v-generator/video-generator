@@ -35,6 +35,7 @@ class RunPodComfyUIProxy(IImageGeneratorProxy):
         width: int = 1024,
         height: int = 1024,
         num_images: int = 1,
+        character_references: dict[str, bytes] | None = None,
     ) -> list[bytes]:
         results: list[bytes] = []
         for _ in range(num_images):

@@ -1,9 +1,15 @@
 proxies:
+  reddit_config:
+    type: json
   cover_config:
     title_font_size: 150
   image_generation_config:
-    type: runpod
-    endpoint_id: "ipgjjtsxkkyogn"
+    type: leonardo
+    model_id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"
+    style_uuid: "093accc3-7633-4ffd-82da-d34000dfc0d6"
+    character_ref_preprocessor_id: 397
+    character_ref_strength: "Mid"
+    contrast: 3.5
   llm_config:
     type: prompt
     provider_config:

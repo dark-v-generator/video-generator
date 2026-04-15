@@ -6,6 +6,10 @@ class StoryImage(BaseModel):
     start_time: float = Field(..., title="When this image appears (seconds)")
     description: str = Field(..., title="Human-readable description of the scene")
     prompt: str = Field(..., title="Image generation prompt")
+    characters: List[str] = Field(
+        default_factory=list,
+        title="Names of characters present in this scene (must match character sheet names)",
+    )
 
 
 class ImageStory(BaseModel):

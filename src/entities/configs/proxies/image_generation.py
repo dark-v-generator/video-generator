@@ -11,7 +11,7 @@ class LeonardoElementConfig(BaseYAMLModel):
 class LeonardoImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo"] = "leonardo"
     api_key: Optional[str] = Field(None, title="Leonardo API Key")
-    model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Flux Dev)")
+    model_id: Optional[str] = Field(None, title="Leonardo Model ID (e.g. Phoenix)")
     style_uuid: Optional[str] = Field(
         None, title="Leonardo Style UUID (e.g. Cinematic)"
     )
@@ -20,6 +20,14 @@ class LeonardoImageGenerationConfig(BaseYAMLModel):
     )
     elements: list[LeonardoElementConfig] = Field(
         default_factory=list, title="Leonardo Elements (LoRAs)"
+    )
+    character_ref_preprocessor_id: Optional[int] = Field(
+        None,
+        title="Preprocessor ID for Character Reference (397=Phoenix, 133=SDXL, None=disabled)",
+    )
+    character_ref_strength: str = Field(
+        "Mid",
+        title="Character Reference strength (Low, Mid, High)",
     )
 
 
