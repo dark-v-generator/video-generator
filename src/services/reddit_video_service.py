@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -89,7 +90,8 @@ class TwoPartVideoResult:
     audio_part2: bytes
     captions_part1_json: str
     captions_part2_json: str
-    cover_png: Optional[bytes] = None
+    cover_part1_png: Optional[bytes] = None
+    cover_part2_png: Optional[bytes] = None
 
 
 @dataclass
@@ -106,7 +108,8 @@ class ImageStoryVideoResult:
     captions_part2_json: str
     image_story_part1_json: str
     image_story_part2_json: str
-    cover_png: Optional[bytes] = None
+    cover_part1_png: Optional[bytes] = None
+    cover_part2_png: Optional[bytes] = None
 
 
 # ---------------------------------------------------------------------------
@@ -247,34 +250,45 @@ class RedditVideoService:
         )
 
     async def generate_cover(
-        self, post: RedditPost, script: StoryScript
+        self, post: RedditPost, script: StoryScript, part_label: str = ""
     ) -> CoverResult:
+        title = f"{script.title} - {part_label}" if part_label else script.title
         return await self._cover_service.generate_cover(
             RedditCover(
-                title=script.title,
+                title=title,
                 community=post.community,
                 author=post.author,
                 image_url=post.community_url_photo,
             )
         )
 
+    async def generate_cover_pair(
+        self, post: RedditPost, script: StoryScript
+    ) -> tuple[CoverResult, CoverResult]:
+        cover1, cover2 = await asyncio.gather(
+            self.generate_cover(post, script, part_label="Parte 1"),
+            self.generate_cover(post, script, part_label="Parte 2"),
+        )
+        return cover1, cover2
+
     async def compose_two_part_video(
         self,
         audio: AudioPair,
         captions: CaptionsPair,
-        cover: CoverResult,
+        cover_part1: CoverResult,
+        cover_part2: CoverResult,
         low_quality: bool = False,
     ) -> VideoPair:
         video_bytes_1 = await self._render_video_to_bytes(
             speech=audio.part1.clip,
             captions_clip_obj=captions.part1.clip,
-            cover=cover.clip,
+            cover=cover_part1.clip,
             low_quality=low_quality,
         )
         video_bytes_2 = await self._render_video_to_bytes(
             speech=audio.part2.clip,
             captions_clip_obj=captions.part2.clip,
-            cover=cover.clip,
+            cover=cover_part2.clip,
             low_quality=low_quality,
         )
         return VideoPair(part1_video=video_bytes_1, part2_video=video_bytes_2)
@@ -363,14 +377,15 @@ class RedditVideoService:
         audio: AudioPair,
         captions: CaptionsPair,
         image_stories: ImageStoryPair,
-        cover: CoverResult,
+        cover_part1: CoverResult,
+        cover_part2: CoverResult,
         low_quality: bool = False,
     ) -> VideoPair:
         video_bytes_1 = self._render_image_story_to_bytes(
             audio=audio.part1.clip,
             image_story=image_stories.part1,
             generated_images=image_stories.generated_images_1,
-            cover=cover.clip,
+            cover=cover_part1.clip,
             captions=captions.part1.clip,
             low_quality=low_quality,
         )
@@ -378,7 +393,7 @@ class RedditVideoService:
             audio=audio.part2.clip,
             image_story=image_stories.part2,
             generated_images=image_stories.generated_images_2,
-            cover=cover.clip,
+            cover=cover_part2.clip,
             captions=captions.part2.clip,
             low_quality=low_quality,
         )
@@ -405,8 +420,10 @@ class RedditVideoService:
         script = await self.generate_script(post, language, speech_gender)
         audio = await self.generate_audio(script, speech_rate, language)
         captions = await self.generate_captions_pair(audio, script, language)
-        cover = await self.generate_cover(post, script)
-        videos = await self.compose_two_part_video(audio, captions, cover, low_quality)
+        cover1, cover2 = await self.generate_cover_pair(post, script)
+        videos = await self.compose_two_part_video(
+            audio, captions, cover1, cover2, low_quality
+        )
 
         story_md = f"# {script.title}\n\n"
         story_md += f"**Narrator gender:** {script.narrator_gender} → resolved: {script.resolved_gender}\n\n"
@@ -426,7 +443,8 @@ class RedditVideoService:
             captions_part2_json=json.dumps(
                 captions.part2_data, ensure_ascii=False, indent=2
             ),
-            cover_png=cover.bytes,
+            cover_part1_png=cover1.bytes,
+            cover_part2_png=cover2.bytes,
         )
 
     async def generate_image_story_video(
@@ -535,14 +553,25 @@ class RedditVideoService:
             image_story_2, img_w, img_h
         )
 
-        # 7. Cover
-        cover_result = await self._cover_service.generate_cover(
-            RedditCover(
-                title=story.get("title", post.title),
-                community=post.community,
-                author=post.author,
-                image_url=post.community_url_photo,
-            )
+        # 7. Covers
+        base_title = story.get("title", post.title)
+        cover_result_1, cover_result_2 = await asyncio.gather(
+            self._cover_service.generate_cover(
+                RedditCover(
+                    title=f"{base_title} - Parte 1",
+                    community=post.community,
+                    author=post.author,
+                    image_url=post.community_url_photo,
+                )
+            ),
+            self._cover_service.generate_cover(
+                RedditCover(
+                    title=f"{base_title} - Parte 2",
+                    community=post.community,
+                    author=post.author,
+                    image_url=post.community_url_photo,
+                )
+            ),
         )
 
         # 8. Build story markdown
@@ -558,7 +587,7 @@ class RedditVideoService:
             audio=speech_result_1.clip,
             image_story=image_story_1,
             generated_images=generated_images_1,
-            cover=cover_result.clip,
+            cover=cover_result_1.clip,
             captions=captions_result_1.clip,
             low_quality=low_quality,
         )
@@ -566,7 +595,7 @@ class RedditVideoService:
             audio=speech_result_2.clip,
             image_story=image_story_2,
             generated_images=generated_images_2,
-            cover=cover_result.clip,
+            cover=cover_result_2.clip,
             captions=captions_result_2.clip,
             low_quality=low_quality,
         )
@@ -586,7 +615,8 @@ class RedditVideoService:
             ),
             image_story_part1_json=image_story_1.model_dump_json(indent=2),
             image_story_part2_json=image_story_2.model_dump_json(indent=2),
-            cover_png=cover_result.bytes,
+            cover_part1_png=cover_result_1.bytes,
+            cover_part2_png=cover_result_2.bytes,
         )
 
     # ------------------------------------------------------------------

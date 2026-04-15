@@ -86,9 +86,12 @@ async def main():
         f.write(result.image_story_part1_json)
     with open(os.path.join(out, "image_story_part2.json"), "w", encoding="utf-8") as f:
         f.write(result.image_story_part2_json)
-    if result.cover_png:
-        with open(os.path.join(out, "cover.png"), "wb") as f:
-            f.write(result.cover_png)
+    if result.cover_part1_png:
+        with open(os.path.join(out, "cover_part1.png"), "wb") as f:
+            f.write(result.cover_part1_png)
+    if result.cover_part2_png:
+        with open(os.path.join(out, "cover_part2.png"), "wb") as f:
+            f.write(result.cover_part2_png)
 
     print("\nGeneration Complete!")
     print(f"All artifacts saved to: {out}")

@@ -377,14 +377,16 @@ async def on_images_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         post = context.user_data["post"]
         script = context.user_data["script"]
 
-        cover = await service.generate_cover(post, script)
-        context.user_data["cover"] = cover
+        cover1, cover2 = await service.generate_cover_pair(post, script)
+        context.user_data["cover1"] = cover1
+        context.user_data["cover2"] = cover2
 
         videos = service.compose_image_story_video(
             audio,
             captions,
             image_stories,
-            cover,
+            cover1,
+            cover2,
             low_quality=bot_config.low_quality,
         )
         context.user_data["videos"] = videos
@@ -455,13 +457,15 @@ async def on_video_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         audio = context.user_data["audio"]
         captions = context.user_data["captions"]
         image_stories = context.user_data["image_stories"]
-        cover = context.user_data["cover"]
+        cover1 = context.user_data["cover1"]
+        cover2 = context.user_data["cover2"]
 
         videos = service.compose_image_story_video(
             audio,
             captions,
             image_stories,
-            cover,
+            cover1,
+            cover2,
             low_quality=bot_config.low_quality,
         )
         context.user_data["videos"] = videos
