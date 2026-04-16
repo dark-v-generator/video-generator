@@ -50,6 +50,15 @@ class LeonardoV2ImageGenerationConfig(BaseYAMLModel):
     prompt_enhance: str = Field("OFF", title="ON or OFF")
 
 
+class MidjourneyImageGenerationConfig(BaseYAMLModel):
+    type: Literal["midjourney"] = "midjourney"
+    api_key: Optional[str] = Field(None, title="Legnext API Key")
+    prompt_suffix: str = Field(
+        "--v 7 --ar 9:16",
+        title="Appended to every prompt (version, aspect ratio, etc.)",
+    )
+
+
 class MockImageGenerationConfig(BaseYAMLModel):
     type: Literal["mock"] = "mock"
 
@@ -57,6 +66,7 @@ class MockImageGenerationConfig(BaseYAMLModel):
 ImageGenerationConfigType = Union[
     LeonardoImageGenerationConfig,
     LeonardoV2ImageGenerationConfig,
+    MidjourneyImageGenerationConfig,
     LocalImageGenerationConfig,
     RunPodImageGenerationConfig,
     MockImageGenerationConfig,

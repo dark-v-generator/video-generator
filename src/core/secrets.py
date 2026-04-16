@@ -10,6 +10,7 @@ class Secrets(BaseSettings):
     elevenlabs_api_key: Optional[str] = None
     leonardo_api_key: Optional[str] = None
     runpod_api_key: Optional[str] = None
+    legnext_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
 
     # LLM settings

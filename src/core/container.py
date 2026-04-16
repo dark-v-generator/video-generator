@@ -33,12 +33,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config=main_config.provided.proxies.image_generation_config,
         leonardo_api_key=secrets.leonardo_api_key,
         runpod_api_key=secrets.runpod_api_key,
+        legnext_api_key=secrets.legnext_api_key,
     )
     portrait_generation_proxy = providers.Singleton(
         proxies_factories.ImageGeneratorFactory.create_optional,
         config=main_config.provided.proxies.portrait_generation_config,
         leonardo_api_key=secrets.leonardo_api_key,
         runpod_api_key=secrets.runpod_api_key,
+        legnext_api_key=secrets.legnext_api_key,
     )
     speech_proxy = providers.Singleton(
         proxies_factories.SpeechProxyFactory.create,

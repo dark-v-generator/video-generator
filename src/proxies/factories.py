@@ -2,6 +2,7 @@ from src.entities.configs.proxies.image_generation import (
     ImageGenerationConfigType,
     LeonardoImageGenerationConfig,
     LeonardoV2ImageGenerationConfig,
+    MidjourneyImageGenerationConfig,
     LocalImageGenerationConfig,
     RunPodImageGenerationConfig,
     MockImageGenerationConfig,
@@ -9,6 +10,7 @@ from src.entities.configs.proxies.image_generation import (
 from src.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
 from src.proxies.leonardo_proxy import LeonardoImageProxy
 from src.proxies.leonardo_v2_proxy import LeonardoV2ImageProxy
+from src.proxies.midjourney_proxy import MidjourneyImageProxy
 from src.proxies.local_sdxl_proxy import LocalSDXLImageProxy
 from src.proxies.runpod_comfyui_proxy import RunPodComfyUIProxy
 from src.proxies.mock_image_proxy import MockImageGeneratorProxy
@@ -67,16 +69,20 @@ class ImageGeneratorFactory:
         config: ImageGenerationConfigType | None,
         leonardo_api_key: str = None,
         runpod_api_key: str = None,
+        legnext_api_key: str = None,
     ) -> IImageGeneratorProxy | None:
         if config is None:
             return None
-        return ImageGeneratorFactory.create(config, leonardo_api_key, runpod_api_key)
+        return ImageGeneratorFactory.create(
+            config, leonardo_api_key, runpod_api_key, legnext_api_key,
+        )
 
     @staticmethod
     def create(
         config: ImageGenerationConfigType,
         leonardo_api_key: str = None,
         runpod_api_key: str = None,
+        legnext_api_key: str = None,
     ) -> IImageGeneratorProxy:
         if isinstance(config, LeonardoImageGenerationConfig):
             config.api_key = leonardo_api_key
@@ -84,6 +90,9 @@ class ImageGeneratorFactory:
         elif isinstance(config, LeonardoV2ImageGenerationConfig):
             config.api_key = leonardo_api_key
             return LeonardoV2ImageProxy(config=config)
+        elif isinstance(config, MidjourneyImageGenerationConfig):
+            config.api_key = legnext_api_key
+            return MidjourneyImageProxy(config=config)
         elif isinstance(config, RunPodImageGenerationConfig):
             config.api_key = runpod_api_key
             return RunPodComfyUIProxy(config=config)

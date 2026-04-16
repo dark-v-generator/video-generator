@@ -333,15 +333,12 @@ class RedditVideoService:
         character_sheet: CharacterSheet | None = None,
     ) -> ImageStoryPair:
         """LLM plans timed image descriptions + prompts for both parts."""
-        chars = character_sheet.characters if character_sheet else None
-
         intro1, cta1, offset1, content1 = self._compute_content_boundaries(
             captions.raw_part1_data
         )
         image_story_1 = await self._llm_proxy.generate_image_story(
             story_text=script.part1,
             transcription=content1,
-            characters=chars,
             introduction_end_time=intro1,
             call_to_action_start_time=cta1,
         )
@@ -355,7 +352,6 @@ class RedditVideoService:
             story_text=script.part2,
             transcription=content2,
             style_context=style_context,
-            characters=chars,
             introduction_end_time=intro2,
             call_to_action_start_time=cta2,
         )
@@ -363,13 +359,8 @@ class RedditVideoService:
         config = self._video_service._video_config
         img_w, img_h = config.width, config.height
 
-        ref_images = character_sheet.reference_images if character_sheet else None
-        generated_1 = self._generate_images_for_story(
-            image_story_1, img_w, img_h, all_reference_images=ref_images
-        )
-        generated_2 = self._generate_images_for_story(
-            image_story_2, img_w, img_h, all_reference_images=ref_images
-        )
+        generated_1 = self._generate_images_for_story(image_story_1, img_w, img_h)
+        generated_2 = self._generate_images_for_story(image_story_2, img_w, img_h)
 
         return ImageStoryPair(
             part1=image_story_1,
@@ -522,37 +513,16 @@ class RedditVideoService:
         captions_1_data = self._strip_introduction(raw_captions_1)
         captions_2_data = self._strip_introduction(raw_captions_2)
 
-        # 5. Characters: extract + generate reference portraits
-        characters = await self._llm_proxy.generate_characters(
-            title=story.get("title", post.title),
-            part1=part1_text,
-            part2=part2_text,
-            target_language=language,
-        )
         config = self._video_service._video_config
         img_w, img_h = config.width, config.height
 
-        reference_images: dict[str, bytes] = {}
-        if characters:
-            protagonist = characters[0]
-            portrait_prompt = protagonist["visual_prompt"] + self.PORTRAIT_SUFFIX
-            result = self._portrait_proxy.generate_image(
-                prompt=portrait_prompt,
-                negative_prompt=self.SFW_NEGATIVE_PROMPT,
-                width=img_w,
-                height=img_h,
-                num_images=1,
-            )
-            reference_images[protagonist["name"]] = result[0]
-
-        # 6. LLM: generate image stories from captions (with character sheet)
+        # 5. LLM: generate image stories from captions
         intro1, cta1, offset1, content1 = self._compute_content_boundaries(
             raw_captions_1
         )
         image_story_1 = await self._llm_proxy.generate_image_story(
             story_text=part1_text,
             transcription=content1,
-            characters=characters,
             introduction_end_time=intro1,
             call_to_action_start_time=cta1,
         )
@@ -567,18 +537,17 @@ class RedditVideoService:
             story_text=part2_text,
             transcription=content2,
             style_context=style_context,
-            characters=characters,
             introduction_end_time=intro2,
             call_to_action_start_time=cta2,
         )
         self._shift_images_back(image_story_2, offset2)
 
-        # 7. Generate images (with character references)
+        # 6. Generate images
         generated_images_1 = self._generate_images_for_story(
-            image_story_1, img_w, img_h, all_reference_images=reference_images
+            image_story_1, img_w, img_h,
         )
         generated_images_2 = self._generate_images_for_story(
-            image_story_2, img_w, img_h, all_reference_images=reference_images
+            image_story_2, img_w, img_h,
         )
 
         # 8. Covers
@@ -776,26 +745,14 @@ class RedditVideoService:
         image_story,
         width: int,
         height: int,
-        all_reference_images: dict[str, bytes] | None = None,
     ) -> list:
         def _generate_single(img_def):
-            scene_refs: dict[str, bytes] | None = None
-            if all_reference_images and img_def.characters:
-                scene_refs = {
-                    name: all_reference_images[name]
-                    for name in img_def.characters
-                    if name in all_reference_images
-                }
-                if not scene_refs:
-                    scene_refs = None
-
             result = self._image_generation_proxy.generate_image(
                 prompt=img_def.prompt,
                 negative_prompt=self.SFW_NEGATIVE_PROMPT,
                 width=width,
                 height=height,
                 num_images=1,
-                character_references=scene_refs,
             )
             return result[0]
 
