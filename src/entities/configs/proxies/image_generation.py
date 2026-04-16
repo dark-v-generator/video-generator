@@ -23,7 +23,7 @@ class LeonardoImageGenerationConfig(BaseYAMLModel):
     )
     character_ref_preprocessor_id: Optional[int] = Field(
         None,
-        title="Preprocessor ID for Character Reference (397=Phoenix, 133=SDXL, None=disabled)",
+        title="Preprocessor ID for image reference (397=Phoenix CharRef, 133=SDXL CharRef, 233=Flux ContentRef, None=disabled)",
     )
     character_ref_strength: str = Field(
         "Mid",

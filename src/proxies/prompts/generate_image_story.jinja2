@@ -19,19 +19,29 @@ Your task is to produce a JSON array of 10-15 images illustrating scenes from th
    - `description`: scene summary in the story language.
    - `prompt`: image-generation prompt **written in the same language as the story**. **Each prompt MUST be under 1200 characters.** Be concise — use short phrases separated by commas, not full sentences. Refer to characters by a brief tag (e.g. "homem jovem, cabelo escuro curto, moletom cinza") rather than repeating their full description every time. Do NOT include any art style instructions in the prompt — style is applied externally.
 {% if characters %}
-   - `characters`: array of character **names** (matching the character sheet) that appear in this scene. Only include characters who are visually present. **Order by visual prominence** — the most important/focal character in the scene comes first. Example: `["Ana", "Pedro"]` means Ana is the focal character.
+   - `characters`: array with **exactly one** character name — the **focal character** of this scene. Only the first character in the array receives a visual reference; the rest are described in the prompt text only. Example: `["Ana"]`.
 {% endif %}
-6. Visual consistency across prompts:
+6. Scene composition:
+{% if characters %}
+   - Each image should **focus on ONE character**. Other people, animals, or secondary characters present in the scene should be described in the `prompt` text but NOT listed in the `characters` array.
+   - For interactions between two characters (conversations, arguments, romantic moments), **alternate the focal character** across consecutive images. Example: image 1 focuses on Ana speaking, image 2 shows Pedro's reaction, image 3 back to Ana.
+   - The protagonist (first character in the character sheet) should appear as the focal character in most scenes.
+{% endif %}
+7. Visual consistency across prompts:
 {% if characters %}
    - Use BRIEF recognizable tags derived from the character sheet (e.g. key features like hair, build, clothing). Do NOT paste the full character description into every prompt.
 {% else %}
    - Describe each character the same way in every prompt using brief tags (age, hair, build, clothing).
 {% endif %}
-7. All prompts must be appropriate for a general audience. Use creative, indirect visuals:
+   - **Environment & setting continuity**: Each image is generated independently — the image model has NO memory of previous images. You MUST re-state key setting details in EVERY prompt where they apply. Before writing prompts, mentally establish the story's visual anchors (economic context, architecture style, lighting, weather, time of day, location type) and weave them into each prompt as brief recurring tags.
+   - Examples: if the story is set in a poor neighborhood, every outdoor scene should include tags like "run-down houses, unpaved street, peeling paint" — not just the first scene. If a character lives in a modest home, interior scenes should include "small room, old furniture, bare walls" consistently.
+   - When the setting genuinely changes in the story (e.g. character moves to a new place), make the transition explicit in the prompt (e.g. "luxurious office, marble floor — contrasting with his humble origins").
+   - Do NOT assume the image model will "remember" any detail from a previous prompt. Treat each prompt as if it were the only one the model will ever see.
+8. All prompts must be appropriate for a general audience. Use creative, indirect visuals:
    - For romantic moments: a dimly lit room, silhouettes, hands holding.
    - For conflict: the aftermath or the tension before.
    - For emotional moments: focus on facial expressions, body language, and the environment.
-8. Return only the JSON, no commentary or markdown.
+9. Return only the JSON, no commentary or markdown.
 
 ## Timestamp alignment example
 
@@ -69,8 +79,8 @@ Return a JSON **object** with a single key "images" containing an array:
 {% if characters %}
 {
   "images": [
-    {"start_time": 0.0, "description": "...", "prompt": "...", "characters": ["Name1"]},
-    {"start_time": <from transcription>, "description": "...", "prompt": "...", "characters": ["Name1", "Name2"]},
+    {"start_time": 0.0, "description": "...", "prompt": "...", "characters": ["Protagonist"]},
+    {"start_time": <from transcription>, "description": "...", "prompt": "...", "characters": ["OtherCharacter"]},
     ...
   ]
 }

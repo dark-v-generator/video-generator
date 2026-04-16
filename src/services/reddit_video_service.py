@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -298,7 +299,7 @@ class RedditVideoService:
         script: StoryScript,
         language: Language = Language.PORTUGUESE,
     ) -> CharacterSheet:
-        """LLM extracts characters, then we generate a reference image for each."""
+        """LLM extracts characters, then generate a reference portrait for the protagonist only."""
         characters = await self._llm_proxy.generate_characters(
             title=script.title,
             part1=script.part1,
@@ -309,11 +310,9 @@ class RedditVideoService:
         img_w, img_h = config.width, config.height
 
         reference_images: dict[str, bytes] = {}
-        for char in characters:
-            prompt = (
-                char["visual_prompt"]
-                + ", character portrait, centered, neutral background"
-            )
+        if characters:
+            protagonist = characters[0]
+            prompt = protagonist["visual_prompt"] + self.PORTRAIT_SUFFIX
             result = self._image_generation_proxy.generate_image(
                 prompt=prompt,
                 negative_prompt=self.SFW_NEGATIVE_PROMPT,
@@ -321,7 +320,7 @@ class RedditVideoService:
                 height=img_h,
                 num_images=1,
             )
-            reference_images[char["name"]] = result[0]
+            reference_images[protagonist["name"]] = result[0]
 
         return CharacterSheet(characters=characters, reference_images=reference_images)
 
@@ -532,11 +531,9 @@ class RedditVideoService:
         img_w, img_h = config.width, config.height
 
         reference_images: dict[str, bytes] = {}
-        for char in characters:
-            portrait_prompt = (
-                char["visual_prompt"]
-                + ", character portrait, centered, neutral background"
-            )
+        if characters:
+            protagonist = characters[0]
+            portrait_prompt = protagonist["visual_prompt"] + self.PORTRAIT_SUFFIX
             result = self._image_generation_proxy.generate_image(
                 prompt=portrait_prompt,
                 negative_prompt=self.SFW_NEGATIVE_PROMPT,
@@ -544,7 +541,7 @@ class RedditVideoService:
                 height=img_h,
                 num_images=1,
             )
-            reference_images[char["name"]] = result[0]
+            reference_images[protagonist["name"]] = result[0]
 
         # 6. LLM: generate image stories from captions (with character sheet)
         intro1, cta1, offset1, content1 = self._compute_content_boundaries(
@@ -657,6 +654,8 @@ class RedditVideoService:
         "explicit, inappropriate, offensive"
     )
 
+    PORTRAIT_SUFFIX = ", character portrait, centered, neutral background"
+
     PART1_CTA = "Curta e me siga para a parte 2."
     PART2_CTA = "Curta, comente e me siga para mais histórias."
 
@@ -768,6 +767,8 @@ class RedditVideoService:
             + "\n".join(lines)
         )
 
+    IMAGE_GEN_MAX_WORKERS = 5
+
     def _generate_images_for_story(
         self,
         image_story,
@@ -775,8 +776,7 @@ class RedditVideoService:
         height: int,
         all_reference_images: dict[str, bytes] | None = None,
     ) -> list:
-        generated = []
-        for img_def in image_story.images:
+        def _generate_single(img_def):
             scene_refs: dict[str, bytes] | None = None
             if all_reference_images and img_def.characters:
                 scene_refs = {
@@ -795,8 +795,11 @@ class RedditVideoService:
                 num_images=1,
                 character_references=scene_refs,
             )
-            generated.append(result[0])
-        return generated
+            return result[0]
+
+        with ThreadPoolExecutor(max_workers=self.IMAGE_GEN_MAX_WORKERS) as pool:
+            futures = [pool.submit(_generate_single, img_def) for img_def in image_story.images]
+            return [f.result() for f in futures]
 
     def _render_image_story_to_bytes(
         self,
