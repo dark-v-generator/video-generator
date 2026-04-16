@@ -41,7 +41,7 @@ CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 config = MainConfig.from_yaml(CONFIG_PATH)
 bot_config = config.bots.image_story_bot
 
-REVIEW_SCRIPT, REVIEW_AUDIO, REVIEW_CHARACTERS, REVIEW_IMAGES, REVIEW_VIDEO = range(5)
+REVIEW_SCRIPT, REVIEW_AUDIO, REVIEW_IMAGES, REVIEW_VIDEO = range(4)
 
 APPROVE_KEYBOARD = InlineKeyboardMarkup(
     [[InlineKeyboardButton("Approve", callback_data="approve")]]
@@ -197,7 +197,9 @@ async def on_script_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def on_audio_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("Generating captions and character descriptions...")
+    await query.message.reply_text(
+        "Generating captions and AI images... this will take a few minutes."
+    )
 
     try:
         service: RedditVideoService = context.user_data["service"]
@@ -207,19 +209,23 @@ async def on_audio_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         captions = await service.generate_captions_pair(audio, script)
         context.user_data["captions"] = captions
 
-        character_sheet = await service.generate_characters(script)
-        context.user_data["character_sheet"] = character_sheet
+        image_stories = await service.generate_image_stories(script, captions)
+        context.user_data["image_stories"] = image_stories
 
-        await _send_characters_preview(query.message, character_sheet)
+        await _send_images_preview(query.message, image_stories)
+        total = len(image_stories.generated_images_1) + len(
+            image_stories.generated_images_2
+        )
         await query.message.reply_text(
-            "Characters created. Approve to generate story images, "
-            "or send 'regenerate' for new characters.",
+            f"{total} images generated (preview above shows a sample). "
+            "All images will be used in the final video.\n\n"
+            "Approve or send 'regenerate' to get new images.",
             reply_markup=APPROVE_KEYBOARD,
         )
-        return REVIEW_CHARACTERS
+        return REVIEW_IMAGES
 
     except Exception as e:
-        logger.exception("Failed during character generation")
+        logger.exception("Failed during image generation")
         await query.message.reply_text(f"Error: {e}")
         return ConversationHandler.END
 
@@ -262,86 +268,6 @@ async def on_audio_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         logger.exception("Failed during audio re-generation")
         await update.message.reply_text(f"Error: {e}")
         return REVIEW_AUDIO
-
-
-# ---------------------------------------------------------------------------
-# REVIEW_CHARACTERS state
-# ---------------------------------------------------------------------------
-
-
-async def _send_characters_preview(message, character_sheet) -> None:
-    for char in character_sheet.characters:
-        caption = f"*{char['name']}*\n{char['description']}"
-        img = character_sheet.reference_images.get(char["name"])
-        if img:
-            await send_image_bytes(message, img, _truncate(caption, 1024))
-        else:
-            await message.reply_text(caption)
-
-
-async def on_characters_approve(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    query = update.callback_query
-    await query.answer()
-    await query.message.reply_text(
-        "Generating AI images for the story... this will take a few minutes."
-    )
-
-    try:
-        service: RedditVideoService = context.user_data["service"]
-        script = context.user_data["script"]
-        captions = context.user_data["captions"]
-        character_sheet = context.user_data["character_sheet"]
-
-        image_stories = await service.generate_image_stories(
-            script, captions, character_sheet
-        )
-        context.user_data["image_stories"] = image_stories
-
-        await _send_images_preview(query.message, image_stories)
-        total = len(image_stories.generated_images_1) + len(
-            image_stories.generated_images_2
-        )
-        await query.message.reply_text(
-            f"{total} images generated (preview above shows a sample). "
-            "All images will be used in the final video.\n\n"
-            "Approve or send 'regenerate' to get new images.",
-            reply_markup=APPROVE_KEYBOARD,
-        )
-        return REVIEW_IMAGES
-
-    except Exception as e:
-        logger.exception("Failed during image generation")
-        await query.message.reply_text(f"Error: {e}")
-        return ConversationHandler.END
-
-
-async def on_characters_change(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    await update.message.reply_text(
-        "Regenerating characters... this may take a minute."
-    )
-
-    try:
-        service: RedditVideoService = context.user_data["service"]
-        script = context.user_data["script"]
-
-        character_sheet = await service.generate_characters(script)
-        context.user_data["character_sheet"] = character_sheet
-
-        await _send_characters_preview(update.message, character_sheet)
-        await update.message.reply_text(
-            "New characters created. Approve or send 'regenerate' again.",
-            reply_markup=APPROVE_KEYBOARD,
-        )
-        return REVIEW_CHARACTERS
-
-    except Exception as e:
-        logger.exception("Failed during character regeneration")
-        await update.message.reply_text(f"Error: {e}")
-        return REVIEW_CHARACTERS
 
 
 # ---------------------------------------------------------------------------
@@ -520,10 +446,6 @@ def main() -> None:
             REVIEW_AUDIO: [
                 CallbackQueryHandler(on_audio_approve, pattern="^approve$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, on_audio_change),
-            ],
-            REVIEW_CHARACTERS: [
-                CallbackQueryHandler(on_characters_approve, pattern="^approve$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, on_characters_change),
             ],
             REVIEW_IMAGES: [
                 CallbackQueryHandler(on_images_approve, pattern="^approve$"),
