@@ -3,16 +3,15 @@ proxies:
     type: json
   cover_config:
     title_font_size: 150
+  portrait_generation_config:
+    type: leonardo-v2
+    model: "nano-banana-2"
+    prompt_enhance: "OFF"
   image_generation_config:
     type: leonardo
-    model_id: "b2614463-296c-462a-9586-aafdb8f00e36"
-    style_uuid: "556c1ee5-ec38-42e8-955a-1e82dad0ffa1"
-    elements:
-      - ak_uuid: "28eb53a4-8da6-47c1-b73e-6541f4d65407"
-        weight: 1.0
-      - ak_uuid: "1b900d40-e593-4abb-92b5-04ce96403a44"
-        weight: 1.0
-    character_ref_preprocessor_id: 233
+    model_id: "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"
+    style_uuid: "093accc3-7633-4ffd-82da-d34000dfc0d6"
+    character_ref_preprocessor_id: 397
     character_ref_strength: "Mid"
     contrast: 3.5
   llm_config:

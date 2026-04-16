@@ -42,12 +42,21 @@ class RunPodImageGenerationConfig(BaseYAMLModel):
     endpoint_id: str = Field("ipgjjtsxkkyogn", title="RunPod Serverless Endpoint ID")
 
 
+class LeonardoV2ImageGenerationConfig(BaseYAMLModel):
+    type: Literal["leonardo-v2"] = "leonardo-v2"
+    api_key: Optional[str] = Field(None, title="Leonardo API Key")
+    model: str = Field("nano-banana-2", title="Model identifier string (e.g. nano-banana-2)")
+    style_ids: list[str] = Field(default_factory=list, title="Style UUIDs")
+    prompt_enhance: str = Field("OFF", title="ON or OFF")
+
+
 class MockImageGenerationConfig(BaseYAMLModel):
     type: Literal["mock"] = "mock"
 
 
 ImageGenerationConfigType = Union[
     LeonardoImageGenerationConfig,
+    LeonardoV2ImageGenerationConfig,
     LocalImageGenerationConfig,
     RunPodImageGenerationConfig,
     MockImageGenerationConfig,

@@ -30,7 +30,10 @@ class ProxiesConfig(BaseYAMLModel):
         LocalTranscriptionConfig(), title="Transcription configuration"
     )
     image_generation_config: ImageGenerationConfigType = Field(
-        LocalImageGenerationConfig(), title="Image Generation configuration"
+        LocalImageGenerationConfig(), title="Image Generation configuration (scenes)"
+    )
+    portrait_generation_config: Optional[ImageGenerationConfigType] = Field(
+        None, title="Image Generation configuration for character portraits (falls back to image_generation_config)",
     )
     speech_config: SpeechConfigType = Field(
         EdgeTTSSpeechConfig(), title="Speech configuration"

@@ -19,3 +19,7 @@ class VideoConfig(BaseYAMLModel):
         title="Youtube channel url",
     )
     ffmpeg_params: List[str] = Field([], title="ffmpeg params")
+    draw_transition_duration: float = Field(
+        1.0,
+        title="Duration (seconds) of the draw-in reveal effect. Set to 0 to use a simple crossfade instead.",
+    )

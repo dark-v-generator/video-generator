@@ -168,10 +168,13 @@ class VideoService:
         )
 
         fade = self.CROSSFADE_DURATION
+        draw_dur = config.draw_transition_duration
+        overlap = max(fade, draw_dur) if draw_dur > 0 else fade
         moviepy_clips = []
+        first_visible = True
         for idx, (start, end, img_bytes, is_blurred) in enumerate(segments):
             extended_end = (
-                min(end + fade, total_duration) if idx < len(segments) - 1 else end
+                min(end + overlap, total_duration) if idx < len(segments) - 1 else end
             )
             clip_duration = extended_end - start
 
@@ -184,12 +187,19 @@ class VideoService:
                 moviepy_clips.append(clip.clip)
             else:
                 zoom_in = random.choice([True, False])
+                use_draw = draw_dur > 0 and not first_visible
                 kb_clip = self._create_ken_burns_clip(
-                    img_bytes, width, height, clip_duration, zoom_in
+                    img_bytes, width, height, clip_duration, zoom_in,
                 )
                 kb_clip = kb_clip.with_start(start)
-                if start > 0:
+                if use_draw:
+                    mask = self._create_brush_mask_clip(
+                        width, height, clip_duration, draw_dur,
+                    )
+                    kb_clip = kb_clip.with_mask(mask)
+                elif not first_visible:
                     kb_clip = CrossFadeIn(duration=fade).apply(kb_clip)
+                first_visible = False
                 moviepy_clips.append(kb_clip)
 
         if cover is not None and intro_end > 0:
@@ -264,9 +274,17 @@ class VideoService:
 
         return segments
 
+    BRUSH_FEATHER = 0.06
+    BRUSH_STROKE_COUNT = 4
+
     @classmethod
     def _create_ken_burns_clip(
-        cls, img_bytes: bytes, width: int, height: int, duration: float, zoom_in: bool
+        cls,
+        img_bytes: bytes,
+        width: int,
+        height: int,
+        duration: float,
+        zoom_in: bool,
     ) -> MoviepyVideoClip:
         max_s = cls.KEN_BURNS_MAX_SCALE
         img = Image.open(io.BytesIO(img_bytes)).resize(
@@ -291,6 +309,86 @@ class VideoService:
             )
 
         return MoviepyVideoClip(make_frame, duration=duration)
+
+    @classmethod
+    def _create_brush_mask_clip(
+        cls, width: int, height: int, duration: float, draw_duration: float,
+    ) -> MoviepyVideoClip:
+        """Create a grayscale mask clip that reveals via the brush pattern.
+
+        Returns a clip where each pixel goes from 0 (transparent) to 1 (opaque)
+        according to the brush reveal map timing. Used as a mask on the new
+        image so the previous image shows through the un-revealed areas.
+        """
+        reveal_map = cls._generate_brush_reveal_map(width, height)
+        feather = cls.BRUSH_FEATHER
+
+        def make_mask_frame(t):
+            if t >= draw_duration:
+                return np.ones((height, width), dtype=np.float64)
+            p = t / draw_duration
+            return np.clip(
+                (p - reveal_map) / feather, 0.0, 1.0,
+            ).astype(np.float64)
+
+        return MoviepyVideoClip(make_mask_frame, duration=duration, is_mask=True)
+
+    @classmethod
+    def _generate_brush_reveal_map(cls, width: int, height: int) -> np.ndarray:
+        """Generate a reveal map with diagonal brush strokes.
+
+        The image is split into diagonal bands. Each band sweeps along
+        its diagonal axis. Band boundaries use coarse, rough noise
+        (nearest-neighbor upsampled) to produce irregular, paint-brush-
+        like edges with splatter and gaps — not smooth curves.
+        """
+        n_strokes = cls.BRUSH_STROKE_COUNT
+        reveal = np.ones((height, width), dtype=np.float32)
+
+        xs = np.linspace(0, 1, width, dtype=np.float32)
+        ys = np.linspace(0, 1, height, dtype=np.float32)
+        xg, yg = np.meshgrid(xs, ys)
+
+        diag = 0.35 * xg + 0.65 * yg
+
+        rng = np.random.default_rng()
+        time_per_stroke = 1.0 / n_strokes
+
+        full_noise = rng.random((height, width), dtype=np.float32) * 2 - 1
+        noise_uint8 = ((full_noise * 0.5 + 0.5) * 255).astype(np.uint8)
+        blurred_img = Image.fromarray(noise_uint8, mode="L").filter(
+            ImageFilter.GaussianBlur(radius=25)
+        )
+        blurred = np.array(blurred_img, dtype=np.float32) / 255.0 * 2 - 1
+        rough = blurred * 0.30
+        diag_rough = diag + rough
+
+        d_min, d_max = diag_rough.min(), diag_rough.max()
+        diag_norm = (diag_rough - d_min) / (d_max - d_min)
+
+        for i in range(n_strokes):
+            band_lo = i / n_strokes
+            band_hi = (i + 1) / n_strokes
+            band_mask = (diag_norm >= band_lo) & (diag_norm < band_hi)
+
+            perp = xg - yg
+            p_min, p_max = perp[band_mask].min(), perp[band_mask].max()
+            if p_max - p_min < 1e-6:
+                sweep_val = np.zeros_like(perp)
+            else:
+                sweep_val = (perp - p_min) / (p_max - p_min)
+
+            if i % 2 == 1:
+                sweep_val = 1.0 - sweep_val
+
+            timed = sweep_val * time_per_stroke + i * time_per_stroke
+            reveal[band_mask] = timed[band_mask]
+
+        lo, hi = reveal.min(), reveal.max()
+        if hi - lo > 1e-6:
+            reveal = (reveal - lo) / (hi - lo)
+
+        return reveal
 
     @staticmethod
     def _blur_image_bytes(img_bytes: bytes, radius: int = 20) -> bytes:

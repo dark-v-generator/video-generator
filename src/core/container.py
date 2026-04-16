@@ -34,6 +34,12 @@ class ApplicationContainer(containers.DeclarativeContainer):
         leonardo_api_key=secrets.leonardo_api_key,
         runpod_api_key=secrets.runpod_api_key,
     )
+    portrait_generation_proxy = providers.Singleton(
+        proxies_factories.ImageGeneratorFactory.create_optional,
+        config=main_config.provided.proxies.portrait_generation_config,
+        leonardo_api_key=secrets.leonardo_api_key,
+        runpod_api_key=secrets.runpod_api_key,
+    )
     speech_proxy = providers.Singleton(
         proxies_factories.SpeechProxyFactory.create,
         config=main_config.provided.proxies.speech_config,
@@ -88,6 +94,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         reddit_proxy=reddit_proxy,
         llm_proxy=llm_proxy,
         image_generation_proxy=image_generation_proxy,
+        portrait_generation_proxy=portrait_generation_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
         cover_service=cover_service,

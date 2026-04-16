@@ -130,10 +130,12 @@ class RedditVideoService:
         captions_service: CaptionsService,
         cover_service: CoverService,
         video_service: VideoService,
+        portrait_generation_proxy: Optional[IImageGeneratorProxy] = None,
     ) -> None:
         self._reddit_proxy = reddit_proxy
         self._llm_proxy = llm_proxy
         self._image_generation_proxy = image_generation_proxy
+        self._portrait_proxy = portrait_generation_proxy or image_generation_proxy
         self._speech_service = speech_service
         self._captions_service = captions_service
         self._cover_service = cover_service
@@ -313,7 +315,7 @@ class RedditVideoService:
         if characters:
             protagonist = characters[0]
             prompt = protagonist["visual_prompt"] + self.PORTRAIT_SUFFIX
-            result = self._image_generation_proxy.generate_image(
+            result = self._portrait_proxy.generate_image(
                 prompt=prompt,
                 negative_prompt=self.SFW_NEGATIVE_PROMPT,
                 width=img_w,
@@ -534,7 +536,7 @@ class RedditVideoService:
         if characters:
             protagonist = characters[0]
             portrait_prompt = protagonist["visual_prompt"] + self.PORTRAIT_SUFFIX
-            result = self._image_generation_proxy.generate_image(
+            result = self._portrait_proxy.generate_image(
                 prompt=portrait_prompt,
                 negative_prompt=self.SFW_NEGATIVE_PROMPT,
                 width=img_w,
