@@ -9,6 +9,7 @@ from ..services.video_service import VideoService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.speech_service import SpeechService
+from ..services.story_finder_service import StoryFinderService
 from ..proxies import factories as proxies_factories
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
@@ -112,6 +113,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,
+    )
+
+    story_finder_service = providers.Singleton(
+        StoryFinderService,
+        reddit_proxy=reddit_proxy,
+        evaluation_llm_proxy=evaluation_llm_proxy,
+        llm_proxy=llm_proxy,
+        evaluation_config=main_config.provided.evaluation,
     )
 
 

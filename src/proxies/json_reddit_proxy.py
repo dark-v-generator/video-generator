@@ -53,6 +53,8 @@ class JsonRedditProxy(IRedditProxy):
             url=url,
             score=post_data.get("score"),
             num_comments=post_data.get("num_comments"),
+            upvote_ratio=post_data.get("upvote_ratio"),
+            created_utc=post_data.get("created_utc"),
         )
 
     def get_reddit_post(self, url: str) -> RedditPost:

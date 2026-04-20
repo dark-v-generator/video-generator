@@ -12,3 +12,5 @@ class RedditPost(BaseModel):
     url: Optional[str] = Field(None, title="Permalink to the Reddit post")
     score: Optional[int] = Field(None, title="Upvote score")
     num_comments: Optional[int] = Field(None, title="Number of comments")
+    upvote_ratio: Optional[float] = Field(None, title="Upvote ratio (0.0 to 1.0)")
+    created_utc: Optional[float] = Field(None, title="Unix timestamp when posted")
