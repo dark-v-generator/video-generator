@@ -12,6 +12,11 @@ proxies:
     provider_config:
       provider: openai
       model: gpt-5.2
+  evaluation_llm_config:
+    type: prompt
+    provider_config:
+      provider: openai
+      model: gpt-5.4-mini
   speech_config:
     type: edge-tts
     default_rate: 1.2

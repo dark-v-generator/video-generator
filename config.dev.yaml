@@ -5,6 +5,8 @@ proxies:
     type: mock
   llm_config:
     type: mock
+  evaluation_llm_config:
+    type: mock
   reddit_config:
     type: json
   speech_config:

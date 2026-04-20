@@ -148,6 +148,17 @@ class RedditProxyFactory:
 
 class LLMProxyFactory:
     @staticmethod
+    def create_optional(
+        config: LLMConfigType | None,
+        openai_api_key: str = None,
+        ollama_base_url: str = None,
+        google_api_key: str = None,
+    ) -> ILLMProxy | None:
+        if config is None:
+            return None
+        return LLMProxyFactory.create(config, openai_api_key, ollama_base_url, google_api_key)
+
+    @staticmethod
     def create(
         config: LLMConfigType,
         openai_api_key: str = None,

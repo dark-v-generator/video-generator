@@ -320,6 +320,41 @@ MOCK_SINGLE_STORY = {
 }
 
 
+MOCK_EVALUATION = {
+    "resumo": (
+        "Um homem estava tendo um péssimo dia quando uma garota estacionou ao lado dele "
+        "e bateu a porta do carro dela na dele. Em vez de pedir desculpas, ela deu um "
+        "sorrisinho de deboche. Tomado pela fúria, ele chutou sua própria porta contra "
+        "o carro novinho dela, causando um estrondo enorme. A garota congelou em choque "
+        "enquanto ele acendia um cigarro tranquilamente."
+    ),
+    "notas": {
+        "retencao": {
+            "nota": 88,
+            "justificativa": "A história prende desde o início com a situação de estacionamento e escala rapidamente pro conflito.",
+        },
+        "qualidade": {
+            "nota": 92,
+            "justificativa": "Narrativa perfeita de karma instantâneo com setup, conflito e resolução satisfatória.",
+        },
+        "viralizacao": {
+            "nota": 85,
+            "justificativa": "Karma instantâneo contra pessoa arrogante é um tema universalmente compartilhável.",
+        },
+        "adequacao_tiktok": {
+            "nota": 80,
+            "justificativa": "Tamanho ideal pra TikTok, conteúdo family-friendly e funciona bem como narração.",
+        },
+        "gancho": {
+            "nota": 90,
+            "justificativa": "O contraste entre o carro velho e o carro novo cria curiosidade imediata.",
+        },
+    },
+    "nota_geral": 87.0,
+    "veredito": "Excelente",
+}
+
+
 class MockLLMProxy(ILLMProxy):
     """Returns a fixed example story from two_part_story.yaml examples."""
 
@@ -332,6 +367,11 @@ class MockLLMProxy(ILLMProxy):
         self, title: str, content: str, target_language: Language
     ) -> dict:
         return dict(MOCK_SINGLE_STORY)
+
+    async def evaluate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        return dict(MOCK_EVALUATION)
 
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language

@@ -16,7 +16,7 @@ from src.entities.configs.proxies.speech import (
     EdgeTTSSpeechConfig,
 )
 from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig
-from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig
+from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 from src.entities.configs.proxies.tiktok import TikTokConfigType, TikTokUploaderConfig
@@ -43,6 +43,10 @@ class ProxiesConfig(BaseYAMLModel):
         BS4RedditConfig(), title="Reddit configuration"
     )
     llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="LLM configuration")
+    evaluation_llm_config: Optional[LLMConfigType] = Field(
+        None,
+        title="LLM configuration for story evaluation (falls back to llm_config)",
+    )
     youtube_config: YouTubeConfigType = Field(
         PyTubeYouTubeConfig(), title="YouTube configuration"
     )

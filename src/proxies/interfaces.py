@@ -120,6 +120,15 @@ class ILLMProxy(ABC):
         ...
 
     @abstractmethod
+    async def evaluate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        """Evaluate a Reddit post for TikTok potential.
+        Returns a dict with 'resumo', 'notas' (per-criterion grades + justificativas),
+        'nota_geral', and 'veredito'."""
+        ...
+
+    @abstractmethod
     async def generate_image_story(
         self,
         story_text: str,

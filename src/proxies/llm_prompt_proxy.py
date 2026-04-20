@@ -203,6 +203,81 @@ class PromptLLMProxy(ILLMProxy):
             self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
             raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
 
+    async def evaluate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        model_str = self._get_model_string()
+        self._logger.info(f"Evaluating story via LiteLLM {model_str}")
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("evaluate_story.jinja2")
+
+        prompt = template.render(
+            target_language=get_language_name(target_language),
+            reddit_title=title,
+            reddit_text=content,
+        )
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            **self._get_completion_kwargs(model_str),
+        )
+
+        response_text = response.choices[0].message.content
+
+        if not response_text:
+            self._logger.error(
+                "LLM returned empty response. Finish reason: %s",
+                response.choices[0].finish_reason,
+            )
+            raise RuntimeError(
+                "LLM returned empty content for story evaluation. "
+                "This may be caused by a safety filter."
+            )
+
+        try:
+            if response_text.startswith("```json"):
+                response_text = response_text.strip("```json").strip("```").strip()
+            if response_text.startswith("```"):
+                response_text = response_text.strip("```").strip()
+
+            data = json.loads(response_text)
+            return self._normalize_evaluation(data)
+        except json.JSONDecodeError as e:
+            self._logger.error(f"Failed to parse evaluation JSON: {response_text}")
+            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
+
+    @staticmethod
+    def _normalize_evaluation(data: dict) -> dict:
+        notas = data.get("notas", {})
+        grades = [
+            notas.get(k, {}).get("nota", 0)
+            for k in ("retencao", "qualidade", "viralizacao", "adequacao_tiktok", "gancho")
+        ]
+        nota_geral = round(sum(grades) / len(grades), 1) if grades else 0.0
+
+        if nota_geral >= 80:
+            veredito = "Excelente"
+        elif nota_geral >= 60:
+            veredito = "Boa"
+        elif nota_geral >= 40:
+            veredito = "Mediana"
+        else:
+            veredito = "Fraca"
+
+        return {
+            "resumo": data.get("resumo", ""),
+            "notas": notas,
+            "nota_geral": nota_geral,
+            "veredito": veredito,
+        }
+
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language
     ) -> dict:

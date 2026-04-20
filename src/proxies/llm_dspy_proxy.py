@@ -100,6 +100,38 @@ class TikTokStorySignature(dspy.Signature):
     )
 
 
+class StoryEvaluationSignature(dspy.Signature):
+    """
+    You are an expert content evaluator for TikTok storytelling channels.
+    Evaluate a Reddit post's potential as a narrated TikTok video with satisfying background footage.
+
+    Grade each criterion from 0 to 100:
+    1. Potencial de Retenção (retencao) — hooks early, good pacing, tension/curiosity from the start.
+    2. Qualidade da História (qualidade) — well-structured setup/conflict/payoff, memorable, unique, emotionally engaging.
+    3. Potencial de Viralização (viralizacao) — share factor, universal emotions (revenge, justice, shock, wholesome).
+    4. Adequação pra TikTok (adequacao_tiktok) — appropriate length, works as narrated story, family-friendly.
+    5. Força do Gancho (gancho) — strong opening hook, clickbaity title potential.
+
+    Grading: 90-100 exceptional, 70-89 strong, 50-69 decent, 30-49 weak, 0-29 poor.
+    Verdict: nota_geral >= 80 "Excelente", >= 60 "Boa", >= 40 "Mediana", < 40 "Fraca".
+
+    Return a JSON object with: resumo (Portuguese summary), notas (per-criterion grades with justificativa),
+    nota_geral (average), veredito.
+    """
+
+    target_language = dspy.InputField(
+        desc="The language for the evaluation output."
+    )
+    reddit_post_title = dspy.InputField(desc="The original title of the Reddit post.")
+    reddit_post_text = dspy.InputField(desc="The original content of the Reddit post.")
+
+    evaluation_json = dspy.OutputField(
+        desc='A JSON object: {"resumo": "...", "notas": {"retencao": {"nota": N, "justificativa": "..."}, '
+        '"qualidade": {...}, "viralizacao": {...}, "adequacao_tiktok": {...}, "gancho": {...}}, '
+        '"nota_geral": N.N, "veredito": "Excelente|Boa|Mediana|Fraca"}'
+    )
+
+
 class EnhanceTranscriptionSignature(dspy.Signature):
     """
     You are an AI specialized in correcting timestamped text transcriptions.
@@ -369,6 +401,49 @@ class DSPyLLMProxy(ILLMProxy):
             "title": result.viral_title,
             "narrator_gender": raw_gender,
             "script": result.script,
+        }
+
+    async def evaluate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        self._logger.info(
+            f"Evaluating story via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        generator = dspy.Predict(StoryEvaluationSignature)
+
+        result = generator(
+            target_language=get_language_name(target_language),
+            reddit_post_title=title,
+            reddit_post_text=content,
+        )
+
+        data = self._parse_json_text(result.evaluation_json)
+        return self._normalize_evaluation(data)
+
+    @staticmethod
+    def _normalize_evaluation(data: dict) -> dict:
+        notas = data.get("notas", {})
+        grades = [
+            notas.get(k, {}).get("nota", 0)
+            for k in ("retencao", "qualidade", "viralizacao", "adequacao_tiktok", "gancho")
+        ]
+        nota_geral = round(sum(grades) / len(grades), 1) if grades else 0.0
+
+        if nota_geral >= 80:
+            veredito = "Excelente"
+        elif nota_geral >= 60:
+            veredito = "Boa"
+        elif nota_geral >= 40:
+            veredito = "Mediana"
+        else:
+            veredito = "Fraca"
+
+        return {
+            "resumo": data.get("resumo", ""),
+            "notas": notas,
+            "nota_geral": nota_geral,
+            "veredito": veredito,
         }
 
     async def revise_story(
