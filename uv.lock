@@ -246,6 +246,18 @@ wheels = [
 ]
 
 [[package]]
+name = "apscheduler"
+version = "3.11.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzlocal" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/07/12/3e4389e5920b4c1763390c6d371162f3784f86f85cd6d6c1bfe68eef14e2/apscheduler-3.11.2.tar.gz", hash = "sha256:2a9966b052ec805f020c8c4c3ae6e6a06e24b1bf19f2e11d91d8cca0473eef41", size = 108683, upload-time = "2025-12-22T00:39:34.884Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/64/2e54428beba8d9992aa478bb8f6de9e4ecaa5f8f513bcfd567ed7fb0262d/apscheduler-3.11.2-py3-none-any.whl", hash = "sha256:ce005177f741409db4e4dd40a7431b76feb856b9dd69d57e0da49d6715bfd26d", size = 64439, upload-time = "2025-12-22T00:39:33.303Z" },
+]
+
+[[package]]
 name = "async-timeout"
 version = "5.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3668,6 +3680,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/94/f7/0e2f89dd62f45d46d4ea0d8aec5893ce5b37389638db010c117f46f11450/python_telegram_bot-22.7-py3-none-any.whl", hash = "sha256:d72eed532cf763758cd9331b57a6d790aff0bb4d37d8f4e92149436fe21c6475", size = 745365, upload-time = "2026-03-16T09:36:01.498Z" },
 ]
 
+[package.optional-dependencies]
+job-queue = [
+    { name = "apscheduler" },
+]
+
 [[package]]
 name = "pytubefix"
 version = "10.3.8"
@@ -4918,7 +4935,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pydub" },
     { name = "python-multipart" },
-    { name = "python-telegram-bot" },
+    { name = "python-telegram-bot", extra = ["job-queue"] },
     { name = "pytubefix" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -4982,7 +4999,7 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = "==3.14.1" },
     { name = "pytest-mock", marker = "extra == 'test'", specifier = "==3.14.1" },
     { name = "python-multipart", specifier = "==0.0.20" },
-    { name = "python-telegram-bot", specifier = ">=22.0" },
+    { name = "python-telegram-bot", extras = ["job-queue"], specifier = ">=22.0" },
     { name = "pytubefix", specifier = "==10.3.8" },
     { name = "pyyaml", specifier = "==6.0.2" },
     { name = "requests", specifier = "==2.32.3" },

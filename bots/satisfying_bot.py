@@ -24,7 +24,14 @@ from src.core.secrets import secrets
 from src.entities.config import MainConfig
 from src.entities.language import Language
 
-from bots.base import is_user_allowed, reject_unauthorized, send_audio_bytes, send_video_bytes
+from bots.base import (
+    is_user_allowed,
+    reject_unauthorized,
+    send_audio_bytes,
+    send_audio_bytes_to_chat,
+    send_video_bytes,
+    send_video_bytes_to_chat,
+)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -306,21 +313,17 @@ async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 TIKTOK_PREFIX = "tt:"
 
 SCHEDULE_SLOTS = {
-    "now": ("🚀 Agora", None),
     "h_m": ("☀️ Hoje Manhã", 9),
     "h_t": ("🌤 Hoje Tarde", 14),
     "h_n": ("🌙 Hoje Noite", 20),
     "a_m": ("☀️ Amanhã Manhã", 9),
     "a_t": ("🌤 Amanhã Tarde", 14),
     "a_n": ("🌙 Amanhã Noite", 20),
-    "skip": ("⏭ Pular", None),
 }
 
 
 def _build_schedule_dt(slot: str) -> datetime.datetime | None:
-    """Build a UTC datetime for the given slot, or None for 'now'."""
     now = datetime.datetime.now(tz=datetime.timezone.utc)
-
     if slot.startswith("h_"):
         day = now
     elif slot.startswith("a_"):
@@ -330,24 +333,18 @@ def _build_schedule_dt(slot: str) -> datetime.datetime | None:
 
     hour = SCHEDULE_SLOTS[slot][1]
     scheduled = day.replace(hour=hour, minute=0, second=0, microsecond=0)
-
     if scheduled <= now + datetime.timedelta(minutes=MIN_SCHEDULE_MINUTES):
         return None
-
     return scheduled
 
 
 def _build_tiktok_keyboard(vid_key: str) -> InlineKeyboardMarkup:
     now = datetime.datetime.now(tz=datetime.timezone.utc)
-    rows = []
-
-    row_now = [InlineKeyboardButton("🚀 Agora", callback_data=f"{TIKTOK_PREFIX}{vid_key}:now")]
-    rows.append(row_now)
+    rows = [[InlineKeyboardButton("🚀 Agora", callback_data=f"{TIKTOK_PREFIX}{vid_key}:now")]]
 
     today_buttons = []
     for slot in ("h_m", "h_t", "h_n"):
-        label = SCHEDULE_SLOTS[slot][0]
-        hour = SCHEDULE_SLOTS[slot][1]
+        label, hour = SCHEDULE_SLOTS[slot]
         candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
         if candidate > now + datetime.timedelta(minutes=MIN_SCHEDULE_MINUTES):
             today_buttons.append(
@@ -356,14 +353,10 @@ def _build_tiktok_keyboard(vid_key: str) -> InlineKeyboardMarkup:
     if today_buttons:
         rows.append(today_buttons)
 
-    tomorrow_buttons = []
-    for slot in ("a_m", "a_t", "a_n"):
-        label = SCHEDULE_SLOTS[slot][0]
-        tomorrow_buttons.append(
-            InlineKeyboardButton(label, callback_data=f"{TIKTOK_PREFIX}{vid_key}:{slot}")
-        )
-    rows.append(tomorrow_buttons)
-
+    rows.append([
+        InlineKeyboardButton(label, callback_data=f"{TIKTOK_PREFIX}{vid_key}:{slot}")
+        for slot, (label, _) in list(SCHEDULE_SLOTS.items())[3:]
+    ])
     rows.append([InlineKeyboardButton("⏭ Pular", callback_data=f"{TIKTOK_PREFIX}{vid_key}:skip")])
 
     return InlineKeyboardMarkup(rows)
@@ -479,6 +472,84 @@ def _cleanup_temp(path: str | None) -> None:
             pass
 
 
+async def _daily_pipeline(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Scheduled job: find top stories, generate videos, send for scheduling."""
+    chat_id = bot_config.allowed_user_ids[0]
+    top_n = bot_config.daily_top_n
+
+    await context.bot.send_message(chat_id, "🔄 Pipeline diária iniciada — buscando histórias...")
+
+    try:
+        container.wire(modules=[__name__])
+        finder = container.story_finder_service()
+
+        results = await finder.find_best_stories(
+            sort="top",
+            time_filter="day",
+            top_per_sub=2,
+            language=Language.PORTUGUESE,
+        )
+    except Exception as e:
+        logger.exception("Daily pipeline: failed to find stories")
+        await context.bot.send_message(chat_id, f"❌ Erro ao buscar histórias: {e}")
+        return
+
+    if not results:
+        await context.bot.send_message(chat_id, "Nenhuma história boa encontrada hoje.")
+        return
+
+    picked = results[:top_n]
+    await context.bot.send_message(
+        chat_id,
+        f"📋 {len(picked)} melhor(es) de {len(results)} encontradas. Gerando vídeos...",
+    )
+
+    service = container.reddit_video_service()
+
+    for i, story in enumerate(picked):
+        post = story.post
+        sub = post.community.replace("r/", "")
+        label = f"#{i + 1} [{story.veredito}] {story.nota_geral}/100 — r/{sub}"
+
+        await context.bot.send_message(chat_id, f"⏳ {label}\nGerando vídeo...")
+
+        try:
+            result = await service.generate_satisfying_video(
+                post_url=post.url,
+                low_quality=bot_config.low_quality,
+            )
+
+            await send_audio_bytes_to_chat(context.bot, chat_id, result.audio, "Narração")
+
+            video_mb = len(result.video) / (1024 * 1024)
+            if video_mb > 49:
+                await context.bot.send_message(
+                    chat_id, f"📤 Comprimindo vídeo ({video_mb:.0f} MB)..."
+                )
+            await send_video_bytes_to_chat(context.bot, chat_id, result.video, "Vídeo pronto")
+
+            tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+            tmp.write(result.video)
+            tmp.close()
+
+            title = result.story_md.split("\n")[0].lstrip("# ").strip()
+            vid_key = _store_url(tmp.name)
+            _find_url_store[f"title:{vid_key}"] = title
+
+            keyboard = _build_tiktok_keyboard(vid_key)
+            await context.bot.send_message(
+                chat_id,
+                f"✅ {label}\nAgendar no TikTok?",
+                reply_markup=keyboard,
+            )
+
+        except Exception as e:
+            logger.exception("Daily pipeline: failed to generate video #%d", i + 1)
+            await context.bot.send_message(chat_id, f"❌ {label}\nErro: {e}")
+
+    await context.bot.send_message(chat_id, "🏁 Pipeline diária concluída.")
+
+
 def main() -> None:
     token = secrets.telegram_satisfying_bot_token
     if not token:
@@ -510,6 +581,10 @@ def main() -> None:
     app.add_handler(CommandHandler("find", cmd_find))
     app.add_handler(CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}"))
     app.add_handler(CallbackQueryHandler(handle_tiktok_action, pattern=f"^{TIKTOK_PREFIX}"))
+
+    schedule_time = datetime.time(hour=bot_config.daily_hour_utc, tzinfo=datetime.timezone.utc)
+    app.job_queue.run_daily(_daily_pipeline, time=schedule_time)
+    logger.info("Daily pipeline scheduled at %02d:00 UTC", bot_config.daily_hour_utc)
 
     logger.info("Satisfying video bot starting...")
     app.run_polling()

@@ -38,6 +38,79 @@ def _patched_go_to_upload(page):
 _tiktok_upload._go_to_upload = _patched_go_to_upload
 
 
+def _patched_set_schedule(page, schedule):
+    """
+    Replaces the library's _set_schedule_video to work with TikTok's current UI
+    which uses radio buttons + TUXTextInput dropdowns instead of the old switch +
+    calendar/timepicker approach.
+    """
+    import pytz
+
+    logger.debug("Setting schedule (patched)")
+
+    tz_str = page.evaluate("Intl.DateTimeFormat().resolvedOptions().timeZone")
+    local_schedule = schedule.astimezone(pytz.timezone(tz_str))
+
+    container = page.locator('[data-e2e="schedule_container"]')
+    container.locator('input[name="postSchedule"][value="schedule"]').locator("xpath=..").click()
+    time.sleep(1)
+    logger.info("Clicked Schedule radio button")
+
+    # -- Time picker --
+    picker = container.locator('.tiktok-timepicker-time-picker-container')
+    time_input = container.locator('.TUXTextInputCore-input[readonly]').first
+
+    if not picker.is_visible():
+        time_input.click(force=True)
+        time.sleep(0.5)
+
+    picker.wait_for(state="visible", timeout=5000)
+
+    hours = container.locator('span.tiktok-timepicker-left')
+    minutes = container.locator('span.tiktok-timepicker-right')
+
+    target_hour = hours.nth(local_schedule.hour)
+    target_hour.scroll_into_view_if_needed()
+    time.sleep(0.3)
+    target_hour.click()
+
+    minute_idx = local_schedule.minute // 5
+    target_minute = minutes.nth(minute_idx)
+    target_minute.scroll_into_view_if_needed()
+    time.sleep(0.3)
+    target_minute.click()
+
+    page.mouse.click(0, 0)
+    time.sleep(0.5)
+    logger.info("Set time to %02d:%02d", local_schedule.hour, (minute_idx * 5))
+
+    # -- Date picker --
+    date_input = container.locator('.TUXTextInputCore-input[readonly]').nth(1)
+    target_date_str = local_schedule.strftime("%Y-%m-%d")
+
+    current_date = date_input.input_value()
+    if current_date != target_date_str:
+        date_input.click(force=True)
+        time.sleep(0.5)
+        target_day = str(local_schedule.day)
+        day_cell = page.locator(
+            f'.calendar-wrapper span.day.valid:text-is("{target_day}")'
+        )
+        if day_cell.count() == 0:
+            page.locator('.calendar-wrapper span.arrow').last.click()
+            time.sleep(0.5)
+            day_cell = page.locator(
+                f'.calendar-wrapper span.day.valid:text-is("{target_day}")'
+            )
+        day_cell.first.click()
+        time.sleep(0.5)
+
+    logger.info("Set date to %s", target_date_str)
+
+
+_tiktok_upload._set_schedule_video = _patched_set_schedule
+
+
 class TikTokUploaderProxy(ITikTokProxy):
     def __init__(self, config: TikTokUploaderConfig):
         self._config = config

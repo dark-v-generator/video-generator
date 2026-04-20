@@ -6,6 +6,8 @@ from src.entities.base_yaml_model import BaseYAMLModel
 class TelegramBotConfig(BaseYAMLModel):
     allowed_user_ids: List[int] = Field(default_factory=list)
     low_quality: bool = False
+    daily_top_n: int = Field(3, title="Number of top stories to generate daily")
+    daily_hour_utc: int = Field(17, title="Hour (UTC) to run daily pipeline")
 
 
 class BotsConfig(BaseYAMLModel):

@@ -35,12 +35,13 @@ bots:
   satisfying_bot:
     allowed_user_ids: [627370641]
     low_quality: false
+    daily_top_n: 3
+    daily_hour_utc: 19
 evaluation:
   subreddits:
     - pettyrevenge
     - AmItheAsshole
     - RelationshipAdvice
-    - Nosleep
     - TrueOffMyChest
     - AskReddit
     - ExplainLikeImFive

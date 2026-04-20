@@ -106,3 +106,26 @@ async def send_image_bytes(
         read_timeout=60,
         write_timeout=60,
     )
+
+
+async def send_video_bytes_to_chat(bot, chat_id: int, video_bytes: bytes, caption: str) -> None:
+    if len(video_bytes) > TELEGRAM_VIDEO_LIMIT:
+        video_bytes = _compress_video(video_bytes)
+    await bot.send_video(
+        chat_id=chat_id,
+        video=io.BytesIO(video_bytes),
+        caption=caption,
+        filename="video.mp4",
+        read_timeout=300,
+        write_timeout=300,
+    )
+
+
+async def send_audio_bytes_to_chat(bot, chat_id: int, audio_bytes: bytes, caption: str) -> None:
+    await bot.send_voice(
+        chat_id=chat_id,
+        voice=io.BytesIO(audio_bytes),
+        caption=caption,
+        read_timeout=120,
+        write_timeout=120,
+    )

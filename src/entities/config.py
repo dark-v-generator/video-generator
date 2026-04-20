@@ -67,7 +67,6 @@ DEFAULT_EVALUATION_SUBREDDITS = [
     "pettyrevenge",
     "AmItheAsshole",
     "RelationshipAdvice",
-    "Nosleep",
     "TrueOffMyChest",
     "AskReddit",
     "ExplainLikeImFive",
