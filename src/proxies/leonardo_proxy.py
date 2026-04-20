@@ -83,7 +83,7 @@ class LeonardoImageProxy(IImageGeneratorProxy):
         if not generation_id:
             raise Exception(f"Failed to get generationId from Leonardo AI: {data}")
 
-        max_retries = 30
+        max_retries = 200
         image_urls = []
         for _ in range(max_retries):
             time.sleep(2)

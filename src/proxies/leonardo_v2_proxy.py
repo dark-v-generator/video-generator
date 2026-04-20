@@ -11,7 +11,7 @@ from .interfaces import IImageGeneratorProxy
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 3
-MAX_POLL_ATTEMPTS = 60
+MAX_POLL_ATTEMPTS = 200
 
 VALID_DIMENSION_PAIRS = [
     (1024, 1024),

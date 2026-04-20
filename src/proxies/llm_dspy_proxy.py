@@ -16,7 +16,7 @@ class TwoPartTikTokStorySignature(dspy.Signature):
 
     Requirements:
     1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Add a short, natural-sounding title. The title should sound like something a real person would say, NOT forced or clickbaity. Avoid dramatic words like "épica", "inacreditável", "chocante" etc.
+    2. Add a short, clickbaity title that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, but it MUST grab attention.
     3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
     4. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. Example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...".
     5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
@@ -43,7 +43,7 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     reddit_post_text = dspy.InputField(desc="The original content of the story.")
 
     viral_title = dspy.OutputField(
-        desc="A natural, conversational translated title. Must sound like something a real person would say, not forced or clickbaity."
+        desc="A short, clickbaity translated title that hooks the viewer in the first 3 seconds. Must create curiosity and make the audience want to hear the story. Use open loops or tease unexpected outcomes. Sound natural and spoken, not robotic."
     )
     narrator_gender = dspy.OutputField(
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
@@ -53,6 +53,50 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     )
     part2_script = dspy.OutputField(
         desc="Part 2: starts with '{title}. Parte 2.' then the climax and resolution, ending with a question for the viewer."
+    )
+
+
+class TikTokStorySignature(dspy.Signature):
+    """
+    You are an expert TikTok scriptwriter.
+    Take the provided original Reddit post (title and text) and transform it into an engaging TikTok story script.
+
+    Requirements:
+    1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
+    2. Add a short, clickbaity title that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to hear the story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, not robotic.
+    3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
+    4. The script must start with the title before the story text. Example: "Meu vizinho me perseguiu por meses. Tudo começou quando...".
+    5. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
+    6. The script MUST end with exactly this sentence: "Curta, comente e me siga para mais histórias."
+    7. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit.
+    8. ONLY provide the text for the script, do NOT include outside commentary, camera directions, or extra formatting.
+    9. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
+    10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
+        strong or sensitive moments with milder, everyday words. If the original post contains strong
+        language or insults, rephrase the situation without repeating those words.
+    11. Reddit posts use specific conventions you MUST handle:
+        - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
+        - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
+        - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
+        - "AITA" means "Am I the asshole?" and "NTA" means "Not the asshole".
+        - "TL;DR" sections should be omitted from the script.
+        - "Edit:" sections should be omitted from the script.
+    """
+
+    target_language = dspy.InputField(
+        desc="The language the final script should be translated to."
+    )
+    reddit_post_title = dspy.InputField(desc="The original title of the story.")
+    reddit_post_text = dspy.InputField(desc="The original content of the story.")
+
+    viral_title = dspy.OutputField(
+        desc="A short, clickbaity translated title that hooks the viewer in the first 3 seconds. Must create curiosity and make the audience want to hear the story. Use open loops or tease unexpected outcomes. Sound natural and spoken, not robotic."
+    )
+    narrator_gender = dspy.OutputField(
+        desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
+    )
+    script = dspy.OutputField(
+        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with 'Curta, comente e me siga para mais histórias.'"
     )
 
 
@@ -300,6 +344,31 @@ class DSPyLLMProxy(ILLMProxy):
             "narrator_gender": raw_gender,
             "part1": result.part1_script,
             "part2": result.part2_script,
+        }
+
+    async def generate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        self._logger.info(
+            f"Generating single TikTok story via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        generator = dspy.Predict(TikTokStorySignature)
+
+        result = generator(
+            target_language=get_language_name(target_language),
+            reddit_post_title=title,
+            reddit_post_text=content,
+        )
+
+        raw_gender = result.narrator_gender.strip().lower()
+        if raw_gender not in ("male", "female"):
+            raw_gender = "unknown"
+
+        return {
+            "title": result.viral_title,
+            "narrator_gender": raw_gender,
+            "script": result.script,
         }
 
     async def revise_story(

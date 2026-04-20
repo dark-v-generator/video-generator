@@ -146,6 +146,63 @@ class PromptLLMProxy(ILLMProxy):
             self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
             raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
 
+    async def generate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        model_str = self._get_model_string()
+        self._logger.info(f"Generating single story via LiteLLM {model_str}")
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("story.jinja2")
+
+        prompt = template.render(
+            target_language=get_language_name(target_language),
+            examples=[],
+            reddit_title=title,
+            reddit_text=content,
+        )
+
+        messages = [
+            {"role": "user", "content": prompt},
+        ]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            **self._get_completion_kwargs(model_str),
+        )
+
+        response_text = response.choices[0].message.content
+
+        if not response_text:
+            self._logger.error(
+                f"LLM returned empty response. "
+                f"Finish reason: {response.choices[0].finish_reason}"
+            )
+            raise RuntimeError(
+                "LLM returned empty content for story generation. "
+                "This may be caused by a safety filter. Check the post content."
+            )
+
+        try:
+            if response_text.startswith("```json"):
+                response_text = response_text.strip("```json").strip("```").strip()
+            if response_text.startswith("```"):
+                response_text = response_text.strip("```").strip()
+
+            result = json.loads(response_text)
+            return {
+                "title": result.get("title", ""),
+                "narrator_gender": result.get("narrator_gender", "unknown"),
+                "script": result.get("script", ""),
+            }
+        except json.JSONDecodeError as e:
+            self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
+            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
+
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language
     ) -> dict:

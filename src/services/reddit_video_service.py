@@ -96,6 +96,18 @@ class TwoPartVideoResult:
 
 
 @dataclass
+class SingleVideoResult:
+    """All generated artifacts for a single satisfying-background video."""
+
+    video: bytes
+    story_md: str
+    original_post_md: str
+    audio: bytes
+    captions_json: str
+    cover_png: Optional[bytes] = None
+
+
+@dataclass
 class ImageStoryVideoResult:
     """All generated artifacts for an image-story video."""
 
@@ -442,6 +454,80 @@ class RedditVideoService:
             ),
             cover_part1_png=cover1.bytes,
             cover_part2_png=cover2.bytes,
+        )
+
+    async def generate_satisfying_video(
+        self,
+        *,
+        post_url: str,
+        language: Language = Language.PORTUGUESE,
+        speech_gender: Optional[Literal["male", "female"]] = None,
+        speech_rate: float = 1.0,
+        low_quality: bool = False,
+    ) -> SingleVideoResult:
+        """Full pipeline: scrape -> single story -> speech -> captions -> satisfying background video."""
+
+        post = self.scrape_post(post_url)
+        original_post_md = f"# {post.title}\n\n{post.content}\n"
+
+        story = await self._llm_proxy.generate_story(
+            title=post.title,
+            content=post.content,
+            target_language=language,
+        )
+        script_text: str = story["script"]
+
+        narrator_gender = story.get("narrator_gender", "unknown")
+        resolved_gender: Literal["male", "female"] = speech_gender or (
+            narrator_gender if narrator_gender in ("male", "female") else "male"
+        )
+
+        speech_result = await self._speech_service.generate_speech(
+            text=script_text,
+            gender=resolved_gender,
+            rate=speech_rate,
+            language=language,
+        )
+
+        captions_result = await self._captions_service.generate_captions(
+            audio_bytes=speech_result.bytes,
+            enhance_captions=True,
+            language=language,
+            base_text=script_text,
+        )
+
+        captions_data = [
+            {"word": s.text, "start": s.start, "end": s.end}
+            for s in captions_result.captions.segments
+        ]
+
+        cover_result = await self._cover_service.generate_cover(
+            RedditCover(
+                title=story.get("title", post.title),
+                community=post.community,
+                author=post.author,
+                image_url=post.community_url_photo,
+            )
+        )
+
+        video_bytes = await self._render_video_to_bytes(
+            speech=speech_result.clip,
+            captions_clip_obj=captions_result.clip,
+            cover=cover_result.clip,
+            low_quality=low_quality,
+        )
+
+        story_md = f"# {story.get('title', 'Untitled')}\n\n"
+        story_md += f"**Narrator gender:** {narrator_gender} → resolved: {resolved_gender}\n\n"
+        story_md += f"{script_text}\n"
+
+        return SingleVideoResult(
+            video=video_bytes,
+            story_md=story_md,
+            original_post_md=original_post_md,
+            audio=speech_result.bytes,
+            captions_json=json.dumps(captions_data, ensure_ascii=False, indent=2),
+            cover_png=cover_result.bytes,
         )
 
     async def generate_image_story_video(

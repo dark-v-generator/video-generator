@@ -86,6 +86,14 @@ class ILLMProxy(ABC):
         ...
 
     @abstractmethod
+    async def generate_story(
+        self, title: str, content: str, target_language: Language
+    ) -> dict:
+        """Generate a single TikTok story script from a Reddit post.
+        Returns a dict with 'title', 'narrator_gender', and 'script'."""
+        ...
+
+    @abstractmethod
     async def enhance_transcription(
         self, base_text: str, raw_transcription: List[dict]
     ) -> List[dict]:
