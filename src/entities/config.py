@@ -1,5 +1,5 @@
 import random
-from typing import Optional
+from typing import List, Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
@@ -63,6 +63,28 @@ class ServicesConfig(BaseYAMLModel):
     captions_config: CaptionsConfig = Field(CaptionsConfig())
 
 
+DEFAULT_EVALUATION_SUBREDDITS = [
+    "pettyrevenge",
+    "AmItheAsshole",
+    "RelationshipAdvice",
+    "Nosleep",
+    "TrueOffMyChest",
+    "AskReddit",
+    "ExplainLikeImFive",
+    "MaliciousCompliance",
+    "Antiwork",
+]
+
+
+class EvaluationConfig(BaseYAMLModel):
+    subreddits: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_EVALUATION_SUBREDDITS),
+        title="Subreddits to evaluate daily",
+    )
+    min_chars: int = Field(500, title="Minimum post content length in characters")
+    max_chars: int = Field(15000, title="Maximum post content length in characters")
+
+
 class MainConfig(BaseYAMLModel):
     @staticmethod
     def __generate_random_seed() -> str:
@@ -71,6 +93,7 @@ class MainConfig(BaseYAMLModel):
     proxies: ProxiesConfig = Field(default_factory=ProxiesConfig)
     services: ServicesConfig = Field(default_factory=ServicesConfig)
     bots: BotsConfig = Field(default_factory=BotsConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
 
     seed: Optional[str] = Field(None, title="Seed")
 

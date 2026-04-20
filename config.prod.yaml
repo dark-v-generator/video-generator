@@ -37,3 +37,16 @@ bots:
   satisfying_bot:
     allowed_user_ids: [627370641]
     low_quality: false
+evaluation:
+  subreddits:
+    - pettyrevenge
+    - AmItheAsshole
+    - RelationshipAdvice
+    - Nosleep
+    - TrueOffMyChest
+    - AskReddit
+    - ExplainLikeImFive
+    - MaliciousCompliance
+    - Antiwork
+  min_chars: 500
+  max_chars: 15000

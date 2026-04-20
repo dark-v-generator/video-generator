@@ -1,6 +1,7 @@
 """Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit
 e opcionalmente faz upload no TikTok (imediato ou agendado)."""
 
+import asyncio
 import datetime
 import logging
 import os
@@ -176,7 +177,8 @@ async def handle_upload_decision(update: Update, context: ContextTypes.DEFAULT_T
     try:
         tiktok_proxy = container.tiktok_proxy()
         description = f"{title} #reddit #história #storytelling #fyp"
-        tiktok_proxy.upload_video(
+        await asyncio.to_thread(
+            tiktok_proxy.upload_video,
             video_path=video_path,
             description=description,
             schedule=schedule,

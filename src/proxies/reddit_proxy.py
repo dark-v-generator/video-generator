@@ -1,3 +1,5 @@
+from typing import Literal, Optional, List
+
 from bs4 import BeautifulSoup, ResultSet, Tag
 import requests
 
@@ -5,7 +7,7 @@ from ..proxies.interfaces import IRedditProxy
 from ..entities.reddit_post import RedditPost
 
 from ..core.logging_config import get_logger
-from ..entities.configs.proxies.reddit import BS4RedditConfig
+from ..entities.configs.proxies.reddit import BS4RedditConfig, JsonRedditConfig
 
 
 class BS4RedditProxy(IRedditProxy):
@@ -61,3 +63,24 @@ class BS4RedditProxy(IRedditProxy):
         if a is None:
             return "[usuario desconhecido]"
         return a.text.strip()
+
+    def list_subreddit_posts(
+        self,
+        subreddit: str,
+        sort: Literal["top", "new", "hot"] = "top",
+        time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
+        limit: int = 25,
+        min_chars: Optional[int] = None,
+        max_chars: Optional[int] = None,
+    ) -> List[RedditPost]:
+        from .json_reddit_proxy import JsonRedditProxy
+
+        json_proxy = JsonRedditProxy(config=JsonRedditConfig())
+        return json_proxy.list_subreddit_posts(
+            subreddit=subreddit,
+            sort=sort,
+            time_filter=time_filter,
+            limit=limit,
+            min_chars=min_chars,
+            max_chars=max_chars,
+        )

@@ -15,6 +15,28 @@ class IRedditProxy(ABC):
         """Get a Reddit post from a URL"""
         ...
 
+    @abstractmethod
+    def list_subreddit_posts(
+        self,
+        subreddit: str,
+        sort: Literal["top", "new", "hot"] = "top",
+        time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
+        limit: int = 25,
+        min_chars: Optional[int] = None,
+        max_chars: Optional[int] = None,
+    ) -> List[RedditPost]:
+        """List posts from a subreddit with optional filters.
+
+        Args:
+            subreddit: Subreddit name without the r/ prefix.
+            sort: Sort order — 'top', 'new', or 'hot'.
+            time_filter: Time window for 'top' sort — 'hour', 'day', 'week', 'month', 'year', 'all'.
+            limit: Maximum number of posts to return (after filtering).
+            min_chars: If set, exclude posts with fewer content characters.
+            max_chars: If set, exclude posts with more content characters.
+        """
+        ...
+
 
 class ITranscriptionProxy(ABC):
     @abstractmethod
