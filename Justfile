@@ -39,7 +39,7 @@ deploy:
     ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv sync --frozen --no-dev'
 
     echo "==> Installing Playwright browsers..."
-    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv run playwright install chromium'
+    ssh -t {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && sudo env PATH="$HOME/.local/bin:$PATH" uv run playwright install --with-deps chrome'
 
     echo "==> Restarting bot service..."
     ssh {{PROD_HOST}} 'systemctl --user daemon-reload && systemctl --user restart video-bot.service'
@@ -47,6 +47,10 @@ deploy:
 
     echo "==> Done!"
     ssh {{PROD_HOST}} 'systemctl --user status video-bot.service --no-pager'
+
+# One-time: install Playwright system deps (needs sudo)
+prod-setup-deps:
+    ssh -t {{PROD_HOST}} 'cd {{PROD_DIR}} && sudo env PATH="$HOME/.local/bin:$PATH" uv run playwright install-deps'
 
 # Start prod bot (without deploying)
 prod-start:
