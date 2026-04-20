@@ -19,4 +19,4 @@ COPY . .
 
 COPY config/tiktok_cookies.txt config/tiktok_cookies.txt
 
-CMD ["uv", "run", "python", "bots/run_all.py"]
+CMD ["uv", "run", "python", "-m", "bots.satisfying_bot"]

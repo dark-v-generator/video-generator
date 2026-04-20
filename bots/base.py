@@ -18,7 +18,7 @@ def is_user_allowed(user_id: int, allowed_ids: list[int]) -> bool:
 async def reject_unauthorized(update: Update) -> None:
     user_id = update.effective_user.id
     await update.message.reply_text(
-        f"You are not authorized to use this bot.\nYour user ID: {user_id}"
+        f"Você não tem permissão pra usar esse bot.\nSeu user ID: {user_id}"
     )
 
 

@@ -1,5 +1,5 @@
-"""Telegram bot that generates satisfying-background videos from Reddit URLs
-and optionally uploads them to TikTok (immediately or scheduled)."""
+"""Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit
+e opcionalmente faz upload no TikTok (imediato ou agendado)."""
 
 import datetime
 import logging
@@ -21,7 +21,7 @@ from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
 
-from bots.base import is_user_allowed, reject_unauthorized, send_video_bytes
+from bots.base import is_user_allowed, reject_unauthorized, send_audio_bytes, send_video_bytes
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -43,8 +43,7 @@ def _parse_schedule(text: str) -> datetime.datetime:
     """Parse 'DD/MM HH:MM' into a UTC datetime, validating constraints.
 
     Picks the nearest future occurrence of the given day/month/hour/minute,
-    trying the current year first and rolling to the next year if needed
-    (handles Dec → Jan scheduling correctly).
+    trying the current year first and rolling to the next year if needed.
     """
     m = SCHEDULE_RE.match(text.strip())
     if not m:
@@ -100,7 +99,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await reject_unauthorized(update)
         return ConversationHandler.END
     await update.message.reply_text(
-        "Send me a Reddit post URL and I'll generate a video with satisfying background."
+        "Me manda o link de um post do Reddit e eu gero um vídeo com fundo satisfatório."
     )
     return WAITING_URL
 
@@ -113,10 +112,10 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     url = update.message.text.strip()
     if "reddit.com" not in url:
-        await update.message.reply_text("Please send a valid Reddit post URL.")
+        await update.message.reply_text("Manda um link válido do Reddit.")
         return WAITING_URL
 
-    await update.message.reply_text("Generating video... This may take a few minutes.")
+    await update.message.reply_text("Gerando vídeo... pode demorar alguns minutos.")
     logger.info("User %s requested satisfying video for: %s", user_id, url)
 
     try:
@@ -128,8 +127,8 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             low_quality=bot_config.low_quality,
         )
 
-        await update.message.reply_text("Uploading video...")
-        await send_video_bytes(update.message, result.video, "Story")
+        await send_audio_bytes(update.message, result.audio, "Narração")
+        await send_video_bytes(update.message, result.video, "Vídeo pronto")
 
         tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
         tmp.write(result.video)
@@ -139,16 +138,16 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data["video_title"] = result.story_md.split("\n")[0].lstrip("# ").strip()
 
         await update.message.reply_text(
-            "Upload to TikTok?\n\n"
-            "Send 'now' to upload immediately,\n"
-            "a date like '17/04 18:30' (UTC) to schedule,\n"
-            "or /skip to skip."
+            "Quer subir no TikTok?\n\n"
+            "Manda 'now' pra subir agora,\n"
+            "uma data tipo '17/04 18:30' (UTC) pra agendar,\n"
+            "ou /skip pra pular."
         )
         return WAITING_UPLOAD_DECISION
 
     except Exception as e:
         logger.exception("Failed to generate video")
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"Erro: {e}")
         return ConversationHandler.END
 
 
@@ -158,7 +157,7 @@ async def handle_upload_decision(update: Update, context: ContextTypes.DEFAULT_T
     title = context.user_data.get("video_title", "")
 
     if not video_path or not os.path.exists(video_path):
-        await update.message.reply_text("Video file not found. Please start over.")
+        await update.message.reply_text("Arquivo do vídeo não encontrado. Começa de novo.")
         return ConversationHandler.END
 
     try:
@@ -167,12 +166,12 @@ async def handle_upload_decision(update: Update, context: ContextTypes.DEFAULT_T
             schedule = _parse_schedule(text)
     except ValueError as e:
         await update.message.reply_text(
-            f"{e}\n\nTry again, send 'now', 'DD/MM HH:MM', or /skip."
+            f"{e}\n\nTenta de novo: 'now', 'DD/MM HH:MM', ou /skip."
         )
         return WAITING_UPLOAD_DECISION
 
-    action = f"scheduled for {schedule.strftime('%d/%m %H:%M')} UTC" if schedule else "now"
-    await update.message.reply_text(f"Uploading to TikTok ({action})...")
+    action = f"agendado pra {schedule.strftime('%d/%m %H:%M')} UTC" if schedule else "agora"
+    await update.message.reply_text(f"Subindo no TikTok ({action})...")
 
     try:
         tiktok_proxy = container.tiktok_proxy()
@@ -182,10 +181,10 @@ async def handle_upload_decision(update: Update, context: ContextTypes.DEFAULT_T
             description=description,
             schedule=schedule,
         )
-        await update.message.reply_text("TikTok upload complete!")
+        await update.message.reply_text("Upload pro TikTok concluído!")
     except Exception as e:
         logger.exception("Failed to upload to TikTok")
-        await update.message.reply_text(f"TikTok upload failed: {e}")
+        await update.message.reply_text(f"Falha no upload pro TikTok: {e}")
     finally:
         _cleanup_temp(video_path)
         context.user_data.clear()
@@ -197,7 +196,7 @@ async def skip_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     video_path = context.user_data.get("video_path")
     _cleanup_temp(video_path)
     context.user_data.clear()
-    await update.message.reply_text("Skipped TikTok upload. Done!")
+    await update.message.reply_text("Upload pulado. Pronto!")
     return ConversationHandler.END
 
 
@@ -205,7 +204,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     video_path = context.user_data.get("video_path")
     _cleanup_temp(video_path)
     context.user_data.clear()
-    await update.message.reply_text("Cancelled.")
+    await update.message.reply_text("Cancelado.")
     return ConversationHandler.END
 
 

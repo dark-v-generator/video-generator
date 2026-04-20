@@ -1,7 +1,7 @@
-"""Interactive Telegram bot with checkpoint flow for image-story video generation.
+"""Bot interativo do Telegram com fluxo de checkpoints para geração de vídeos com imagens IA.
 
-Flow: /generate <url> -> scrape -> script review -> audio review -> images review -> video review.
-At each checkpoint the user can approve or request changes.
+Fluxo: /generate <url> -> scrape -> roteiro (auto) -> áudio -> revisão de imagens -> vídeo.
+O roteiro é aprovado automaticamente. A partir do áudio o usuário pode aprovar ou pedir mudanças.
 """
 
 import logging
@@ -41,10 +41,10 @@ CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 config = MainConfig.from_yaml(CONFIG_PATH)
 bot_config = config.bots.image_story_bot
 
-REVIEW_SCRIPT, REVIEW_AUDIO, REVIEW_IMAGES, REVIEW_VIDEO = range(4)
+REVIEW_AUDIO, REVIEW_IMAGES, REVIEW_VIDEO = range(3)
 
 APPROVE_KEYBOARD = InlineKeyboardMarkup(
-    [[InlineKeyboardButton("Approve", callback_data="approve")]]
+    [[InlineKeyboardButton("Aprovar", callback_data="approve")]]
 )
 
 
@@ -80,13 +80,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await reject_unauthorized(update)
         return
     await update.message.reply_text(
-        "Send /generate <reddit-url> to start creating a video.\n"
-        "At each step you can approve or request changes."
+        "Manda /generate <url-do-reddit> pra começar a criar um vídeo.\n"
+        "Em cada etapa você pode aprovar ou pedir mudanças."
     )
 
 
 # ---------------------------------------------------------------------------
-# /generate — entry point
+# /generate — entry point (scrape + script auto-approved + audio)
 # ---------------------------------------------------------------------------
 
 
@@ -97,15 +97,15 @@ async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     args = context.args
     if not args:
-        await update.message.reply_text("Usage: /generate <reddit-url>")
+        await update.message.reply_text("Uso: /generate <url-do-reddit>")
         return ConversationHandler.END
 
     url = args[0]
     if "reddit.com" not in url:
-        await update.message.reply_text("Please provide a valid Reddit URL.")
+        await update.message.reply_text("Manda um link válido do Reddit.")
         return ConversationHandler.END
 
-    await update.message.reply_text("Scraping post and generating script...")
+    await update.message.reply_text("Buscando post e gerando roteiro...")
 
     try:
         service = _get_service()
@@ -116,77 +116,29 @@ async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         context.user_data["post"] = post
         context.user_data["script"] = script
 
-        await _send_script_preview(update, script)
-        return REVIEW_SCRIPT
+        header = f"*{script.title}*\nNarrador: {script.resolved_gender}\n\n"
+        part1_preview = f"**Parte 1**\n{_truncate(script.part1, 1800)}\n\n"
+        part2_preview = f"**Parte 2**\n{_truncate(script.part2, 1800)}"
+        await update.message.reply_text(header + part1_preview + part2_preview)
 
-    except Exception as e:
-        logger.exception("Failed during scrape/script generation")
-        await update.message.reply_text(f"Error: {e}")
-        return ConversationHandler.END
-
-
-# ---------------------------------------------------------------------------
-# REVIEW_SCRIPT state
-# ---------------------------------------------------------------------------
-
-
-async def _send_script_preview(update: Update, script) -> None:
-    header = f"*{script.title}*\nNarrator: {script.resolved_gender}\n\n"
-    part1_preview = f"**Part 1**\n{_truncate(script.part1, 1800)}\n\n"
-    part2_preview = f"**Part 2**\n{_truncate(script.part2, 1800)}"
-    text = header + part1_preview + part2_preview
-
-    target = update.callback_query.message if update.callback_query else update.message
-    await target.reply_text(
-        text,
-        reply_markup=APPROVE_KEYBOARD,
-    )
-
-
-async def on_script_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    await query.message.reply_text("Generating audio... this may take a minute.")
-
-    try:
-        service: RedditVideoService = context.user_data["service"]
-        script = context.user_data["script"]
+        await update.message.reply_text("Gerando áudio...")
 
         audio = await service.generate_audio(script)
         context.user_data["audio"] = audio
 
-        await send_audio_bytes(query.message, audio.part1.bytes, "Part 1 audio")
-        await send_audio_bytes(query.message, audio.part2.bytes, "Part 2 audio")
-        await query.message.reply_text(
-            "Audio generated. Approve or send a message to request changes "
-            "(e.g. 'slower', 'female voice').",
+        await send_audio_bytes(update.message, audio.part1.bytes, "Áudio Parte 1")
+        await send_audio_bytes(update.message, audio.part2.bytes, "Áudio Parte 2")
+        await update.message.reply_text(
+            "Áudio gerado. Aprova ou manda uma mensagem pra pedir mudanças "
+            "(ex: 'mais devagar', 'voz feminina').",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_AUDIO
 
     except Exception as e:
-        logger.exception("Failed during audio generation")
-        await query.message.reply_text(f"Error: {e}")
+        logger.exception("Failed during scrape/script/audio generation")
+        await update.message.reply_text(f"Erro: {e}")
         return ConversationHandler.END
-
-
-async def on_script_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    feedback = update.message.text
-    await update.message.reply_text("Revising script...")
-
-    try:
-        service: RedditVideoService = context.user_data["service"]
-        script = context.user_data["script"]
-        revised = await service.revise_script(script, feedback)
-        context.user_data["script"] = revised
-
-        await _send_script_preview(update, revised)
-        return REVIEW_SCRIPT
-
-    except Exception as e:
-        logger.exception("Failed during script revision")
-        await update.message.reply_text(f"Error: {e}")
-        return REVIEW_SCRIPT
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +150,7 @@ async def on_audio_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        "Generating captions and AI images... this will take a few minutes."
+        "Gerando legendas e imagens... pode demorar alguns minutos."
     )
 
     try:
@@ -217,56 +169,52 @@ async def on_audio_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             image_stories.generated_images_2
         )
         await query.message.reply_text(
-            f"{total} images generated (preview above shows a sample). "
-            "All images will be used in the final video.\n\n"
-            "Approve or send 'regenerate' to get new images.",
+            f"{total} imagens geradas (acima uma amostra). "
+            "Todas serão usadas no vídeo final.\n\n"
+            "Aprova ou manda 'regenerar' pra gerar novas imagens.",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_IMAGES
 
     except Exception as e:
         logger.exception("Failed during image generation")
-        await query.message.reply_text(f"Error: {e}")
+        await query.message.reply_text(f"Erro: {e}")
         return ConversationHandler.END
 
 
 async def on_audio_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     feedback = update.message.text.lower()
-    await update.message.reply_text("Re-generating audio with your changes...")
+    await update.message.reply_text("Gerando áudio novamente com as mudanças...")
 
     try:
         service: RedditVideoService = context.user_data["service"]
         script = context.user_data["script"]
 
         rate = 1.0
-        if "slower" in feedback:
+        if "devagar" in feedback or "slower" in feedback:
             rate = 0.85
-        elif "faster" in feedback:
+        elif "rápido" in feedback or "faster" in feedback:
             rate = 1.15
 
-        if "female" in feedback:
+        if "feminina" in feedback or "female" in feedback:
             script.resolved_gender = "female"
-        elif "male" in feedback:
+        elif "masculina" in feedback or "male" in feedback:
             script.resolved_gender = "male"
 
         audio = await service.generate_audio(script, speech_rate=rate)
         context.user_data["audio"] = audio
 
-        await send_audio_bytes(
-            update.message, audio.part1.bytes, "Part 1 audio (revised)"
-        )
-        await send_audio_bytes(
-            update.message, audio.part2.bytes, "Part 2 audio (revised)"
-        )
+        await send_audio_bytes(update.message, audio.part1.bytes, "Áudio Parte 1 (revisado)")
+        await send_audio_bytes(update.message, audio.part2.bytes, "Áudio Parte 2 (revisado)")
         await update.message.reply_text(
-            "Revised audio ready. Approve or request more changes.",
+            "Áudio revisado. Aprova ou pede mais mudanças.",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_AUDIO
 
     except Exception as e:
         logger.exception("Failed during audio re-generation")
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"Erro: {e}")
         return REVIEW_AUDIO
 
 
@@ -278,13 +226,13 @@ async def on_audio_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def _send_images_preview(message, image_stories) -> None:
     """Send a sample of generated images (up to 3 per part) for user review."""
     for label, images in [
-        ("Part 1", image_stories.generated_images_1),
-        ("Part 2", image_stories.generated_images_2),
+        ("Parte 1", image_stories.generated_images_1),
+        ("Parte 2", image_stories.generated_images_2),
     ]:
         samples = images[:3]
         for i, img_bytes in enumerate(samples, 1):
             await send_image_bytes(
-                message, img_bytes, f"{label} — image {i}/{len(images)}"
+                message, img_bytes, f"{label} — imagem {i}/{len(images)}"
             )
 
 
@@ -292,7 +240,7 @@ async def on_images_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     query = update.callback_query
     await query.answer()
     await query.message.reply_text(
-        "Generating cover and composing video... this will take a few minutes."
+        "Gerando capa e montando o vídeo... pode demorar alguns minutos."
     )
 
     try:
@@ -320,23 +268,23 @@ async def on_images_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         _save_video(videos.part1_video, "part1.mp4")
         _save_video(videos.part2_video, "part2.mp4")
 
-        await send_video_bytes(query.message, videos.part1_video, "Part 1")
-        await send_video_bytes(query.message, videos.part2_video, "Part 2")
+        await send_video_bytes(query.message, videos.part1_video, "Parte 1")
+        await send_video_bytes(query.message, videos.part2_video, "Parte 2")
         await query.message.reply_text(
-            "Videos generated. Approve to finish, or send a message to request changes.",
+            "Vídeos gerados. Aprova pra finalizar ou manda uma mensagem pra pedir mudanças.",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_VIDEO
 
     except Exception as e:
         logger.exception("Failed during video composition")
-        await query.message.reply_text(f"Error: {e}")
+        await query.message.reply_text(f"Erro: {e}")
         return ConversationHandler.END
 
 
 async def on_images_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
-        "Regenerating AI images... this will take a few minutes."
+        "Regenerando imagens... pode demorar alguns minutos."
     )
 
     try:
@@ -349,14 +297,14 @@ async def on_images_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         await _send_images_preview(update.message, image_stories)
         await update.message.reply_text(
-            "New images generated. Approve or send 'regenerate' again.",
+            "Novas imagens geradas. Aprova ou manda 'regenerar' de novo.",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_IMAGES
 
     except Exception as e:
         logger.exception("Failed during image regeneration")
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"Erro: {e}")
         return REVIEW_IMAGES
 
 
@@ -368,14 +316,14 @@ async def on_images_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def on_video_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    await query.message.reply_text("All done! Send /generate to start another.")
+    await query.message.reply_text("Pronto! Manda /generate pra criar outro.")
     context.user_data.clear()
     return ConversationHandler.END
 
 
 async def on_video_change(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(
-        "Re-composing video... this will take a few minutes."
+        "Remontando o vídeo... pode demorar alguns minutos."
     )
 
     try:
@@ -399,17 +347,17 @@ async def on_video_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         _save_video(videos.part1_video, "part1.mp4")
         _save_video(videos.part2_video, "part2.mp4")
 
-        await send_video_bytes(update.message, videos.part1_video, "Part 1 (revised)")
-        await send_video_bytes(update.message, videos.part2_video, "Part 2 (revised)")
+        await send_video_bytes(update.message, videos.part1_video, "Parte 1 (revisado)")
+        await send_video_bytes(update.message, videos.part2_video, "Parte 2 (revisado)")
         await update.message.reply_text(
-            "Revised videos ready. Approve or request more changes.",
+            "Vídeos revisados. Aprova ou pede mais mudanças.",
             reply_markup=APPROVE_KEYBOARD,
         )
         return REVIEW_VIDEO
 
     except Exception as e:
         logger.exception("Failed during video re-composition")
-        await update.message.reply_text(f"Error: {e}")
+        await update.message.reply_text(f"Erro: {e}")
         return REVIEW_VIDEO
 
 
@@ -419,7 +367,7 @@ async def on_video_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Cancelled. Send /generate to start over.")
+    await update.message.reply_text("Cancelado. Manda /generate pra começar de novo.")
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -439,10 +387,6 @@ def main() -> None:
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("generate", cmd_generate)],
         states={
-            REVIEW_SCRIPT: [
-                CallbackQueryHandler(on_script_approve, pattern="^approve$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, on_script_change),
-            ],
             REVIEW_AUDIO: [
                 CallbackQueryHandler(on_audio_approve, pattern="^approve$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, on_audio_change),
