@@ -55,12 +55,17 @@ from src.proxies.interfaces import ICoverProxy
 from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 
-from src.proxies.interfaces import IVideoGeneratorProxy
+from src.proxies.interfaces import IVideoGeneratorProxy, ITikTokProxy
 from src.proxies.comfyui_video_proxy import ComfyUIVideoProxy
 from src.entities.configs.proxies.video_generation import (
     VideoGenerationConfigType,
     ComfyUIVideoGenerationConfig,
 )
+from src.entities.configs.proxies.tiktok import (
+    TikTokConfigType,
+    TikTokUploaderConfig,
+)
+from src.proxies.tiktok_uploader_proxy import TikTokUploaderProxy
 
 
 class ImageGeneratorFactory:
@@ -192,3 +197,12 @@ class CoverProxyFactory:
             return PlaywrightCoverProxy(title_font_size=config.title_font_size)
         else:
             raise ValueError(f"Unknown Cover Configuration: {type(config)}")
+
+
+class TikTokProxyFactory:
+    @staticmethod
+    def create(config: TikTokConfigType) -> ITikTokProxy:
+        if isinstance(config, TikTokUploaderConfig):
+            return TikTokUploaderProxy(config=config)
+        else:
+            raise ValueError(f"Unknown TikTok Configuration: {type(config)}")

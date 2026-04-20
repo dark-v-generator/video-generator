@@ -10,4 +10,4 @@ class TelegramBotConfig(BaseYAMLModel):
 
 class BotsConfig(BaseYAMLModel):
     image_story_bot: TelegramBotConfig = Field(default_factory=TelegramBotConfig)
-    two_part_history_bot: TelegramBotConfig = Field(default_factory=TelegramBotConfig)
+    satisfying_bot: TelegramBotConfig = Field(default_factory=TelegramBotConfig)

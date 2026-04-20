@@ -13,6 +13,10 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --no-dev --frozen
 
+RUN uv run playwright install --with-deps chromium
+
 COPY . .
+
+COPY config/tiktok_cookies.txt config/tiktok_cookies.txt
 
 CMD ["uv", "run", "python", "bots/run_all.py"]

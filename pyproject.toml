@@ -28,7 +28,7 @@ dependencies = [
     # Core Application Dependencies
     "fastapi==0.115.6",
     "uvicorn==0.32.1",
-    "pydantic==2.10.5",
+    "pydantic>=2.10.6",
     "pydantic-settings==2.7.0",
     "dependency-injector==4.42.0",
     # AI/ML Services
@@ -55,7 +55,7 @@ dependencies = [
     "PyYAML==6.0.2",
     "Unidecode==1.4.0",
     "proglog==0.1.10",
-    "playwright==1.49.1",
+    "playwright>=1.49.1",
     # Development
     "typing_extensions==4.15.0",
     "python-multipart==0.0.20",
@@ -69,6 +69,7 @@ dependencies = [
     "litellm>=1.60.0",
     "dspy-ai>=2.6.27",
     "python-telegram-bot>=22.0",
+    "tiktok-uploader>=1.2.0",
 ]
 
 [project.optional-dependencies]

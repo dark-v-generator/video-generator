@@ -27,6 +27,6 @@ bots:
   image_story_bot:
     allowed_user_ids: [627370641]
     low_quality: false
-  two_part_history_bot:
+  satisfying_bot:
     allowed_user_ids: [627370641]
     low_quality: false

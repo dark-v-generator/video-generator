@@ -18,7 +18,7 @@ class Secrets(BaseSettings):
 
     # Telegram bot tokens
     telegram_image_story_bot_token: Optional[str] = None
-    telegram_two_part_history_bot_token: Optional[str] = None
+    telegram_satisfying_bot_token: Optional[str] = None
 
     model_config = ConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
