@@ -123,7 +123,7 @@ async def _run_find(bot, chat_id: int) -> None:
         results = await finder.find_best_stories(
             sort="top",
             time_filter="day",
-            top_per_sub=2,
+            top_per_sub=5,
             language=Language.PORTUGUESE,
         )
     except Exception as e:

@@ -66,7 +66,7 @@ async def main():
         choices=["hour", "day", "week", "month", "year", "all"],
         default="day",
     )
-    parser.add_argument("--top-per-sub", type=int, default=2, help="Best posts to pick per subreddit")
+    parser.add_argument("--top-per-sub", type=int, default=5, help="Best posts to pick per subreddit")
     parser.add_argument("--per-sub", type=int, default=25, help="Posts to fetch per subreddit")
 
     args = parser.parse_args()

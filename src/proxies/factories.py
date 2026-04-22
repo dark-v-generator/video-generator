@@ -148,10 +148,13 @@ class LLMProxyFactory:
         openai_api_key: str = None,
         ollama_base_url: str = None,
         google_api_key: str = None,
+        openrouter_api_key: str = None,
     ) -> ILLMProxy | None:
         if config is None:
             return None
-        return LLMProxyFactory.create(config, openai_api_key, ollama_base_url, google_api_key)
+        return LLMProxyFactory.create(
+            config, openai_api_key, ollama_base_url, google_api_key, openrouter_api_key,
+        )
 
     @staticmethod
     def create(
@@ -159,6 +162,7 @@ class LLMProxyFactory:
         openai_api_key: str = None,
         ollama_base_url: str = None,
         google_api_key: str = None,
+        openrouter_api_key: str = None,
     ) -> ILLMProxy:
         if isinstance(config, MockLLMConfig):
             return MockLLMProxy()
@@ -169,6 +173,8 @@ class LLMProxyFactory:
             config.provider_config.base_url = ollama_base_url
         elif config.provider_config.provider == "google":
             config.provider_config.api_key = google_api_key
+        elif config.provider_config.provider == "openrouter":
+            config.provider_config.api_key = openrouter_api_key
 
         if isinstance(config, DSPyLLMConfig):
             return DSPyLLMProxy(config=config)

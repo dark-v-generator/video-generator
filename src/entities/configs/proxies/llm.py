@@ -4,7 +4,7 @@ from src.entities.base_yaml_model import BaseYAMLModel
 
 
 class LLMProviderConfig(BaseYAMLModel):
-    provider: Literal["openai", "google", "ollama"] = "ollama"
+    provider: Literal["openai", "google", "ollama", "openrouter"] = "ollama"
     model: str = "gemma3:12b"
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None

@@ -12,6 +12,7 @@ class Secrets(BaseSettings):
     runpod_api_key: Optional[str] = None
     legnext_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"

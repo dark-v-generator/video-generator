@@ -227,7 +227,7 @@ class StoryFinderService:
         sort: Literal["top", "new", "hot"] = "top",
         time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
         posts_per_sub: int = 25,
-        top_per_sub: int = 2,
+        top_per_sub: int = 5,
         language: Language = Language.PORTUGUESE,
     ) -> List[EvaluatedStory]:
         finalists: List[StoryCandidate] = []

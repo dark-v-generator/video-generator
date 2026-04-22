@@ -58,6 +58,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         openai_api_key=secrets.openai_api_key,
         ollama_base_url=secrets.ollama_base_url,
         google_api_key=secrets.google_api_key,
+        openrouter_api_key=secrets.openrouter_api_key,
     )
     evaluation_llm_proxy = providers.Singleton(
         proxies_factories.LLMProxyFactory.create_optional,
@@ -65,6 +66,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         openai_api_key=secrets.openai_api_key,
         ollama_base_url=secrets.ollama_base_url,
         google_api_key=secrets.google_api_key,
+        openrouter_api_key=secrets.openrouter_api_key,
     )
     youtube_proxy = providers.Singleton(
         proxies_factories.YouTubeProxyFactory.create,

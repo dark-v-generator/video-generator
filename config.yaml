@@ -10,13 +10,13 @@ proxies:
   llm_config:
     type: prompt
     provider_config:
-      provider: openai
-      model: gpt-5.4-mini
+      provider: openrouter
+      model: qwen/qwen3.6-plus
   evaluation_llm_config:
     type: prompt
     provider_config:
-      provider: openai
-      model: gpt-5.4-mini
+      provider: openrouter
+      model: google/gemini-2.5-flash
   speech_config:
     type: edge-tts
   transcription_config:

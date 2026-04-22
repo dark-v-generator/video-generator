@@ -79,4 +79,10 @@ class EdgeTTSSpeechProxy(ISpeechProxy):
                 image_url="",
                 language=Language.PORTUGUESE,
             ),
+            SpeechVoice(
+                id="pt-BR-ThalitaMultilingualNeural",
+                name="Thalita (F)",
+                image_url="",
+                language=Language.PORTUGUESE,
+            ),
         ]

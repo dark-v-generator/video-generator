@@ -27,6 +27,75 @@ class PromptLLMProxy(ILLMProxy):
         self._logger = get_logger(__name__)
         self.config = config.provider_config
 
+    @staticmethod
+    def _clean_json(text: str) -> str:
+        """Normalize LLM output so it can be parsed as JSON.
+
+        Handles markdown fences, double-brace wrappers produced by some
+        OpenRouter models (e.g. gpt-oss-120b), and escaped-JSON-as-string
+        wrappers like ``{"": "{\\"resumo\\": ...}"}``.
+        """
+        text = text.strip()
+        if text.startswith("```json"):
+            text = text.strip("```json").strip("```").strip()
+        elif text.startswith("```"):
+            text = text.strip("```").strip()
+
+        text = text.strip()
+
+        def _try_unwrap_string_value(obj):
+            """If obj is a single-key dict whose value is a JSON string, parse it."""
+            if isinstance(obj, dict) and len(obj) == 1:
+                val = next(iter(obj.values()))
+                if isinstance(val, str):
+                    try:
+                        return json.dumps(json.loads(val), ensure_ascii=False)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            return None
+
+        def _try_parse_and_unwrap(s: str) -> str | None:
+            try:
+                parsed = json.loads(s)
+                unwrapped = _try_unwrap_string_value(parsed)
+                return unwrapped if unwrapped else s
+            except json.JSONDecodeError:
+                return None
+
+        # Fast path: already valid JSON
+        result = _try_parse_and_unwrap(text)
+        if result is not None:
+            return result
+
+        # Double-brace wrapper: "{\n{...}\n}" → strip outer braces then retry
+        if text.startswith("{"):
+            inner = text[1:].strip()
+            if inner.startswith("{"):
+                # Try stripping both outer braces
+                if text.endswith("}"):
+                    result = _try_parse_and_unwrap(text[1:-1].strip())
+                    if result is not None:
+                        return result
+                # Outer closing brace may be missing; just skip the first one
+                result = _try_parse_and_unwrap(inner)
+                if result is not None:
+                    return result
+
+        # Last resort: find the first valid JSON object via raw_decode
+        decoder = json.JSONDecoder()
+        for i, ch in enumerate(text):
+            if ch in "{[":
+                try:
+                    obj, _ = decoder.raw_decode(text, i)
+                    unwrapped = _try_unwrap_string_value(obj)
+                    if unwrapped:
+                        return unwrapped
+                    return json.dumps(obj, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    continue
+
+        return text
+
     def _get_model_string(self) -> str:
         provider = self.config.provider
         model = self.config.model
@@ -36,15 +105,20 @@ class PromptLLMProxy(ILLMProxy):
             return f"ollama/{model}"
         elif provider == "google":
             return f"gemini/{model}"
+        elif provider == "openrouter":
+            return f"openrouter/{model}"
         return model
 
     def _get_extra_kwargs(self, model_str: str, json_mode: bool = True) -> dict:
         kwargs = {}
-        if (
-            json_mode
-            and ("gpt" in model_str or "gemini" in model_str or "openai/" in model_str)
-            and "gemma" not in model_str
-        ):
+        supports_json = (
+            "gpt" in model_str
+            or "gemini" in model_str
+            or "openai/" in model_str
+            or "qwen" in model_str
+            or self.config.provider == "openrouter"
+        ) and "gemma" not in model_str
+        if json_mode and supports_json:
             kwargs["response_format"] = {"type": "json_object"}
         if self.config.provider == "google":
             kwargs["safety_settings"] = self.GEMINI_SAFETY_SETTINGS
@@ -72,6 +146,9 @@ class PromptLLMProxy(ILLMProxy):
                 kwargs["max_completion_tokens"] = max_tok
             else:
                 kwargs["max_tokens"] = max_tok
+
+        if self.config.provider == "openrouter":
+            kwargs.pop("max_completion_tokens", None)
         return kwargs
 
     async def generate_two_part_story(
@@ -127,15 +204,8 @@ class PromptLLMProxy(ILLMProxy):
                 "This may be caused by a safety filter. Check the post content."
             )
 
-        # 4. Parse the JSON response
         try:
-            # Strip markdown json blocks if returned
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
-            result = json.loads(response_text)
+            result = json.loads(self._clean_json(response_text))
             return {
                 "title": result.get("title", ""),
                 "narrator_gender": result.get("narrator_gender", "unknown"),
@@ -188,12 +258,7 @@ class PromptLLMProxy(ILLMProxy):
             )
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
-            result = json.loads(response_text)
+            result = json.loads(self._clean_json(response_text))
             return {
                 "title": result.get("title", ""),
                 "narrator_gender": result.get("narrator_gender", "unknown"),
@@ -242,12 +307,7 @@ class PromptLLMProxy(ILLMProxy):
             )
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
-            data = json.loads(response_text)
+            data = json.loads(self._clean_json(response_text))
             return self._normalize_evaluation(data)
         except json.JSONDecodeError as e:
             self._logger.error(f"Failed to parse evaluation JSON: {response_text}")
@@ -313,12 +373,7 @@ class PromptLLMProxy(ILLMProxy):
             )
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
-            result = json.loads(response_text)
+            result = json.loads(self._clean_json(response_text))
             return {
                 "title": result.get("title", ""),
                 "narrator_gender": result.get("narrator_gender", "unknown"),
@@ -380,15 +435,10 @@ class PromptLLMProxy(ILLMProxy):
             )
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
+            cleaned = self._clean_json(response_text)
             decoder = json.JSONDecoder()
-            stripped = response_text.strip()
-            result, end = decoder.raw_decode(stripped)
-            tail = stripped[end:].strip()
+            result, end = decoder.raw_decode(cleaned)
+            tail = cleaned[end:].strip()
             if tail:
                 self._logger.warning(
                     "enhance_transcription: ignored %d trailing chars after first JSON value",
@@ -439,12 +489,7 @@ class PromptLLMProxy(ILLMProxy):
             raise RuntimeError("LLM returned empty content for character generation.")
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
-            data = json.loads(response_text)
+            data = json.loads(self._clean_json(response_text))
             if isinstance(data, dict) and "characters" in data:
                 data = data["characters"]
             elif isinstance(data, dict) and all(
@@ -507,15 +552,10 @@ class PromptLLMProxy(ILLMProxy):
             )
 
         try:
-            if response_text.startswith("```json"):
-                response_text = response_text.strip("```json").strip("```").strip()
-            if response_text.startswith("```"):
-                response_text = response_text.strip("```").strip()
-
+            cleaned = self._clean_json(response_text)
             decoder = json.JSONDecoder()
-            stripped = response_text.strip()
-            data, end = decoder.raw_decode(stripped)
-            tail = stripped[end:].strip()
+            data, end = decoder.raw_decode(cleaned)
+            tail = cleaned[end:].strip()
             if tail:
                 self._logger.warning(
                     "generate_image_story: ignored %d trailing chars",

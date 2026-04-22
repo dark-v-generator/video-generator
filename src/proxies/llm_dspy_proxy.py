@@ -347,6 +347,12 @@ class DSPyLLMProxy(ILLMProxy):
                 api_key=self.config.api_key,
                 **extra_kwargs,
             )
+        elif provider == "openrouter":
+            lm = dspy.LM(
+                model=f"openrouter/{model_name}",
+                api_key=self.config.api_key,
+                **extra_kwargs,
+            )
         else:
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
 
