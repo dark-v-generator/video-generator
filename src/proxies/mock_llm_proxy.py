@@ -315,7 +315,7 @@ MOCK_SINGLE_STORY = {
         "como foi e eu disse que contava em casa porque eu tava muito nervoso. Cheguei em "
         "casa, contei tudo, e ela me abraçou. Sou muito grato por tudo que tenho agora. "
         "Minha ex pode ter sido meu primeiro amor, mas minha esposa é o maior de todos. "
-        "Curta, comente e me siga para mais histórias."
+        "E vocês, acham que eu fiz a coisa certa? Curta, me siga e deixe nos comentários."
     ),
 }
 

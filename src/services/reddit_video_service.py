@@ -496,10 +496,10 @@ class RedditVideoService:
             base_text=script_text,
         )
 
-        captions_data = [
+        captions_data = self._strip_introduction([
             {"word": s.text, "start": s.start, "end": s.end}
             for s in captions_result.captions.segments
-        ]
+        ])
 
         cover_result = await self._cover_service.generate_cover(
             RedditCover(
@@ -714,7 +714,7 @@ class RedditVideoService:
     PORTRAIT_SUFFIX = ", character portrait, centered, neutral background"
 
     PART1_CTA = "Curta e me siga para a parte 2."
-    PART2_CTA = "Curta, comente e me siga para mais histórias."
+    PART2_CTA = "Curta, me siga e deixe nos comentários"
 
     @classmethod
     def _compute_content_boundaries(

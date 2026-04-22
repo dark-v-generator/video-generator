@@ -8,14 +8,14 @@ Take the provided original Reddit post and transform it into an engaging TikTok 
 4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
 5. The script must start with the title before the story text. For example: "Meu vizinho me perseguiu por meses. Tudo começou quando...". This is spoken as an intro while a cover image is shown.
 6. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
-7. The script MUST end with exactly this sentence: "Curta, comente e me siga para mais histórias."
+7. The script MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma. For example: "E você, acha que eu fui babaca ao fazer isso? Curta, me siga e deixe nos comentários". Another example: "E vocês, o que fariam no meu lugar? Curta, me siga e deixe nos comentários".
 8. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit. Tell the full story naturally.
 9. Provide your output in a JSON format matching this structure:
 ```json
 {
   "title": "<Natural translated Title>",
   "narrator_gender": "<male, female, or unknown based on the story>",
-  "script": "<Full translated script starting with the title, telling the complete story, ending with the CTA>"
+  "script": "<Full translated script starting with the title, telling the complete story, ending with a story-specific question + Curta, me siga e deixe nos comentários>"
 }
 ```
 

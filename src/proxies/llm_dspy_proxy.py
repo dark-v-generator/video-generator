@@ -21,8 +21,8 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     4. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. Example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...".
     5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
     6. Part 1 must end on suspense, with a call to action (e.g., "Curta e me siga para a parte 2.").
-    7. Part 2 must contain the climax, resolve the story, and end with a call to action asking for the viewer's opinion.
-    7. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
+    7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". Example: "E você, acha que eu fui babaca? Curta, me siga e deixe nos comentários".
+    8. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
     10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
        strong or sensitive moments with milder, everyday words. If the original post contains strong
@@ -52,7 +52,7 @@ class TwoPartTikTokStorySignature(dspy.Signature):
         desc="Part 1: starts with '{title}. Parte 1.' then the setup and context, ending before the climax with suspense and a call to action."
     )
     part2_script = dspy.OutputField(
-        desc="Part 2: starts with '{title}. Parte 2.' then the climax and resolution, ending with a question for the viewer."
+        desc="Part 2: starts with '{title}. Parte 2.' then the climax and resolution, ending with a story-specific engagement question followed by 'Curta, me siga e deixe nos comentários'."
     )
 
 
@@ -67,7 +67,7 @@ class TikTokStorySignature(dspy.Signature):
     3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
     4. The script must start with the title before the story text. Example: "Meu vizinho me perseguiu por meses. Tudo começou quando...".
     5. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
-    6. The script MUST end with exactly this sentence: "Curta, comente e me siga para mais histórias."
+    6. The script MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". Example: "E você, acha que eu fui babaca? Curta, me siga e deixe nos comentários".
     7. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit.
     8. ONLY provide the text for the script, do NOT include outside commentary, camera directions, or extra formatting.
     9. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
@@ -96,7 +96,7 @@ class TikTokStorySignature(dspy.Signature):
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     script = dspy.OutputField(
-        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with 'Curta, comente e me siga para mais histórias.'"
+        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with a story-specific engagement question followed by 'Curta, me siga e deixe nos comentários'."
     )
 
 
