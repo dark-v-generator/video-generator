@@ -17,6 +17,4 @@ RUN uv run playwright install --with-deps chromium
 
 COPY . .
 
-COPY config/tiktok_cookies.txt config/tiktok_cookies.txt
-
 CMD ["uv", "run", "python", "-m", "bots.satisfying_bot"]

@@ -19,7 +19,6 @@ from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfi
 from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
-from src.entities.configs.proxies.tiktok import TikTokConfigType, TikTokUploaderConfig
 
 from src.entities.configs.services.captions import CaptionsConfig
 from src.entities.configs.services.video import VideoConfig
@@ -52,9 +51,6 @@ class ProxiesConfig(BaseYAMLModel):
     )
     cover_config: CoverConfigType = Field(
         PlaywrightCoverConfig(), title="Cover configuration"
-    )
-    tiktok_config: TikTokConfigType = Field(
-        TikTokUploaderConfig(), title="TikTok upload configuration"
     )
 
 

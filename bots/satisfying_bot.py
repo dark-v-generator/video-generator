@@ -1,12 +1,8 @@
-"""Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit
-e opcionalmente faz upload no TikTok (imediato ou agendado)."""
+"""Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit."""
 
-import asyncio
 import datetime
 import logging
 import os
-import re
-import tempfile
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -28,9 +24,7 @@ from bots.base import (
     is_user_allowed,
     reject_unauthorized,
     send_audio_bytes,
-    send_audio_bytes_to_chat,
     send_video_bytes,
-    send_video_bytes_to_chat,
 )
 
 logging.basicConfig(
@@ -42,66 +36,7 @@ logger = logging.getLogger(__name__)
 config = MainConfig.from_yaml("config.yaml")
 bot_config = config.bots.satisfying_bot
 
-WAITING_URL, WAITING_UPLOAD_DECISION = range(2)
-
-MIN_SCHEDULE_MINUTES = 20
-MAX_SCHEDULE_DAYS = 10
-SCHEDULE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})$")
-
-
-def _parse_schedule(text: str) -> datetime.datetime:
-    """Parse 'DD/MM HH:MM' into a UTC datetime, validating constraints.
-
-    Picks the nearest future occurrence of the given day/month/hour/minute,
-    trying the current year first and rolling to the next year if needed.
-    """
-    m = SCHEDULE_RE.match(text.strip())
-    if not m:
-        raise ValueError(
-            "Formato inválido. Use 'now' ou 'DD/MM HH:MM' (ex: 17/04 18:30)."
-        )
-
-    day, month = int(m.group(1)), int(m.group(2))
-    hour, minute = int(m.group(3)), int(m.group(4))
-
-    if not (1 <= month <= 12):
-        raise ValueError("Mês inválido. Use um valor entre 01 e 12.")
-    if not (0 <= hour <= 23):
-        raise ValueError("Hora inválida. Use um valor entre 00 e 23.")
-    if not (0 <= minute <= 59):
-        raise ValueError("Minuto inválido. Use um valor entre 00 e 59.")
-
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-    scheduled = None
-    for year in (now.year, now.year + 1):
-        try:
-            candidate = datetime.datetime(
-                year, month, day, hour, minute,
-                tzinfo=datetime.timezone.utc,
-            )
-        except ValueError:
-            continue
-        if candidate > now:
-            scheduled = candidate
-            break
-
-    if scheduled is None:
-        raise ValueError(
-            f"Data inválida: {day:02d}/{month:02d} não existe ou já passou."
-        )
-
-    delta = scheduled - now
-    if delta < datetime.timedelta(minutes=MIN_SCHEDULE_MINUTES):
-        raise ValueError(
-            f"O agendamento precisa ser no mínimo {MIN_SCHEDULE_MINUTES} minutos no futuro."
-        )
-    if delta > datetime.timedelta(days=MAX_SCHEDULE_DAYS):
-        raise ValueError(
-            f"O agendamento pode ser no máximo {MAX_SCHEDULE_DAYS} dias no futuro."
-        )
-
-    return scheduled
+WAITING_URL = 0
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -139,82 +74,16 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
         await send_audio_bytes(update.message, result.audio, "Narração")
         await send_video_bytes(update.message, result.video, "Vídeo pronto")
-
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(result.video)
-        tmp.close()
-
-        context.user_data["video_path"] = tmp.name
-        context.user_data["video_title"] = result.story_md.split("\n")[0].lstrip("# ").strip()
-
-        await update.message.reply_text(
-            "Quer subir no TikTok?\n\n"
-            "Manda 'now' pra subir agora,\n"
-            "uma data tipo '17/04 18:30' (UTC) pra agendar,\n"
-            "ou /skip pra pular."
-        )
-        return WAITING_UPLOAD_DECISION
+        await update.message.reply_text("Pronto!")
 
     except Exception as e:
         logger.exception("Failed to generate video")
         await update.message.reply_text(f"Erro: {e}")
-        return ConversationHandler.END
 
-
-async def handle_upload_decision(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text.strip()
-    video_path = context.user_data.get("video_path")
-    title = context.user_data.get("video_title", "")
-
-    if not video_path or not os.path.exists(video_path):
-        await update.message.reply_text("Arquivo do vídeo não encontrado. Começa de novo.")
-        return ConversationHandler.END
-
-    try:
-        schedule = None
-        if text.lower() != "now":
-            schedule = _parse_schedule(text)
-    except ValueError as e:
-        await update.message.reply_text(
-            f"{e}\n\nTenta de novo: 'now', 'DD/MM HH:MM', ou /skip."
-        )
-        return WAITING_UPLOAD_DECISION
-
-    action = f"agendado pra {schedule.strftime('%d/%m %H:%M')} UTC" if schedule else "agora"
-    await update.message.reply_text(f"Subindo no TikTok ({action})...")
-
-    try:
-        tiktok_proxy = container.tiktok_proxy()
-        description = f"{title} #reddit #história #storytelling #fyp"
-        await asyncio.to_thread(
-            tiktok_proxy.upload_video,
-            video_path=video_path,
-            description=description,
-            schedule=schedule,
-        )
-        await update.message.reply_text("Upload pro TikTok concluído!")
-    except Exception as e:
-        logger.exception("Failed to upload to TikTok")
-        await update.message.reply_text(f"Falha no upload pro TikTok: {e}")
-    finally:
-        _cleanup_temp(video_path)
-        context.user_data.clear()
-
-    return ConversationHandler.END
-
-
-async def skip_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    video_path = context.user_data.get("video_path")
-    _cleanup_temp(video_path)
-    context.user_data.clear()
-    await update.message.reply_text("Upload pulado. Pronto!")
     return ConversationHandler.END
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    video_path = context.user_data.get("video_path")
-    _cleanup_temp(video_path)
-    context.user_data.clear()
     await update.message.reply_text("Cancelado.")
     return ConversationHandler.END
 
@@ -245,16 +114,8 @@ def _format_bar(value: float, width: int = 10) -> str:
     return "▓" * filled + "░" * (width - filled)
 
 
-async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
-        await reject_unauthorized(update)
-        return
-
-    await update.message.reply_text(
-        "Buscando as melhores histórias do dia... pode demorar um pouco."
-    )
-
+async def _run_find(bot, chat_id: int) -> None:
+    """Core /find logic: discover and rank stories, send results with generate buttons."""
     try:
         container.wire(modules=[__name__])
         finder = container.story_finder_service()
@@ -267,11 +128,11 @@ async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
     except Exception as e:
         logger.exception("Failed to find stories")
-        await update.message.reply_text(f"Erro ao buscar histórias: {e}")
+        await bot.send_message(chat_id, f"Erro ao buscar histórias: {e}")
         return
 
     if not results:
-        await update.message.reply_text("Nenhuma história boa encontrada hoje.")
+        await bot.send_message(chat_id, "Nenhuma história boa encontrada hoje.")
         return
 
     for i, story in enumerate(results):
@@ -303,63 +164,24 @@ async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )]
         ])
 
-        await update.message.reply_text(text, reply_markup=keyboard)
+        await bot.send_message(chat_id, text, reply_markup=keyboard)
 
-    await update.message.reply_text(
-        f"{len(results)} histórias encontradas. Clique em 'Gerar Vídeo' pra criar."
+    await bot.send_message(
+        chat_id,
+        f"{len(results)} histórias encontradas. Clique em 'Gerar Vídeo' pra criar.",
     )
 
 
-TIKTOK_PREFIX = "tt:"
+async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
+        await reject_unauthorized(update)
+        return
 
-SCHEDULE_SLOTS = {
-    "h_m": ("☀️ Hoje Manhã", 9),
-    "h_t": ("🌤 Hoje Tarde", 14),
-    "h_n": ("🌙 Hoje Noite", 20),
-    "a_m": ("☀️ Amanhã Manhã", 9),
-    "a_t": ("🌤 Amanhã Tarde", 14),
-    "a_n": ("🌙 Amanhã Noite", 20),
-}
-
-
-def _build_schedule_dt(slot: str) -> datetime.datetime | None:
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-    if slot.startswith("h_"):
-        day = now
-    elif slot.startswith("a_"):
-        day = now + datetime.timedelta(days=1)
-    else:
-        return None
-
-    hour = SCHEDULE_SLOTS[slot][1]
-    scheduled = day.replace(hour=hour, minute=0, second=0, microsecond=0)
-    if scheduled <= now + datetime.timedelta(minutes=MIN_SCHEDULE_MINUTES):
-        return None
-    return scheduled
-
-
-def _build_tiktok_keyboard(vid_key: str) -> InlineKeyboardMarkup:
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
-    rows = [[InlineKeyboardButton("🚀 Agora", callback_data=f"{TIKTOK_PREFIX}{vid_key}:now")]]
-
-    today_buttons = []
-    for slot in ("h_m", "h_t", "h_n"):
-        label, hour = SCHEDULE_SLOTS[slot]
-        candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-        if candidate > now + datetime.timedelta(minutes=MIN_SCHEDULE_MINUTES):
-            today_buttons.append(
-                InlineKeyboardButton(label, callback_data=f"{TIKTOK_PREFIX}{vid_key}:{slot}")
-            )
-    if today_buttons:
-        rows.append(today_buttons)
-
-    rows.append([
-        InlineKeyboardButton(label, callback_data=f"{TIKTOK_PREFIX}{vid_key}:{slot}")
-        for slot, (label, _) in list(SCHEDULE_SLOTS.items())[3:]
-    ])
-    rows.append([InlineKeyboardButton("⏭ Pular", callback_data=f"{TIKTOK_PREFIX}{vid_key}:skip")])
-
-    return InlineKeyboardMarkup(rows)
+    await update.message.reply_text(
+        "Buscando as melhores histórias do dia... pode demorar um pouco."
+    )
+    await _run_find(context.bot, update.effective_chat.id)
 
 
 async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -401,67 +223,11 @@ async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYP
             await status_msg.edit_text("📤 Enviando vídeo...")
         await send_video_bytes(query.message, result.video, "Vídeo pronto")
 
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(result.video)
-        tmp.close()
-
-        title = result.story_md.split("\n")[0].lstrip("# ").strip()
-        vid_key = _store_url(tmp.name)
-        _find_url_store[f"title:{vid_key}"] = title
-
-        keyboard = _build_tiktok_keyboard(vid_key)
-
         await status_msg.edit_text("✅ Vídeo pronto!")
-        await query.message.reply_text("Subir no TikTok?", reply_markup=keyboard)
 
     except Exception as e:
         logger.exception("Failed to generate video from /find")
         await status_msg.edit_text(f"❌ Erro ao gerar vídeo: {e}")
-
-
-async def handle_tiktok_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    payload = query.data.removeprefix(TIKTOK_PREFIX)
-    vid_key, slot = payload.rsplit(":", 1)
-
-    video_path = _find_url_store.get(vid_key)
-    title = _find_url_store.get(f"title:{vid_key}", "")
-
-    if slot == "skip":
-        _cleanup_temp(video_path)
-        await query.edit_message_text("Upload pulado.")
-        return
-
-    if not video_path or not os.path.exists(video_path):
-        await query.edit_message_text("Arquivo do vídeo não encontrado.")
-        return
-
-    schedule = _build_schedule_dt(slot) if slot != "now" else None
-
-    if slot != "now" and schedule is None:
-        await query.edit_message_text("Horário já passou. Escolha outro.")
-        return
-
-    label = "agora" if not schedule else schedule.strftime("%d/%m %H:%M UTC")
-    await query.edit_message_text(f"Subindo no TikTok ({label})...")
-
-    try:
-        tiktok_proxy = container.tiktok_proxy()
-        description = f"{title} #reddit #história #storytelling #fyp"
-        await asyncio.to_thread(
-            tiktok_proxy.upload_video,
-            video_path=video_path,
-            description=description,
-            schedule=schedule,
-        )
-        await query.message.reply_text(f"Upload pro TikTok concluído! ({label})")
-    except Exception as e:
-        logger.exception("Failed to upload to TikTok")
-        await query.message.reply_text(f"Falha no upload: {e}")
-    finally:
-        _cleanup_temp(video_path)
 
 
 def _cleanup_temp(path: str | None) -> None:
@@ -472,82 +238,12 @@ def _cleanup_temp(path: str | None) -> None:
             pass
 
 
-async def _daily_pipeline(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Scheduled job: find top stories, generate videos, send for scheduling."""
+async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Scheduled job: run /find automatically every day."""
     chat_id = bot_config.allowed_user_ids[0]
-    top_n = bot_config.daily_top_n
-
-    await context.bot.send_message(chat_id, "🔄 Pipeline diária iniciada — buscando histórias...")
-
-    try:
-        container.wire(modules=[__name__])
-        finder = container.story_finder_service()
-
-        results = await finder.find_best_stories(
-            sort="top",
-            time_filter="day",
-            top_per_sub=2,
-            language=Language.PORTUGUESE,
-        )
-    except Exception as e:
-        logger.exception("Daily pipeline: failed to find stories")
-        await context.bot.send_message(chat_id, f"❌ Erro ao buscar histórias: {e}")
-        return
-
-    if not results:
-        await context.bot.send_message(chat_id, "Nenhuma história boa encontrada hoje.")
-        return
-
-    picked = results[:top_n]
-    await context.bot.send_message(
-        chat_id,
-        f"📋 {len(picked)} melhor(es) de {len(results)} encontradas. Gerando vídeos...",
-    )
-
-    service = container.reddit_video_service()
-
-    for i, story in enumerate(picked):
-        post = story.post
-        sub = post.community.replace("r/", "")
-        label = f"#{i + 1} [{story.veredito}] {story.nota_geral}/100 — r/{sub}"
-
-        await context.bot.send_message(chat_id, f"⏳ {label}\nGerando vídeo...")
-
-        try:
-            result = await service.generate_satisfying_video(
-                post_url=post.url,
-                low_quality=bot_config.low_quality,
-            )
-
-            await send_audio_bytes_to_chat(context.bot, chat_id, result.audio, "Narração")
-
-            video_mb = len(result.video) / (1024 * 1024)
-            if video_mb > 49:
-                await context.bot.send_message(
-                    chat_id, f"📤 Comprimindo vídeo ({video_mb:.0f} MB)..."
-                )
-            await send_video_bytes_to_chat(context.bot, chat_id, result.video, "Vídeo pronto")
-
-            tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-            tmp.write(result.video)
-            tmp.close()
-
-            title = result.story_md.split("\n")[0].lstrip("# ").strip()
-            vid_key = _store_url(tmp.name)
-            _find_url_store[f"title:{vid_key}"] = title
-
-            keyboard = _build_tiktok_keyboard(vid_key)
-            await context.bot.send_message(
-                chat_id,
-                f"✅ {label}\nAgendar no TikTok?",
-                reply_markup=keyboard,
-            )
-
-        except Exception as e:
-            logger.exception("Daily pipeline: failed to generate video #%d", i + 1)
-            await context.bot.send_message(chat_id, f"❌ {label}\nErro: {e}")
-
-    await context.bot.send_message(chat_id, "🏁 Pipeline diária concluída.")
+    await context.bot.send_message(chat_id, "🔄 Busca diária iniciada...")
+    await _run_find(context.bot, chat_id)
+    await context.bot.send_message(chat_id, "🏁 Busca diária concluída.")
 
 
 def main() -> None:
@@ -566,25 +262,19 @@ def main() -> None:
             WAITING_URL: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url),
             ],
-            WAITING_UPLOAD_DECISION: [
-                CommandHandler("skip", skip_upload),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_upload_decision),
-            ],
         },
         fallbacks=[
             CommandHandler("cancel", cancel),
-            CommandHandler("skip", skip_upload),
         ],
     )
 
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("find", cmd_find))
     app.add_handler(CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}"))
-    app.add_handler(CallbackQueryHandler(handle_tiktok_action, pattern=f"^{TIKTOK_PREFIX}"))
 
     schedule_time = datetime.time(hour=bot_config.daily_hour_utc, tzinfo=datetime.timezone.utc)
-    app.job_queue.run_daily(_daily_pipeline, time=schedule_time)
-    logger.info("Daily pipeline scheduled at %02d:00 UTC", bot_config.daily_hour_utc)
+    app.job_queue.run_daily(_daily_find, time=schedule_time)
+    logger.info("Daily /find scheduled at %02d:00 UTC", bot_config.daily_hour_utc)
 
     logger.info("Satisfying video bot starting...")
     app.run_polling()

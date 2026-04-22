@@ -74,11 +74,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.CoverProxyFactory.create,
         config=main_config.provided.proxies.cover_config,
     )
-    tiktok_proxy = providers.Singleton(
-        proxies_factories.TikTokProxyFactory.create,
-        config=main_config.provided.proxies.tiktok_config,
-    )
-
     # Services
     speech_service = providers.Singleton(
         SpeechService,

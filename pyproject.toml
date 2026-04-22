@@ -69,7 +69,6 @@ dependencies = [
     "litellm>=1.60.0",
     "dspy-ai>=2.6.27",
     "python-telegram-bot[job-queue]>=22.0",
-    "tiktok-uploader>=1.2.0",
 ]
 
 [project.optional-dependencies]

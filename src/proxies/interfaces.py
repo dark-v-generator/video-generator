@@ -1,4 +1,3 @@
-import datetime
 from abc import ABC, abstractmethod
 from typing import List, Optional, Literal
 
@@ -175,19 +174,6 @@ class IYouTubeProxy(ABC):
     @abstractmethod
     async def download_video(self, video_id: str, low_quality: bool = False) -> bytes:
         """Download a YouTube video and return its bytes"""
-        ...
-
-
-class ITikTokProxy(ABC):
-    @abstractmethod
-    def upload_video(
-        self,
-        video_path: str,
-        description: str,
-        schedule: Optional[datetime.datetime] = None,
-    ) -> None:
-        """Upload a video to TikTok, optionally scheduling it.
-        schedule must be a UTC datetime at least 20min in the future and at most 10 days."""
         ...
 
 
