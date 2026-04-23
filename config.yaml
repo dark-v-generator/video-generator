@@ -16,7 +16,7 @@ proxies:
     type: prompt
     provider_config:
       provider: openrouter
-      model: google/gemini-2.5-flash
+      model: deepseek/deepseek-v3.2
   speech_config:
     type: edge-tts
     default_rate: 1.3
