@@ -255,7 +255,7 @@ async def on_images_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         context.user_data["cover1"] = cover1
         context.user_data["cover2"] = cover2
 
-        videos = service.compose_image_story_video(
+        videos = await service.compose_image_story_video(
             audio,
             captions,
             image_stories,
@@ -334,7 +334,7 @@ async def on_video_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         cover1 = context.user_data["cover1"]
         cover2 = context.user_data["cover2"]
 
-        videos = service.compose_image_story_video(
+        videos = await service.compose_image_story_video(
             audio,
             captions,
             image_stories,

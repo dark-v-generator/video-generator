@@ -1,10 +1,13 @@
 """Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit."""
 
+import asyncio
 import datetime
 import logging
 import os
+from dataclasses import dataclass
+from typing import Optional
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -39,6 +42,94 @@ bot_config = config.bots.satisfying_bot
 WAITING_URL = 0
 
 
+# ---------------------------------------------------------------------------
+# Generation queue – processes video jobs sequentially so the bot stays
+# responsive while heavy work runs in the background.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _GenerationJob:
+    url: str
+    reply_message: Message
+    status_message: Message
+
+
+class GenerationQueue:
+    def __init__(self) -> None:
+        self._queue: asyncio.Queue[_GenerationJob] = asyncio.Queue()
+        self._running = False
+        self._worker_task: Optional[asyncio.Task] = None
+
+    @property
+    def pending(self) -> int:
+        return self._queue.qsize()
+
+    @property
+    def busy(self) -> bool:
+        return self._running
+
+    @property
+    def position(self) -> int:
+        """Position a newly enqueued job would have (1-based, counting the running job)."""
+        return self.pending + (1 if self._running else 0) + 1
+
+    async def enqueue(self, job: _GenerationJob) -> int:
+        """Add a job and return its 1-based queue position."""
+        pos = self.position
+        await self._queue.put(job)
+        return pos
+
+    def start(self) -> None:
+        if self._worker_task is None:
+            self._worker_task = asyncio.create_task(self._worker())
+
+    async def _worker(self) -> None:
+        logger.info("Generation queue worker started")
+        while True:
+            job = await self._queue.get()
+            self._running = True
+            try:
+                await self._process(job)
+            except Exception:
+                logger.exception("Unhandled error in generation queue worker")
+            finally:
+                self._running = False
+                self._queue.task_done()
+
+    async def _process(self, job: _GenerationJob) -> None:
+        try:
+            await job.status_message.edit_text("⏳ Gerando vídeo...")
+
+            container.wire(modules=[__name__])
+            service = container.reddit_video_service()
+
+            result = await service.generate_satisfying_video(
+                post_url=job.url,
+                low_quality=bot_config.low_quality,
+            )
+
+            await job.status_message.edit_text("📤 Enviando áudio...")
+            await send_audio_bytes(job.reply_message, result.audio, "Narração")
+
+            video_mb = len(result.video) / (1024 * 1024)
+            if video_mb > 49:
+                await job.status_message.edit_text(
+                    f"📤 Comprimindo vídeo ({video_mb:.0f} MB)... pode demorar."
+                )
+            else:
+                await job.status_message.edit_text("📤 Enviando vídeo...")
+            await send_video_bytes(job.reply_message, result.video, "Vídeo pronto")
+
+            await job.status_message.edit_text("✅ Vídeo pronto!")
+
+        except Exception as e:
+            logger.exception("Failed to generate video for %s", job.url)
+            await job.status_message.edit_text(f"❌ Erro ao gerar vídeo: {e}")
+
+
+generation_queue = GenerationQueue()
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_user_allowed(update.effective_user.id, bot_config.allowed_user_ids):
         await reject_unauthorized(update)
@@ -60,25 +151,16 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Manda um link válido do Reddit.")
         return WAITING_URL
 
-    await update.message.reply_text("Gerando vídeo... pode demorar alguns minutos.")
     logger.info("User %s requested satisfying video for: %s", user_id, url)
+    status_msg = await update.message.reply_text("⏳ Adicionando à fila...")
 
-    try:
-        container.wire(modules=[__name__])
-        service = container.reddit_video_service()
+    job = _GenerationJob(url=url, reply_message=update.message, status_message=status_msg)
+    pos = await generation_queue.enqueue(job)
 
-        result = await service.generate_satisfying_video(
-            post_url=url,
-            low_quality=bot_config.low_quality,
-        )
-
-        await send_audio_bytes(update.message, result.audio, "Narração")
-        await send_video_bytes(update.message, result.video, "Vídeo pronto")
-        await update.message.reply_text("Pronto!")
-
-    except Exception as e:
-        logger.exception("Failed to generate video")
-        await update.message.reply_text(f"Erro: {e}")
+    if pos > 1:
+        await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
+    else:
+        await status_msg.edit_text("⏳ Gerando vídeo... pode demorar alguns minutos.")
 
     return ConversationHandler.END
 
@@ -200,34 +282,15 @@ async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     await query.edit_message_reply_markup(reply_markup=None)
-    status_msg = await query.message.reply_text("⏳ Gerando vídeo... pode demorar alguns minutos.")
+    status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
 
-    try:
-        container.wire(modules=[__name__])
-        service = container.reddit_video_service()
+    job = _GenerationJob(url=url, reply_message=query.message, status_message=status_msg)
+    pos = await generation_queue.enqueue(job)
 
-        result = await service.generate_satisfying_video(
-            post_url=url,
-            low_quality=bot_config.low_quality,
-        )
-
-        await status_msg.edit_text("📤 Enviando áudio...")
-        await send_audio_bytes(query.message, result.audio, "Narração")
-
-        video_mb = len(result.video) / (1024 * 1024)
-        if video_mb > 49:
-            await status_msg.edit_text(
-                f"📤 Comprimindo vídeo ({video_mb:.0f} MB)... pode demorar."
-            )
-        else:
-            await status_msg.edit_text("📤 Enviando vídeo...")
-        await send_video_bytes(query.message, result.video, "Vídeo pronto")
-
-        await status_msg.edit_text("✅ Vídeo pronto!")
-
-    except Exception as e:
-        logger.exception("Failed to generate video from /find")
-        await status_msg.edit_text(f"❌ Erro ao gerar vídeo: {e}")
+    if pos > 1:
+        await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
+    else:
+        await status_msg.edit_text("⏳ Gerando vídeo... pode demorar alguns minutos.")
 
 
 def _cleanup_temp(path: str | None) -> None:
@@ -246,12 +309,17 @@ async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(chat_id, "🏁 Busca diária concluída.")
 
 
+async def _post_init(application: Application) -> None:
+    generation_queue.start()
+    logger.info("Generation queue worker started")
+
+
 def main() -> None:
     token = secrets.telegram_satisfying_bot_token
     if not token:
         raise RuntimeError("TELEGRAM_SATISFYING_BOT_TOKEN env var is not set")
 
-    app = Application.builder().token(token).build()
+    app = Application.builder().token(token).post_init(_post_init).build()
 
     conv_handler = ConversationHandler(
         entry_points=[

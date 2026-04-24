@@ -381,7 +381,7 @@ class RedditVideoService:
             generated_images_2=generated_2,
         )
 
-    def compose_image_story_video(
+    async def compose_image_story_video(
         self,
         audio: AudioPair,
         captions: CaptionsPair,
@@ -390,7 +390,7 @@ class RedditVideoService:
         cover_part2: CoverResult,
         low_quality: bool = False,
     ) -> VideoPair:
-        video_bytes_1 = self._render_image_story_to_bytes(
+        video_bytes_1 = await self._render_image_story_to_bytes(
             audio=audio.part1.clip,
             image_story=image_stories.part1,
             generated_images=image_stories.generated_images_1,
@@ -398,7 +398,7 @@ class RedditVideoService:
             captions=captions.part1.clip,
             low_quality=low_quality,
         )
-        video_bytes_2 = self._render_image_story_to_bytes(
+        video_bytes_2 = await self._render_image_story_to_bytes(
             audio=audio.part2.clip,
             image_story=image_stories.part2,
             generated_images=image_stories.generated_images_2,
@@ -666,7 +666,7 @@ class RedditVideoService:
         story_md += f"## Part 2\n\n{part2_text}\n"
 
         # 10. Compose videos
-        video_bytes_1 = self._render_image_story_to_bytes(
+        video_bytes_1 = await self._render_image_story_to_bytes(
             audio=speech_result_1.clip,
             image_story=image_story_1,
             generated_images=generated_images_1,
@@ -674,7 +674,7 @@ class RedditVideoService:
             captions=captions_result_1.clip,
             low_quality=low_quality,
         )
-        video_bytes_2 = self._render_image_story_to_bytes(
+        video_bytes_2 = await self._render_image_story_to_bytes(
             audio=speech_result_2.clip,
             image_story=image_story_2,
             generated_images=generated_images_2,
@@ -846,7 +846,7 @@ class RedditVideoService:
             futures = [pool.submit(_generate_single, img_def) for img_def in image_story.images]
             return [f.result() for f in futures]
 
-    def _render_image_story_to_bytes(
+    async def _render_image_story_to_bytes(
         self,
         *,
         audio: AudioClip,
@@ -866,17 +866,21 @@ class RedditVideoService:
         )
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             tmp_path = tmp.name
-        try:
-            final_video.clip.write_videofile(
-                tmp_path,
-                fps=24,
-                ffmpeg_params=self._video_service._video_config.ffmpeg_params,
-            )
-            with open(tmp_path, "rb") as f:
-                return f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+
+        def _write_and_read() -> bytes:
+            try:
+                final_video.clip.write_videofile(
+                    tmp_path,
+                    fps=24,
+                    ffmpeg_params=self._video_service._video_config.ffmpeg_params,
+                )
+                with open(tmp_path, "rb") as f:
+                    return f.read()
+            finally:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+        return await asyncio.to_thread(_write_and_read)
 
     async def _render_video_to_bytes(
         self,
@@ -909,13 +913,17 @@ class RedditVideoService:
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             tmp_path = tmp.name
-        try:
-            final_video.clip.write_videofile(
-                tmp_path,
-                ffmpeg_params=self._video_service._video_config.ffmpeg_params,
-            )
-            with open(tmp_path, "rb") as f:
-                return f.read()
-        finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+
+        def _write_and_read() -> bytes:
+            try:
+                final_video.clip.write_videofile(
+                    tmp_path,
+                    ffmpeg_params=self._video_service._video_config.ffmpeg_params,
+                )
+                with open(tmp_path, "rb") as f:
+                    return f.read()
+            finally:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+
+        return await asyncio.to_thread(_write_and_read)

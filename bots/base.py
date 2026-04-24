@@ -1,5 +1,6 @@
 """Shared helpers for Telegram bots."""
 
+import asyncio
 import io
 import logging
 import subprocess
@@ -69,7 +70,7 @@ async def send_video_bytes(
 ) -> None:
     """Send video as a reply. Compresses with ffmpeg if over Telegram's 50 MB limit."""
     if len(video_bytes) > TELEGRAM_VIDEO_LIMIT:
-        video_bytes = _compress_video(video_bytes)
+        video_bytes = await asyncio.to_thread(_compress_video, video_bytes)
 
     await message.reply_video(
         video=io.BytesIO(video_bytes),
@@ -110,7 +111,7 @@ async def send_image_bytes(
 
 async def send_video_bytes_to_chat(bot, chat_id: int, video_bytes: bytes, caption: str) -> None:
     if len(video_bytes) > TELEGRAM_VIDEO_LIMIT:
-        video_bytes = _compress_video(video_bytes)
+        video_bytes = await asyncio.to_thread(_compress_video, video_bytes)
     await bot.send_video(
         chat_id=chat_id,
         video=io.BytesIO(video_bytes),
