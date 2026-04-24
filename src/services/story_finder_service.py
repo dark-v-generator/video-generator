@@ -296,10 +296,16 @@ class StoryFinderService:
             )
 
         evaluated.sort(key=lambda e: e.nota_geral, reverse=True)
-        worthy = [e for e in evaluated if e.veredito in ("Excelente", "Boa")]
+        excellent = [e for e in evaluated if e.veredito == "Excelente"]
+        if len(excellent) >= 10:
+            result = excellent
+        else:
+            worthy = [e for e in evaluated if e.veredito in ("Excelente", "Boa")]
+            result = worthy[:10]
         logger.info(
-            "%d/%d stories rated Boa or Excelente",
-            len(worthy),
+            "%d/%d stories returned (%d Excelente)",
+            len(result),
             len(evaluated),
+            len(excellent),
         )
-        return worthy
+        return result

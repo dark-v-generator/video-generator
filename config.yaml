@@ -11,12 +11,12 @@ proxies:
     type: prompt
     provider_config:
       provider: openrouter
-      model: qwen/qwen3.6-plus
+      model: deepseek/deepseek-v4-pro
   evaluation_llm_config:
     type: prompt
     provider_config:
       provider: openrouter
-      model: deepseek/deepseek-v3.2
+      model: deepseek/deepseek-v4-flash
   speech_config:
     type: edge-tts
     default_rate: 1.3
@@ -37,7 +37,7 @@ bots:
   satisfying_bot:
     allowed_user_ids: [627370641]
     low_quality: false
-    daily_hour_utc: 19
+    daily_hour_utc: 15
 evaluation:
   subreddits:
     - pettyrevenge
