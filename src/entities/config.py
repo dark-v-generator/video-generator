@@ -23,6 +23,7 @@ from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverC
 from src.entities.configs.services.captions import CaptionsConfig
 from src.entities.configs.services.video import VideoConfig
 from src.entities.configs.bots import BotsConfig
+from src.entities.language import Language
 
 
 class ProxiesConfig(BaseYAMLModel):
@@ -41,10 +42,10 @@ class ProxiesConfig(BaseYAMLModel):
     reddit_config: RedditConfigType = Field(
         BS4RedditConfig(), title="Reddit configuration"
     )
-    llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="LLM configuration")
-    evaluation_llm_config: Optional[LLMConfigType] = Field(
+    llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="General LLM configuration")
+    history_adaptation_llm_config: Optional[LLMConfigType] = Field(
         None,
-        title="LLM configuration for story evaluation (falls back to llm_config)",
+        title="LLM configuration for Reddit story adaptation (falls back to llm_config)",
     )
     youtube_config: YouTubeConfigType = Field(
         PyTubeYouTubeConfig(), title="YouTube configuration"
@@ -68,6 +69,9 @@ DEFAULT_EVALUATION_SUBREDDITS = [
     "ExplainLikeImFive",
     "MaliciousCompliance",
     "Antiwork",
+    "EuSouOBabaca",
+    "RelatosDoReddit",
+    "relacionamentos",
 ]
 
 
@@ -89,6 +93,7 @@ class MainConfig(BaseYAMLModel):
     services: ServicesConfig = Field(default_factory=ServicesConfig)
     bots: BotsConfig = Field(default_factory=BotsConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    language: Language = Field(Language.PORTUGUESE, title="Default output language")
 
     seed: Optional[str] = Field(None, title="Seed")
 

@@ -85,11 +85,17 @@ class VideoService:
         low_quality: bool = False,
         cover: Optional[image_clip.ImageClip] = None,
         captions: Optional[captions_clip.CaptionsClip] = None,
+        intro_end: float = 0,
+        cta_start: float = 0,
     ) -> video_clip.VideoClip:
-        """Generate final video with all components"""
+        """Generate final video with all components.
+
+        When *intro_end* is positive the cover duration matches the intro.
+        When *cta_start* is positive the configured CTA image is composited
+        at that time.
+        """
         config = self._video_config
         size_rate = 1.0
-        # Downscale config for preview natively inside VideoService
         if low_quality:
             size_rate = 400 / config.height
             config = config.model_copy(
@@ -106,19 +112,37 @@ class VideoService:
         background_video.set_audio(audio)
 
         width, height = background_video.clip.size
+        total_duration = audio.clip.duration
+        fade = self.CROSSFADE_DURATION
 
+        # --- cover ---
         if cover is not None:
             cover.fit_width(width, config.padding)
             cover.center(width, height)
-            cover.set_duration(config.cover_duration)
+            cover_dur = intro_end if intro_end > 0 else config.cover_duration
+            cover.set_duration(cover_dur)
             cover.apply_fadeout(1)
             background_video.merge(cover)
+
+        # --- CTA image overlay ---
+        if self._call_to_action_bytes is not None and cta_start > 0 and cta_start < total_duration:
+            cta_clip = image_clip.ImageClip(bytes=self._call_to_action_bytes)
+            cta_clip.fit_width(width, config.padding)
+            cta_clip.center(width, height)
+            cta_clip.set_start(cta_start)
+            cta_clip.set_duration(total_duration - cta_start)
+            cta_clip.apply_fadein(fade)
+            background_video.merge(cta_clip)
+
+        # --- watermark ---
         if self._watermark_bytes is not None:
             water_mark = image_clip.ImageClip(bytes=self._watermark_bytes)
             water_mark.fit_width(width, config.padding)
             water_mark.center(width, height)
-            water_mark.set_duration(audio.clip.duration)
+            water_mark.set_duration(total_duration)
             background_video.merge(water_mark)
+
+        # --- captions ---
         if captions is not None:
             background_video.insert_captions(captions, size_rate=size_rate)
         return background_video

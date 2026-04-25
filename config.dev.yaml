@@ -1,3 +1,4 @@
+language: pt-br
 proxies:
   cover_config:
     title_font_size: 150
@@ -5,7 +6,7 @@ proxies:
     type: mock
   llm_config:
     type: mock
-  evaluation_llm_config:
+  history_adaptation_llm_config:
     type: mock
   reddit_config:
     type: json
@@ -39,5 +40,8 @@ evaluation:
     - ExplainLikeImFive
     - MaliciousCompliance
     - Antiwork
+    - EuSouOBabaca
+    - RelatosDoReddit
+    - relacionamentos
   min_chars: 500
   max_chars: 15000

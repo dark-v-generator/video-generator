@@ -143,9 +143,11 @@ class RedditVideoService:
         cover_service: CoverService,
         video_service: VideoService,
         portrait_generation_proxy: Optional[IImageGeneratorProxy] = None,
+        history_adaptation_llm_proxy: Optional[ILLMProxy] = None,
     ) -> None:
         self._reddit_proxy = reddit_proxy
         self._llm_proxy = llm_proxy
+        self._history_adaptation_llm_proxy = history_adaptation_llm_proxy or llm_proxy
         self._image_generation_proxy = image_generation_proxy
         self._portrait_proxy = portrait_generation_proxy or image_generation_proxy
         self._speech_service = speech_service
@@ -166,7 +168,7 @@ class RedditVideoService:
         language: Language = Language.PORTUGUESE,
         speech_gender: Optional[Literal["male", "female"]] = None,
     ) -> StoryScript:
-        story = await self._llm_proxy.generate_two_part_story(
+        story = await self._history_adaptation_llm_proxy.generate_two_part_story(
             title=post.title,
             content=post.content,
             target_language=language,
@@ -189,7 +191,7 @@ class RedditVideoService:
         feedback: str,
         language: Language = Language.PORTUGUESE,
     ) -> StoryScript:
-        revised = await self._llm_proxy.revise_story(
+        revised = await self._history_adaptation_llm_proxy.revise_story(
             current_script={
                 "title": script.title,
                 "part1": script.part1,
@@ -470,7 +472,7 @@ class RedditVideoService:
         post = self.scrape_post(post_url)
         original_post_md = f"# {post.title}\n\n{post.content}\n"
 
-        story = await self._llm_proxy.generate_story(
+        story = await self._history_adaptation_llm_proxy.generate_story(
             title=post.title,
             content=post.content,
             target_language=language,
@@ -496,14 +498,28 @@ class RedditVideoService:
             base_text=script_text,
         )
 
-        captions_data = self._strip_introduction([
+        segments_data = [
             {"word": s.text, "start": s.start, "end": s.end}
             for s in captions_result.captions.segments
-        ])
+        ]
+
+        story_title = story.get("title", post.title)
+        intro_end_time, cta_start_time = self._compute_satisfying_boundaries(
+            story_title, segments_data
+        )
+
+        captions_data = [
+            seg for seg in segments_data if seg["start"] >= intro_end_time
+        ]
+
+        # Filter captions clip so subtitles don't show during the cover
+        captions_result.clip.captions = captions_result.clip.captions.after_time(
+            intro_end_time
+        )
 
         cover_result = await self._cover_service.generate_cover(
             RedditCover(
-                title=story.get("title", post.title),
+                title=story_title,
                 community=post.community,
                 author=post.author,
                 image_url=post.community_url_photo,
@@ -515,6 +531,8 @@ class RedditVideoService:
             captions_clip_obj=captions_result.clip,
             cover=cover_result.clip,
             low_quality=low_quality,
+            intro_end=intro_end_time,
+            cta_start=cta_start_time,
         )
 
         story_md = f"# {story.get('title', 'Untitled')}\n\n"
@@ -546,7 +564,7 @@ class RedditVideoService:
         original_post_md = f"# {post.title}\n\n{post.content}\n"
 
         # 2. LLM: two-part story
-        story = await self._llm_proxy.generate_two_part_story(
+        story = await self._history_adaptation_llm_proxy.generate_two_part_story(
             title=post.title,
             content=post.content,
             target_language=language,
@@ -715,6 +733,20 @@ class RedditVideoService:
 
     PART1_CTA = "Curta e me siga para a parte 2."
     PART2_CTA = "Curta, me siga e deixe nos comentários"
+    PART_MARKERS = {"part", "parte", "partie", "teil"}
+    CTA_START_WORDS = {
+        "curta",
+        "like",
+        "dale",
+        "deja",
+        "laisse",
+        "lascia",
+        "gib",
+    }
+
+    @classmethod
+    def _normalize_marker_word(cls, word: str) -> str:
+        return word.strip().lower().strip(".,!?;:¿¡")
 
     @classmethod
     def _compute_content_boundaries(
@@ -733,11 +765,11 @@ class RedditVideoService:
             word = w.get("word", "").strip()
             if re.match(r"^\d+[.,]?$", word):
                 prev = (
-                    raw_transcription[i - 1].get("word", "").strip().lower()
+                    cls._normalize_marker_word(raw_transcription[i - 1].get("word", ""))
                     if i > 0
                     else ""
                 )
-                if prev in ("parte", "part"):
+                if prev in cls.PART_MARKERS:
                     intro_end_idx = i
                     intro_end_time = w["end"]
                     break
@@ -749,8 +781,8 @@ class RedditVideoService:
         )
         search_start = max(intro_end_idx + 1, n - 20)
         for i in range(search_start, n):
-            word = raw_transcription[i].get("word", "").strip().lower().rstrip(".,!?")
-            if word == "curta":
+            word = cls._normalize_marker_word(raw_transcription[i].get("word", ""))
+            if word in cls.CTA_START_WORDS:
                 cta_start_idx = i
                 cta_start_time = raw_transcription[i]["start"]
                 break
@@ -790,6 +822,37 @@ class RedditVideoService:
         image_story.images[0].start_time = 0.0
 
     @staticmethod
+    def _compute_satisfying_boundaries(
+        title: str, segments: list[dict]
+    ) -> tuple[float, float]:
+        """Find intro-end and CTA-start times for a single-story video.
+
+        *intro_end*: determined by the number of words in the spoken title.
+        *cta_start*: determined by finding "curta" in the last ~20 segments.
+
+        Returns ``(intro_end_time, cta_start_time)``.
+        """
+        n = len(segments)
+
+        # --- intro: title word count → end time of last title word ---
+        title_word_count = len(title.split())
+        if title_word_count > 0 and n > title_word_count:
+            intro_end_time = segments[title_word_count - 1]["end"]
+        else:
+            intro_end_time = segments[4]["end"] if n > 4 else 2.0
+
+        # --- CTA: find "curta" in the last 20 words ---
+        cta_start_time = segments[-3]["start"] if n > 3 else intro_end_time + 10
+        search_start = max(title_word_count, n - 20)
+        for i in range(search_start, n):
+            word = RedditVideoService._normalize_marker_word(segments[i].get("word", ""))
+            if word in RedditVideoService.CTA_START_WORDS:
+                cta_start_time = segments[i]["start"]
+                break
+
+        return intro_end_time, cta_start_time
+
+    @staticmethod
     def _strip_introduction(transcription: list[dict]) -> list[dict]:
         """Remove words up to and including 'Parte N.' from the transcription.
 
@@ -801,11 +864,13 @@ class RedditVideoService:
             word = w.get("word", "").strip()
             if re.match(r"^\d+[.,]?$", word):
                 prev = (
-                    transcription[i - 1].get("word", "").strip().lower()
+                    RedditVideoService._normalize_marker_word(
+                        transcription[i - 1].get("word", "")
+                    )
                     if i > 0
                     else ""
                 )
-                if prev in ("parte", "part"):
+                if prev in RedditVideoService.PART_MARKERS:
                     parte_idx = i
                     break
         if parte_idx >= 0:
@@ -889,6 +954,8 @@ class RedditVideoService:
         captions_clip_obj: Optional[CaptionsClip],
         cover: Optional[image_clip.ImageClip],
         low_quality: bool,
+        intro_end: float = 0,
+        cta_start: float = 0,
     ) -> bytes:
         """Compile a single video and return it as bytes."""
 
@@ -909,6 +976,8 @@ class RedditVideoService:
             low_quality=low_quality,
             cover=cover,
             captions=captions_clip_obj,
+            intro_end=intro_end,
+            cta_start=cta_start,
         )
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:

@@ -21,7 +21,6 @@ from telegram.ext import (
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
-from src.entities.language import Language
 
 from bots.base import (
     is_user_allowed,
@@ -47,9 +46,13 @@ WAITING_URL = 0
 # responsive while heavy work runs in the background.
 # ---------------------------------------------------------------------------
 
+RETRY_CALLBACK_PREFIX = "retry:"
+
+
 @dataclass
 class _GenerationJob:
     url: str
+    url_key: str
     reply_message: Message
     status_message: Message
 
@@ -105,6 +108,7 @@ class GenerationQueue:
 
             result = await service.generate_satisfying_video(
                 post_url=job.url,
+                language=config.language,
                 low_quality=bot_config.low_quality,
             )
 
@@ -124,7 +128,19 @@ class GenerationQueue:
 
         except Exception as e:
             logger.exception("Failed to generate video for %s", job.url)
-            await job.status_message.edit_text(f"❌ Erro ao gerar vídeo: {e}")
+            retry_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "🔄 Tentar de novo",
+                    callback_data=f"{RETRY_CALLBACK_PREFIX}{job.url_key}",
+                )]
+            ])
+            error_text = str(e)
+            if len(error_text) > 300:
+                error_text = error_text[:300] + "…"
+            await job.status_message.edit_text(
+                f"❌ Erro ao gerar vídeo: {error_text}",
+                reply_markup=retry_keyboard,
+            )
 
 
 generation_queue = GenerationQueue()
@@ -154,7 +170,8 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("User %s requested satisfying video for: %s", user_id, url)
     status_msg = await update.message.reply_text("⏳ Adicionando à fila...")
 
-    job = _GenerationJob(url=url, reply_message=update.message, status_message=status_msg)
+    url_key = _store_url(url)
+    job = _GenerationJob(url=url, url_key=url_key, reply_message=update.message, status_message=status_msg)
     pos = await generation_queue.enqueue(job)
 
     if pos > 1:
@@ -196,7 +213,25 @@ def _format_bar(value: float, width: int = 10) -> str:
     return "▓" * filled + "░" * (width - filled)
 
 
-async def _run_find(bot, chat_id: int) -> None:
+def _parse_subreddits(args: list[str] | None) -> list[str] | None:
+    if not args:
+        return None
+
+    subreddits = []
+    for arg in args:
+        for item in arg.split(","):
+            name = item.strip().removeprefix("r/").strip("/")
+            if name:
+                subreddits.append(name)
+
+    return subreddits or None
+
+
+async def _run_find(
+    bot,
+    chat_id: int,
+    subreddits: list[str] | None = None,
+) -> None:
     """Core /find logic: discover and rank stories, send results with generate buttons."""
     try:
         container.wire(modules=[__name__])
@@ -206,7 +241,8 @@ async def _run_find(bot, chat_id: int) -> None:
             sort="top",
             time_filter="day",
             top_per_sub=5,
-            language=Language.PORTUGUESE,
+            language=config.language,
+            subreddits=subreddits,
         )
     except Exception as e:
         logger.exception("Failed to find stories")
@@ -260,10 +296,17 @@ async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await reject_unauthorized(update)
         return
 
-    await update.message.reply_text(
-        "Buscando as melhores histórias do dia... pode demorar um pouco."
-    )
-    await _run_find(context.bot, update.effective_chat.id)
+    subreddits = _parse_subreddits(context.args)
+    if subreddits:
+        subs_text = ", ".join(f"r/{sub}" for sub in subreddits)
+        await update.message.reply_text(
+            f"Buscando as melhores histórias em {subs_text}... pode demorar um pouco."
+        )
+    else:
+        await update.message.reply_text(
+            "Buscando as melhores histórias do dia... pode demorar um pouco."
+        )
+    await _run_find(context.bot, update.effective_chat.id, subreddits=subreddits)
 
 
 async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -284,13 +327,40 @@ async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_reply_markup(reply_markup=None)
     status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
 
-    job = _GenerationJob(url=url, reply_message=query.message, status_message=status_msg)
+    job = _GenerationJob(url=url, url_key=url_key, reply_message=query.message, status_message=status_msg)
     pos = await generation_queue.enqueue(job)
 
     if pos > 1:
         await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
     else:
         await status_msg.edit_text("⏳ Gerando vídeo... pode demorar alguns minutos.")
+
+
+async def handle_retry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
+        await query.message.reply_text("Sem permissão.")
+        return
+
+    url_key = query.data.removeprefix(RETRY_CALLBACK_PREFIX)
+    url = _find_url_store.get(url_key)
+    if not url:
+        await query.message.reply_text("Link expirado. Rode /find de novo.")
+        return
+
+    await query.edit_message_reply_markup(reply_markup=None)
+    status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
+
+    job = _GenerationJob(url=url, url_key=url_key, reply_message=query.message, status_message=status_msg)
+    pos = await generation_queue.enqueue(job)
+
+    if pos > 1:
+        await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
+    else:
+        await status_msg.edit_text("⏳ Tentando de novo... pode demorar alguns minutos.")
 
 
 def _cleanup_temp(path: str | None) -> None:
@@ -339,10 +409,19 @@ def main() -> None:
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("find", cmd_find))
     app.add_handler(CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}"))
+    app.add_handler(CallbackQueryHandler(handle_retry, pattern=f"^{RETRY_CALLBACK_PREFIX}"))
 
-    schedule_time = datetime.time(hour=bot_config.daily_hour_utc, tzinfo=datetime.timezone.utc)
+    schedule_time = datetime.time(
+        hour=bot_config.daily_hour_utc,
+        minute=bot_config.daily_minute_utc,
+        tzinfo=datetime.timezone.utc,
+    )
     app.job_queue.run_daily(_daily_find, time=schedule_time)
-    logger.info("Daily /find scheduled at %02d:00 UTC", bot_config.daily_hour_utc)
+    logger.info(
+        "Daily /find scheduled at %02d:%02d UTC",
+        bot_config.daily_hour_utc,
+        bot_config.daily_minute_utc,
+    )
 
     logger.info("Satisfying video bot starting...")
     app.run_polling()

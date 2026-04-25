@@ -64,7 +64,7 @@ async def main():
     container.wire(modules=[__name__])
 
     reddit_proxy = container.reddit_proxy()
-    llm_proxy = container.evaluation_llm_proxy() or container.llm_proxy()
+    llm_proxy = container.llm_proxy()
 
     print(f"Scraping post: {args.post_url}")
     post = reddit_proxy.get_reddit_post(args.post_url)

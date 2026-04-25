@@ -60,9 +60,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         google_api_key=secrets.google_api_key,
         openrouter_api_key=secrets.openrouter_api_key,
     )
-    evaluation_llm_proxy = providers.Singleton(
+    history_adaptation_llm_proxy = providers.Singleton(
         proxies_factories.LLMProxyFactory.create_optional,
-        config=main_config.provided.proxies.evaluation_llm_config,
+        config=main_config.provided.proxies.history_adaptation_llm_config,
         openai_api_key=secrets.openai_api_key,
         ollama_base_url=secrets.ollama_base_url,
         google_api_key=secrets.google_api_key,
@@ -104,6 +104,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         RedditVideoService,
         reddit_proxy=reddit_proxy,
         llm_proxy=llm_proxy,
+        history_adaptation_llm_proxy=history_adaptation_llm_proxy,
         image_generation_proxy=image_generation_proxy,
         portrait_generation_proxy=portrait_generation_proxy,
         speech_service=speech_service,
@@ -115,7 +116,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
     story_finder_service = providers.Singleton(
         StoryFinderService,
         reddit_proxy=reddit_proxy,
-        evaluation_llm_proxy=evaluation_llm_proxy,
         llm_proxy=llm_proxy,
         evaluation_config=main_config.provided.evaluation,
     )

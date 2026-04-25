@@ -15,13 +15,13 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     Take the provided original Reddit post (title and text) and transform it into a 2-part engaging TikTok story script.
 
     Requirements:
-    1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Add a short, clickbaity title that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, but it MUST grab attention.
-    3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
-    4. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. Example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...".
+    1. Translate or adapt the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
+    2. Add a short, clickbaity title in the requested target_language that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, but it MUST grab attention.
+    3. Use natural, colloquial target_language. Prefer everyday words people actually use in casual speech.
+    4. Each part must start with the title followed by the localized equivalent of "Part 1." or "Part 2." before the story text. Use "Parte 1."/"Parte 2." for Portuguese (Brazil).
     5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
-    6. Part 1 must end on suspense, with a call to action (e.g., "Curta e me siga para a parte 2.").
-    7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". Example: "E você, acha que eu fui babaca? Curta, me siga e deixe nos comentários".
+    6. Part 1 must end on suspense, with a localized call to action equivalent to "like and follow me for part 2". For Portuguese (Brazil), use "Curta e me siga para a parte 2."
+    7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
     8. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
     10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
@@ -29,11 +29,12 @@ class TwoPartTikTokStorySignature(dspy.Signature):
        language or insults, rephrase the situation without repeating those words.
     9. Reddit posts use specific conventions you MUST handle:
        - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
-       - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
+       - Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
        - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
-       - "AITA" means "Am I the asshole?" and "NTA" means "Not the asshole".
+       - Understand AITA-style judgments and translate/adapt them naturally: "AITA" means "Am I the asshole?", "NTA" means "Not the asshole", "YTA" means "You're the asshole", "ESH" means "Everyone sucks here", and "NAH" means "No assholes here". In Portuguese communities, handle terms like "EOB", "NEOB", "TEOB", "NGM", "sou o babaca" and "não é o babaca".
        - "TL;DR" sections should be omitted from the script.
        - "Edit:" sections should be omitted from the script.
+       - Recognize source-language acronyms and shorthand in English, Portuguese, Spanish, or any other language present in the post, then replace them with clear, natural target_language wording.
     """
 
     target_language = dspy.InputField(
@@ -49,10 +50,10 @@ class TwoPartTikTokStorySignature(dspy.Signature):
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     part1_script = dspy.OutputField(
-        desc="Part 1: starts with '{title}. Parte 1.' then the setup and context, ending before the climax with suspense and a call to action."
+        desc="Part 1: starts with '{title}. {localized Part 1 marker}.' then the setup and context, ending before the climax with suspense and a localized call to action."
     )
     part2_script = dspy.OutputField(
-        desc="Part 2: starts with '{title}. Parte 2.' then the climax and resolution, ending with a story-specific engagement question followed by 'Curta, me siga e deixe nos comentários'."
+        desc="Part 2: starts with '{title}. {localized Part 2 marker}.' then the climax and resolution, ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
     )
 
 
@@ -62,12 +63,12 @@ class TikTokStorySignature(dspy.Signature):
     Take the provided original Reddit post (title and text) and transform it into an engaging TikTok story script.
 
     Requirements:
-    1. Translate the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Add a short, clickbaity title that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to hear the story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, not robotic.
-    3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
+    1. Translate or adapt the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
+    2. Add a short, clickbaity title in the requested target_language that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to hear the story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, not robotic.
+    3. Use natural, colloquial target_language. Prefer everyday words people actually use in casual speech.
     4. The script must start with the title before the story text. Example: "Meu vizinho me perseguiu por meses. Tudo começou quando...".
     5. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
-    6. The script MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". Example: "E você, acha que eu fui babaca? Curta, me siga e deixe nos comentários".
+    6. The script MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
     7. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit.
     8. ONLY provide the text for the script, do NOT include outside commentary, camera directions, or extra formatting.
     9. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
@@ -76,11 +77,12 @@ class TikTokStorySignature(dspy.Signature):
         language or insults, rephrase the situation without repeating those words.
     11. Reddit posts use specific conventions you MUST handle:
         - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
-        - Age/gender notation like "(28M)" means a 28-year-old male, "(22F)" means a 22-year-old female.
+        - Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
         - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
-        - "AITA" means "Am I the asshole?" and "NTA" means "Not the asshole".
+        - Understand AITA-style judgments and translate/adapt them naturally: "AITA" means "Am I the asshole?", "NTA" means "Not the asshole", "YTA" means "You're the asshole", "ESH" means "Everyone sucks here", and "NAH" means "No assholes here". In Portuguese communities, handle terms like "EOB", "NEOB", "TEOB", "NGM", "sou o babaca" and "não é o babaca".
         - "TL;DR" sections should be omitted from the script.
         - "Edit:" sections should be omitted from the script.
+        - Recognize source-language acronyms and shorthand in English, Portuguese, Spanish, or any other language present in the post, then replace them with clear, natural target_language wording.
     """
 
     target_language = dspy.InputField(
@@ -96,7 +98,7 @@ class TikTokStorySignature(dspy.Signature):
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     script = dspy.OutputField(
-        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with a story-specific engagement question followed by 'Curta, me siga e deixe nos comentários'."
+        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
     )
 
 
@@ -115,8 +117,9 @@ class StoryEvaluationSignature(dspy.Signature):
     Grading: 90-100 exceptional, 70-89 strong, 50-69 decent, 30-49 weak, 0-29 poor.
     Verdict: nota_geral >= 80 "Excelente", >= 60 "Boa", >= 40 "Mediana", < 40 "Fraca".
 
-    Return a JSON object with: resumo (Portuguese summary), notas (per-criterion grades with justificativa),
+    Return a JSON object with: resumo (target_language summary), notas (per-criterion grades with target_language justificativa),
     nota_geral (average), veredito.
+    Keep the JSON keys and veredito values exactly as specified. Understand source-language acronyms and shorthand before evaluating, including AITA/NTA/YTA/ESH/NAH, SO, MIL, FIL, BIL, SIL, TL;DR, ETA, OP, and Portuguese terms such as EOB, NEOB, TEOB, NGM, "sou o babaca" and "não é o babaca".
     """
 
     target_language = dspy.InputField(
@@ -144,7 +147,7 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     2. Maintain the timestamp information as accurately as possible.
     3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
     4. If modifying a word, keep its original 'start' and 'end'.
-    5. Remove the introduction (title and "Parte N." marker) from the output. Start from the first word after "Parte N." since the title is shown as a cover image.
+    5. Remove the introduction (title and localized "Part N." marker, such as "Parte N.") from the output. Start from the first word after that marker since the title is shown as a cover image.
     6. Return only a JSON array of objects with 'word', 'start', and 'end' keys.
     """
 

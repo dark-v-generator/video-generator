@@ -105,8 +105,15 @@ def _text_quality_score(content: str) -> float:
     """0-100 heuristic score for narrative text quality without LLM."""
     score = 0.0
 
-    # First-person narrative (strong signal for storytelling)
-    first_person = len(re.findall(r'\b(?:I|my|me|mine|myself)\b', content, re.IGNORECASE))
+    # First-person narrative in common source languages is a strong storytelling signal.
+    first_person = len(
+        re.findall(
+            r"\b(?:I|my|me|mine|myself|eu|meu|minha|meus|minhas|mim|comigo|"
+            r"yo|mi|mis|mío|mía|moi|mon|ma|mes)\b",
+            content,
+            re.IGNORECASE,
+        )
+    )
     if first_person >= 10:
         score += 30.0
     elif first_person >= 5:
@@ -214,12 +221,11 @@ class StoryFinderService:
     def __init__(
         self,
         reddit_proxy: IRedditProxy,
-        evaluation_llm_proxy: Optional[ILLMProxy],
         llm_proxy: ILLMProxy,
         evaluation_config: EvaluationConfig,
     ):
         self._reddit = reddit_proxy
-        self._llm = evaluation_llm_proxy or llm_proxy
+        self._llm = llm_proxy
         self._config = evaluation_config
 
     async def find_best_stories(
@@ -228,11 +234,14 @@ class StoryFinderService:
         time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
         posts_per_sub: int = 25,
         top_per_sub: int = 5,
-        language: Language = Language.PORTUGUESE,
+        language: Language | None = None,
+        subreddits: Optional[List[str]] = None,
     ) -> List[EvaluatedStory]:
         finalists: List[StoryCandidate] = []
+        target_language = language or Language.PORTUGUESE
+        subreddit_names = subreddits or self._config.subreddits
 
-        for sub in self._config.subreddits:
+        for sub in subreddit_names:
             logger.info("Fetching posts from r/%s ...", sub)
             try:
                 posts = self._reddit.list_subreddit_posts(
@@ -262,7 +271,7 @@ class StoryFinderService:
         logger.info(
             "%d finalists from %d subs. Running LLM evaluation...",
             len(finalists),
-            len(self._config.subreddits),
+            len(subreddit_names),
         )
 
         evaluated: List[EvaluatedStory] = []
@@ -281,7 +290,7 @@ class StoryFinderService:
                 evaluation = await self._llm.evaluate_story(
                     title=post.title,
                     content=post.content,
-                    target_language=language,
+                    target_language=target_language,
                 )
             except Exception:
                 logger.exception("LLM evaluation failed for '%s'", post.title[:60])

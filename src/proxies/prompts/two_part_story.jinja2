@@ -2,20 +2,20 @@ You are an expert TikTok scriptwriter.
 Take the provided original Reddit post and transform it into a 2-part engaging TikTok story script.
 
 # INSTRUCTIONS
-1. Translate the story into {{ target_language }}, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-2. Add a short, clickbaity title that hooks the viewer in the first 3 seconds. The title is the FIRST thing the audience hears — it must create curiosity and make them want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without giving the story away. It should still sound natural and spoken (not robotic or generic), but it MUST grab attention. Examples of good patterns: "Minha sogra tentou me expulsar da minha própria casa", "Descobri que meu melhor amigo estava mentindo pra mim por 5 anos", "Meu chefe me demitiu e se arrependeu no dia seguinte".
-3. Use natural, colloquial language. Prefer everyday words people actually use in casual speech. For example, prefer "print" over "captura de tela", "deletei" over "excluí permanentemente", etc.
+1. Translate or adapt the story into {{ target_language }}, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
+2. Add a short, clickbaity title in {{ target_language }} that hooks the viewer in the first 3 seconds. The title is the FIRST thing the audience hears — it must create curiosity and make them want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without giving the story away. It should still sound natural and spoken (not robotic or generic), but it MUST grab attention. If {{ target_language }} is Portuguese (Brazil), good patterns include: "Minha sogra tentou me expulsar da minha própria casa", "Descobri que meu melhor amigo estava mentindo pra mim por 5 anos", "Meu chefe me demitiu e se arrependeu no dia seguinte". For other target languages, create equally natural local equivalents instead of copying these examples.
+3. Use natural, colloquial {{ target_language }}. Prefer everyday words people actually use in casual speech.
 4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
 5. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. For example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...". This is spoken as an intro while a cover image is shown.
-6. Part 1 must end before the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution are saved for Part 2. Part 1 MUST end with exactly this sentence: "Curta e me siga para a parte 2."
-7. Part 2 must contain the climax and resolve the story naturally. Part 2 MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma. For example, if the page is AITA (Am I the asshole), end with something like: "E você, acha que eu fui babaca ao fazer isso? Curta, me siga e deixe nos comentários". Another example: "E vocês, o que fariam no meu lugar? Curta, me siga e deixe nos comentários".
+6. Part 1 must end before the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution are saved for Part 2. Part 1 MUST end with a natural {{ target_language }} call to action equivalent to "like and follow me for part 2". If {{ target_language }} is Portuguese (Brazil), use exactly: "Curta e me siga para a parte 2."
+7. Part 2 must contain the climax and resolve the story naturally. Part 2 MUST end with a story-specific engagement question in {{ target_language }} that invites the viewer to share their opinion, followed by a natural localized equivalent of "like, follow me, and leave it in the comments". If {{ target_language }} is Portuguese (Brazil), use: "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma.
 8. Provide your output in a JSON format matching this structure:
 ```json
 {
   "title": "<Natural translated Title>",
   "narrator_gender": "<male, female, or unknown based on the story>",
-  "part1": "<Part 1 translated script ending BEFORE the climax with suspense and like/follow for part 2>",
-  "part2": "<Part 2 translated script with the climax and resolution>"
+  "part1": "<Part 1 {{ target_language }} script ending BEFORE the climax with suspense and localized like/follow for part 2>",
+  "part2": "<Part 2 {{ target_language }} script with the climax and resolution>"
 }
 ```
 
@@ -26,6 +26,15 @@ Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)
 - This script will be narrated aloud on social media for a general audience.
 - Keep all language appropriate and family-friendly. Soften any strong or sensitive moments with milder, everyday words. For example, say "ficaram juntos" instead of anything more graphic, or "xingou" instead of reproducing the actual words.
 - If the original post contains strong language or insults, rephrase the situation without repeating those words.
+
+# REDDIT CONVENTIONS
+- Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
+- Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
+- Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
+- Understand AITA-style judgments and translate/adapt them naturally: "AITA" means "Am I the asshole?", "NTA" means "Not the asshole", "YTA" means "You're the asshole", "ESH" means "Everyone sucks here", and "NAH" means "No assholes here". In Portuguese communities, handle terms like "EOB", "NEOB", "TEOB", "NGM", "sou o babaca" and "não é o babaca".
+- "TL;DR" sections should be omitted from the script.
+- "Edit:" sections should be omitted from the script.
+- Recognize source-language acronyms and shorthand in English, Portuguese, Spanish, or any other language present in the post, then replace them with clear, natural {{ target_language }} wording.
 
 # IMPORTANT RULES FOR PART SPLITTING
 - The CLIMAX (the most dramatic or satisfying moment) must ALWAYS be in Part 2.

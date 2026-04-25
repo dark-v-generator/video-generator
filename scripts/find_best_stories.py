@@ -2,7 +2,6 @@ import argparse
 import asyncio
 
 from src.core.container import container
-from src.entities.language import Language
 
 
 LLM_LABELS = {
@@ -12,6 +11,20 @@ LLM_LABELS = {
     "adequacao_tiktok": "TikTok Fit",
     "gancho": "Gancho",
 }
+
+
+def _parse_subreddits(values: list[str] | None) -> list[str] | None:
+    if not values:
+        return None
+
+    subreddits = []
+    for value in values:
+        for item in value.split(","):
+            name = item.strip().removeprefix("r/").strip("/")
+            if name:
+                subreddits.append(name)
+
+    return subreddits or None
 
 
 def _bar(value: float, width: int = 15) -> str:
@@ -68,10 +81,16 @@ async def main():
     )
     parser.add_argument("--top-per-sub", type=int, default=5, help="Best posts to pick per subreddit")
     parser.add_argument("--per-sub", type=int, default=25, help="Posts to fetch per subreddit")
+    parser.add_argument(
+        "--sub",
+        action="append",
+        help="Subreddit to search, with or without r/. Can be repeated or comma-separated.",
+    )
 
     args = parser.parse_args()
 
     container.wire(modules=[__name__])
+    config = container.main_config()
     finder = container.story_finder_service()
 
     print(f"Finding best stories (sort={args.sort}, time={args.time}, top_per_sub={args.top_per_sub})...\n")
@@ -81,7 +100,8 @@ async def main():
         time_filter=args.time,
         posts_per_sub=args.per_sub,
         top_per_sub=args.top_per_sub,
-        language=Language.PORTUGUESE,
+        language=config.language,
+        subreddits=_parse_subreddits(args.sub),
     )
 
     print_results(results)
