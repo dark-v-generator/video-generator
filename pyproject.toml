@@ -13,13 +13,12 @@ authors = [
     {name = "Gustavo Marques", email = "your.email@example.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -32,9 +31,9 @@ dependencies = [
     "pydantic-settings==2.7.0",
     "dependency-injector==4.42.0",
     # AI/ML Services
-    "openai==1.59.8",
-    "anthropic==0.3.0",
-    "ollama==0.4.4",
+    "openai>=1.99.2,<2.0.0",
+    "anthropic>=0.58.2,<1.0.0",
+    "ollama>=0.5.1",
     "openai-whisper==20250625",
     # Speech Services
     "azure-cognitiveservices-speech==1.42.0",
@@ -46,10 +45,10 @@ dependencies = [
     "torch==2.8.0",
     "pydub==0.25.1",
     # Web Scraping & APIs
-    "requests==2.32.3",
+    "requests>=2.32.5",
     "aiohttp>=3.12.13",
     "beautifulsoup4==4.12.3",
-    "google-api-python-client==2.159.0",
+    "google-api-python-client>=2.174.0",
     "pytubefix==10.3.8",
     # Utilities
     "PyYAML==6.0.2",
@@ -69,6 +68,9 @@ dependencies = [
     "litellm>=1.60.0",
     "dspy-ai>=2.6.27",
     "python-telegram-bot[job-queue]>=22.0",
+    "browser-use>=0.7.0,<0.7.2",
+    "patchright>=1.59.1",
+    "playwright-stealth>=2.0.3",
 ]
 
 [project.optional-dependencies]

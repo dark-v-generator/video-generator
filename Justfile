@@ -68,3 +68,105 @@ prod-logs:
 # Stop prod bot
 prod-stop:
     ssh {{PROD_HOST}} 'systemctl --user stop video-bot.service'
+
+# ============================================================
+# TikTok auto-publisher (server-only)
+# ============================================================
+# Architecture: bootstrap-on-server. The first login is performed
+# directly on the prod server through SSH X11-forwarding (your Mac
+# becomes a temporary remote screen via XQuartz). After that, all
+# cookies + device fingerprint live on the server, and daily runs
+# use Xvfb (in-memory display) so the agent can stay headful (best
+# stealth) without needing a real monitor.
+
+# One-time: install Xvfb (virtual display), x11vnc (so you can VNC
+# into the bootstrap session from anywhere), and patchright's stealth
+# Chromium build on the prod server. Idempotent and re-runnable.
+#
+# NOTE: the apt step needs sudo. Run this from your interactive
+# terminal (it prompts for the sudo password once).
+prod-tiktok-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Installing xvfb + x11vnc on {{PROD_HOST}} (sudo password prompt)..."
+    ssh -t {{PROD_HOST}} 'sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb x11vnc'
+    echo "==> Installing patchright Chromium on {{PROD_HOST}}..."
+    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv run python -m patchright install chromium'
+    echo "==> Verifying..."
+    ssh {{PROD_HOST}} 'which xvfb-run && which x11vnc && ls ~/.cache/ms-playwright | grep chromium- | tail -3'
+    echo "==> Done. Next: just prod-tiktok-bootstrap-vnc output/part1.mp4"
+
+# One-time (and any time TikTok forces re-auth): log into TikTok on
+# the prod server via VNC. Works from any machine with a VNC client
+# (macOS has Screen Sharing built-in: Finder -> Cmd+K -> vnc://...).
+#
+# Flow:
+#   1. rsyncs the video to the server
+#   2. opens an SSH tunnel so port 5900 on your laptop -> server
+#   3. on the server: starts Xvfb :99 + x11vnc (localhost-only)
+#   4. auto-opens vnc://localhost:5900 on macOS (Cmd+K on others)
+#   5. runs the publisher against DISPLAY=:99 — drag the slider in
+#      the VNC window when it appears
+#   6. tears Xvfb + x11vnc down on exit
+#
+# Usage:
+#   just prod-tiktok-bootstrap-vnc output/part1.mp4
+#   just prod-tiktok-bootstrap-vnc output/part1.mp4 30m "Bootstrap test"
+prod-tiktok-bootstrap-vnc video_path="output/part1.mp4" schedule_in="30m" description="Bootstrap login test":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Syncing {{video_path}} to server..."
+    rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
+    rsync -avz scripts/server-tiktok-vnc-bootstrap.sh {{PROD_HOST}}:{{PROD_DIR}}/scripts/
+    REMOTE_VIDEO="output/$(basename {{video_path}})"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        ( sleep 8 && open "vnc://localhost:5900" ) &
+        OPEN_PID=$!
+        trap 'kill $OPEN_PID 2>/dev/null || true' EXIT
+        echo "==> macOS detected: VNC client will auto-open in ~8s."
+    else
+        echo "==> Open vnc://localhost:5900 in your VNC client once Xvfb starts."
+    fi
+    echo "==> Opening SSH tunnel (localhost:5900 -> server) and starting bootstrap..."
+    ssh -t -L 5900:localhost:5900 {{PROD_HOST}} \
+        "chmod +x {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh && {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh '$REMOTE_VIDEO' --description '{{description}}' --schedule-in {{schedule_in}}"
+
+# X11-forwarding alternative (requires XQuartz on macOS). Kept for
+# power users; prefer prod-tiktok-bootstrap-vnc.
+prod-tiktok-bootstrap-x11 video_path="output/part1.mp4" schedule_in="30m" description="Bootstrap login test":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -z "${DISPLAY:-}" ]; then
+        echo "ERROR: \$DISPLAY is not set. Install XQuartz, log out + log back in, then retry."
+        echo "       Or use: just prod-tiktok-bootstrap-vnc {{video_path}}"
+        exit 1
+    fi
+    echo "==> Syncing {{video_path}} to server..."
+    rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
+    REMOTE_VIDEO="output/$(basename {{video_path}})"
+    echo "==> Starting headful login on server (window appears on YOUR Mac)..."
+    ssh -Y {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && uv run python scripts/publish_tiktok.py $REMOTE_VIDEO --description '{{description}}' --schedule-in {{schedule_in}}"
+
+# Daily-cron-style publish on the server. No display needed:
+# Xvfb provides a virtual screen for headful Chromium. Assumes the
+# session was already bootstrapped (see prod-tiktok-bootstrap).
+#
+# Usage:
+#   just prod-tiktok-publish output/part1.mp4
+#   just prod-tiktok-publish output/part1.mp4 "--schedule-in 6h --hashtag fyp"
+prod-tiktok-publish video_path="output/part1.mp4" extra_args="--schedule-in 30m --description 'Test xvfb run'":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Syncing {{video_path}} to server..."
+    rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
+    REMOTE_VIDEO="output/$(basename {{video_path}})"
+    echo "==> Running xvfb-run + publisher on server..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/publish_tiktok.py $REMOTE_VIDEO {{extra_args}}"
+
+# Inspect the persisted TikTok session on the server.
+prod-tiktok-status:
+    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && ls -la .storage/tiktok_cookies* 2>&1 || echo "no session yet"'
+
+# Wipe the persisted TikTok session on the server (forces re-login).
+prod-tiktok-reset:
+    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && rm -rf .storage/tiktok_cookies_userdata .storage/tiktok_cookies.json && echo "session wiped"'

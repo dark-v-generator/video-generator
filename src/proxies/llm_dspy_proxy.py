@@ -24,9 +24,18 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
     8. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
     8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
-    10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
-       strong or sensitive moments with milder, everyday words. If the original post contains strong
-       language or insults, rephrase the situation without repeating those words.
+    10. STRONG WORDS POLICY — applies to ALL narrated text including the title. This script is spoken by
+       a TTS engine on TikTok where every word is audio-moderated. NEVER use: matar, morrer, morto,
+       morte, assassinar, suicídio, suicidou, atirar, esfaquear, sangue, sangrento, droga, drogas,
+       cocaína, maconha, viciado, transar, transou, sexo explícito, estuprar, estupro, abuso sexual,
+       arma de fogo, pistola / kill, murder, die, dead, suicide, shoot, stab, blood, drugs, cocaine,
+       weed, rape, sex (explicit), gun.
+       Use euphemisms: "dar um fim"/"fazer desaparecer"/"ir de arrasta" for killing; "descansou"/
+       "partiu dessa pra melhor"/"não está mais entre nós" for death; "tomou uma decisão definitiva"
+       for suicide; "ficou com"/"dormiu com"/"tiveram uma noite juntos" for sex; "forçou a situação"/
+       "fez algo horrível" for assault; "substâncias"/"coisas erradas" for drugs; "aquele objeto"/
+       "aconteceu o pior" for weapons. Keep intensity through tone, context, and metaphor — not
+       graphic words.
     9. Reddit posts use specific conventions you MUST handle:
        - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
        - Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
@@ -72,9 +81,18 @@ class TikTokStorySignature(dspy.Signature):
     7. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit.
     8. ONLY provide the text for the script, do NOT include outside commentary, camera directions, or extra formatting.
     9. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
-    10. Keep all language appropriate and family-friendly for a general social media audience. Soften any
-        strong or sensitive moments with milder, everyday words. If the original post contains strong
-        language or insults, rephrase the situation without repeating those words.
+    10. STRONG WORDS POLICY — applies to ALL narrated text including the title. This script is spoken by
+        a TTS engine on TikTok where every word is audio-moderated. NEVER use: matar, morrer, morto,
+        morte, assassinar, suicídio, suicidou, atirar, esfaquear, sangue, sangrento, droga, drogas,
+        cocaína, maconha, viciado, transar, transou, sexo explícito, estuprar, estupro, abuso sexual,
+        arma de fogo, pistola / kill, murder, die, dead, suicide, shoot, stab, blood, drugs, cocaine,
+        weed, rape, sex (explicit), gun.
+        Use euphemisms: "dar um fim"/"fazer desaparecer"/"ir de arrasta" for killing; "descansou"/
+        "partiu dessa pra melhor"/"não está mais entre nós" for death; "tomou uma decisão definitiva"
+        for suicide; "ficou com"/"dormiu com"/"tiveram uma noite juntos" for sex; "forçou a situação"/
+        "fez algo horrível" for assault; "substâncias"/"coisas erradas" for drugs; "aquele objeto"/
+        "aconteceu o pior" for weapons. Keep intensity through tone, context, and metaphor — not
+        graphic words.
     11. Reddit posts use specific conventions you MUST handle:
         - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
         - Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.

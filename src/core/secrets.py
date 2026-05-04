@@ -21,6 +21,12 @@ class Secrets(BaseSettings):
     telegram_image_story_bot_token: Optional[str] = None
     telegram_satisfying_bot_token: Optional[str] = None
 
+    # TikTok auto-publisher credentials. Non-secret tunables (model,
+    # cookies path, headless, ...) live in config.yaml under
+    # proxies.tiktok_publisher_config.
+    tiktok_email: Optional[str] = None
+    tiktok_password: Optional[str] = None
+
     model_config = ConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 

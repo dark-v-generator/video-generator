@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List, Optional, Literal
 
 from ..entities.image_story import ImageStory
@@ -187,4 +188,28 @@ class ICoverProxy(ABC):
         community_url_photo: str,
     ) -> bytes:
         """Generate a reddit cover image and return PNG bytes"""
+        ...
+
+
+class ITikTokPublisherProxy(ABC):
+    @abstractmethod
+    async def publish_video(
+        self,
+        video_path: str,
+        description: str,
+        hashtags: Optional[List[str]] = None,
+        schedule_at: Optional[datetime] = None,
+    ) -> str:
+        """Publish — or schedule — a video file to TikTok via an AI agent.
+
+        The proxy is responsible for logging in (using stored credentials),
+        persisting the session cookies between runs, navigating to the upload
+        page, attaching the video, and filling the description. If
+        ``schedule_at`` is provided the agent toggles TikTok Studio's
+        "Schedule video" option and sets the date/time before clicking
+        "Schedule". TikTok only allows scheduling up to 10 days in the
+        future on Creator/Business accounts; the implementation should
+        reject anything outside that window. Returns the URL of the
+        published video when available, otherwise an empty string.
+        """
         ...

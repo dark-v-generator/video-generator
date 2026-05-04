@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal, Optional
 
+from ..entities.captions import Captions
 from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
 from ..entities.image_story import ImageStory
@@ -19,6 +20,7 @@ from ..proxies.interfaces import IImageGeneratorProxy, ILLMProxy, IRedditProxy
 from .captions_service import CaptionsResult, CaptionsService
 from .cover_service import CoverResult, CoverService
 from .speech_service import SpeechResult, SpeechService
+from .text_censor import TextCensor
 from .video_service import VideoService
 
 logger = logging.getLogger(__name__)
@@ -144,6 +146,7 @@ class RedditVideoService:
         video_service: VideoService,
         portrait_generation_proxy: Optional[IImageGeneratorProxy] = None,
         history_adaptation_llm_proxy: Optional[ILLMProxy] = None,
+        text_censor: Optional[TextCensor] = None,
     ) -> None:
         self._reddit_proxy = reddit_proxy
         self._llm_proxy = llm_proxy
@@ -154,6 +157,7 @@ class RedditVideoService:
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
+        self._text_censor = text_censor or TextCensor()
 
     # ------------------------------------------------------------------
     # Step methods (used individually by the interactive bot)
@@ -255,8 +259,19 @@ class RedditVideoService:
             {"word": s.text, "start": s.start, "end": s.end}
             for s in cap2.captions.segments
         ]
-        data1 = self._strip_introduction(raw1)
-        data2 = self._strip_introduction(raw2)
+
+        # Censor exported JSON data (visible text only; raw data keeps originals for timing).
+        data1 = self._text_censor.censor_word_dicts(self._strip_introduction(raw1))
+        data2 = self._text_censor.censor_word_dicts(self._strip_introduction(raw2))
+
+        # Censor on-screen caption segments inside the clips.
+        cap1.clip.captions = Captions(
+            segments=self._text_censor.censor_segments(cap1.captions.segments)
+        )
+        cap2.clip.captions = Captions(
+            segments=self._text_censor.censor_segments(cap2.captions.segments)
+        )
+
         return CaptionsPair(
             part1=cap1,
             part2=cap2,
@@ -272,7 +287,7 @@ class RedditVideoService:
         title = f"{script.title} - {part_label}" if part_label else script.title
         return await self._cover_service.generate_cover(
             RedditCover(
-                title=title,
+                title=self._text_censor.censor(title),
                 community=post.community,
                 author=post.author,
                 image_url=post.community_url_photo,
@@ -512,14 +527,19 @@ class RedditVideoService:
             seg for seg in segments_data if seg["start"] >= intro_end_time
         ]
 
-        # Filter captions clip so subtitles don't show during the cover
-        captions_result.clip.captions = captions_result.clip.captions.after_time(
-            intro_end_time
+        # Censor exported JSON captions (visible text).
+        captions_data = self._text_censor.censor_word_dicts(captions_data)
+
+        # Filter clip captions (no cover overlap) then censor on-screen text.
+        captions_result.clip.captions = Captions(
+            segments=self._text_censor.censor_segments(
+                captions_result.clip.captions.after_time(intro_end_time).segments
+            )
         )
 
         cover_result = await self._cover_service.generate_cover(
             RedditCover(
-                title=story_title,
+                title=self._text_censor.censor(story_title),
                 community=post.community,
                 author=post.author,
                 image_url=post.community_url_photo,
@@ -614,8 +634,21 @@ class RedditVideoService:
             for s in captions_result_2.captions.segments
         ]
 
-        captions_1_data = self._strip_introduction(raw_captions_1)
-        captions_2_data = self._strip_introduction(raw_captions_2)
+        # Censor exported JSON data; raw_captions_* keep originals for image-story timing.
+        captions_1_data = self._text_censor.censor_word_dicts(
+            self._strip_introduction(raw_captions_1)
+        )
+        captions_2_data = self._text_censor.censor_word_dicts(
+            self._strip_introduction(raw_captions_2)
+        )
+
+        # Censor on-screen caption segments inside the clips.
+        captions_result_1.clip.captions = Captions(
+            segments=self._text_censor.censor_segments(captions_result_1.captions.segments)
+        )
+        captions_result_2.clip.captions = Captions(
+            segments=self._text_censor.censor_segments(captions_result_2.captions.segments)
+        )
 
         config = self._video_service._video_config
         img_w, img_h = config.width, config.height
@@ -656,10 +689,11 @@ class RedditVideoService:
 
         # 8. Covers
         base_title = story.get("title", post.title)
+        censored_base_title = self._text_censor.censor(base_title)
         cover_result_1, cover_result_2 = await asyncio.gather(
             self._cover_service.generate_cover(
                 RedditCover(
-                    title=f"{base_title} - Parte 1",
+                    title=f"{censored_base_title} - Parte 1",
                     community=post.community,
                     author=post.author,
                     image_url=post.community_url_photo,
@@ -667,7 +701,7 @@ class RedditVideoService:
             ),
             self._cover_service.generate_cover(
                 RedditCover(
-                    title=f"{base_title} - Parte 2",
+                    title=f"{censored_base_title} - Parte 2",
                     community=post.community,
                     author=post.author,
                     image_url=post.community_url_photo,

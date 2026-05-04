@@ -5,6 +5,7 @@ from .secrets import secrets
 
 from ..entities.config import MainConfig
 from ..services.reddit_video_service import RedditVideoService
+from ..services.text_censor import TextCensor
 from ..services.video_service import VideoService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
@@ -77,6 +78,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config=main_config.provided.proxies.cover_config,
     )
     # Services
+    text_censor = providers.Singleton(
+        TextCensor,
+        extra_mappings=main_config.provided.services.censorship_config.extra_word_replacements,
+    )
+
     speech_service = providers.Singleton(
         SpeechService,
         speech_proxy=speech_proxy,
@@ -111,6 +117,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,
+        text_censor=text_censor,
     )
 
     story_finder_service = providers.Singleton(

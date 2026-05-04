@@ -1,13 +1,23 @@
+import random
 import tempfile
+
+import numpy as np
 from moviepy import (
     VideoClip as MoviepyVideoClip,
     VideoFileClip,
     concatenate_videoclips,
     CompositeVideoClip,
 )
-import random
+from moviepy.video.fx import (
+    LumContrast,
+    MirrorX,
+    MultiplyColor,
+    MultiplySpeed,
+)
+from PIL import Image
 
 from src.entities.editor.captions_clip import CaptionsClip
+from src.entities.configs.services.video import AntiFingerprintConfig
 
 
 class VideoClip:
@@ -61,3 +71,63 @@ class VideoClip:
         elif duration < video_duration:
             start_time = random.uniform(0, video_duration - duration)
             self.clip = self.clip.subclipped(start_time, start_time + duration)
+
+    def apply_anti_fingerprint(self, config: AntiFingerprintConfig) -> None:
+        """Apply randomized geometric/color/speed jitter to evade fingerprinting.
+
+        Should be called before the clip's audio is replaced. Speed changes
+        also rescale the audio track, but the pipeline replaces audio with
+        the TTS narration further downstream, so any pitch shift is dropped.
+        """
+        if not config.enabled or self.clip is None:
+            return
+
+        if config.zoom > 1.0:
+            ow, oh = self.clip.size
+            zoomed = self.clip.resized(config.zoom)
+            zw, zh = zoomed.size
+            x1 = (zw - ow) // 2
+            y1 = (zh - oh) // 2
+            self.clip = zoomed.cropped(x1=x1, y1=y1, x2=x1 + ow, y2=y1 + oh)
+
+        effects = []
+        if config.mirror:
+            effects.append(MirrorX())
+        if config.brightness_delta > 0:
+            factor = 1.0 + random.uniform(
+                -config.brightness_delta, config.brightness_delta
+            )
+            effects.append(MultiplyColor(factor))
+        if config.contrast_delta > 0:
+            contrast = random.uniform(-config.contrast_delta, config.contrast_delta)
+            effects.append(LumContrast(contrast=contrast))
+        if config.speed_delta > 0:
+            speed = 1.0 + random.uniform(-config.speed_delta, config.speed_delta)
+            effects.append(MultiplySpeed(speed))
+
+        if effects:
+            self.clip = self.clip.with_effects(effects)
+
+        if config.hue_shift_degrees > 0:
+            shift = random.uniform(
+                -config.hue_shift_degrees, config.hue_shift_degrees
+            )
+            self.clip = _apply_hue_shift(self.clip, shift)
+
+
+def _apply_hue_shift(clip: MoviepyVideoClip, degrees: float) -> MoviepyVideoClip:
+    """Rotate the hue channel of every frame by ``degrees``.
+
+    Implemented in HSV space via PIL. Saturation and luminance are left
+    untouched, which yields the most natural-looking shift.
+    """
+    offset = int(round(degrees / 360.0 * 256.0)) % 256
+
+    def shift(frame: np.ndarray) -> np.ndarray:
+        pil = Image.fromarray(frame, mode="RGB").convert("HSV")
+        h, s, v = pil.split()
+        h_shifted = (np.array(h, dtype=np.int16) + offset) % 256
+        h_new = Image.fromarray(h_shifted.astype(np.uint8), mode="L")
+        return np.array(Image.merge("HSV", (h_new, s, v)).convert("RGB"))
+
+    return clip.image_transform(shift)

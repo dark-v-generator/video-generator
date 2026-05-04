@@ -19,8 +19,10 @@ from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfi
 from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
+from src.entities.configs.proxies.tiktok_publisher import TikTokPublisherConfig
 
 from src.entities.configs.services.captions import CaptionsConfig
+from src.entities.configs.services.censorship import CensorshipConfig
 from src.entities.configs.services.video import VideoConfig
 from src.entities.configs.bots import BotsConfig
 from src.entities.language import Language
@@ -53,11 +55,16 @@ class ProxiesConfig(BaseYAMLModel):
     cover_config: CoverConfigType = Field(
         PlaywrightCoverConfig(), title="Cover configuration"
     )
+    tiktok_publisher_config: TikTokPublisherConfig = Field(
+        default_factory=TikTokPublisherConfig,
+        title="TikTok auto-publisher agent configuration (non-secret)",
+    )
 
 
 class ServicesConfig(BaseYAMLModel):
     video_config: VideoConfig = Field(VideoConfig(), title="Video configuration")
     captions_config: CaptionsConfig = Field(CaptionsConfig())
+    censorship_config: CensorshipConfig = Field(default_factory=CensorshipConfig)
 
 
 DEFAULT_EVALUATION_SUBREDDITS = [

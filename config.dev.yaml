@@ -21,8 +21,16 @@ services:
     font_path: default_font.ttf
   video_config:
     call_to_action_path: assets/call_to_action.png
-    youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+    youtube_channel_url: https://www.youtube.com/@foodieboykr
     ffmpeg_params: ["-crf", "28", "-preset", "fast"]
+    anti_fingerprint:
+      enabled: true
+      mirror: true
+      zoom: 1.06
+      brightness_delta: 0.04
+      contrast_delta: 8.0
+      hue_shift_degrees: 8.0
+      speed_delta: 0.02
 bots:
   image_story_bot:
     allowed_user_ids: [627370641]

@@ -4,6 +4,12 @@ proxies:
     type: json
   cover_config:
     title_font_size: 150
+  tiktok_publisher_config:
+    agent_model: deepseek/deepseek-v4-flash
+    cookies_path: .storage/tiktok_cookies.json
+    headless: false
+    use_vision: false
+    max_steps: 60
   image_generation_config:
     type: leonardo-v2
     model: "nano-banana-2"
@@ -29,8 +35,16 @@ services:
     font_path: default_font.ttf
   video_config:
     call_to_action_path: assets/call_to_action.png
-    youtube_channel_url: https://www.youtube.com/channel/UCIXTGJvqvxWoWWstA66a2JQ
+    youtube_channel_url: https://www.youtube.com/@foodieboykr
     ffmpeg_params: ["-crf", "23", "-preset", "medium"]
+    anti_fingerprint:
+      enabled: true
+      mirror: true
+      zoom: 1.06
+      brightness_delta: 0.04
+      contrast_delta: 8.0
+      hue_shift_degrees: 8.0
+      speed_delta: 0.02
 bots:
   image_story_bot:
     allowed_user_ids: [627370641]

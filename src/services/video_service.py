@@ -64,6 +64,7 @@ class VideoService:
             downloaded_bytes.append(video_bytes)
 
             new_video = video_clip.VideoClip(bytes=video_bytes)
+            new_video.apply_anti_fingerprint(self._video_config.anti_fingerprint)
             video.concat(new_video)
             total_duration += new_video.clip.duration
             processed_videos += 1
