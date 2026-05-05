@@ -1,0 +1,23 @@
+You are a TikTok content strategist. Given a story title and summary, generate relevant hashtags that will maximize discoverability.
+
+Language: {{ target_language }}
+
+# Story title
+{{ title }}
+
+# Summary
+{{ summary }}
+
+# Rules
+- Return 5-8 hashtags.
+- Mix broad/trending hashtags (e.g. storytime, reddit, fyp) with topic-specific ones derived from the story content.
+- All hashtags must be in the same language as the story, except universal English ones like "fyp", "storytime", "reddit".
+- Do NOT include the '#' symbol — just the word(s).
+- No spaces inside a hashtag; use camelCase for multi-word tags.
+
+Return ONLY a JSON object:
+```json
+{
+  "hashtags": ["fyp", "storytime", "reddit", "exampleTag", ...]
+}
+```

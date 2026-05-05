@@ -165,6 +165,14 @@ class ILLMProxy(ABC):
         the caller; the LLM only generates the images array."""
         ...
 
+    @abstractmethod
+    async def generate_hashtags(
+        self, title: str, summary: str, target_language: Language
+    ) -> List[str]:
+        """Generate TikTok hashtags relevant to a story.
+        Returns a list of hashtag strings without the leading '#'."""
+        ...
+
 
 class IYouTubeProxy(ABC):
     @abstractmethod

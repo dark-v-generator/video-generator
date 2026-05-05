@@ -62,6 +62,14 @@ bots:
     low_quality: false
     daily_hour_utc: 9
     daily_minute_utc: 30
+    daily_auto_publish_count: 4
+    publish_slots_local:
+      - "11:00"
+      - "13:00"
+      - "18:00"
+      - "20:00"
+    publish_min_lead_minutes: 30
+    publish_hashtags: []
 evaluation:
   subreddits:
     - pettyrevenge

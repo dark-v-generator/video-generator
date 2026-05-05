@@ -71,6 +71,8 @@ dependencies = [
     "browser-use>=0.7.0,<0.7.2",
     "patchright>=1.59.1",
     "playwright-stealth>=2.0.3",
+    "orjson>=3.11.8",
+    "email-validator>=2.3.0",
 ]
 
 [project.optional-dependencies]

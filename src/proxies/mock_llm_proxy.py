@@ -373,6 +373,11 @@ class MockLLMProxy(ILLMProxy):
     ) -> dict:
         return dict(MOCK_EVALUATION)
 
+    async def generate_hashtags(
+        self, title: str, summary: str, target_language: Language
+    ) -> list[str]:
+        return ["fyp", "storytime", "reddit", "viral"]
+
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language
     ) -> dict:

@@ -1,3 +1,7 @@
+import logging
+import sys
+import types
+
 import litellm
 
 from src.proxies.interfaces import ILLMProxy
@@ -10,9 +14,16 @@ import json
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-# Set up litellm configuration if necessary
-# Disable litellm telemetry
 litellm.telemetry = False
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+
+# Prevent litellm's logging path from importing its proxy server module,
+# which cascades into dozens of heavy/optional deps (fastapi_sso, etc.).
+# The proxy_server module is only needed when running the litellm proxy —
+# never when using litellm as a client library.
+_stub = types.ModuleType("litellm.proxy.proxy_server")
+_stub.general_settings = {}  # type: ignore[attr-defined]
+sys.modules.setdefault("litellm.proxy.proxy_server", _stub)
 
 
 class PromptLLMProxy(ILLMProxy):
@@ -337,6 +348,45 @@ class PromptLLMProxy(ILLMProxy):
             "nota_geral": nota_geral,
             "veredito": veredito,
         }
+
+    async def generate_hashtags(
+        self, title: str, summary: str, target_language: Language
+    ) -> list[str]:
+        model_str = self._get_model_string()
+        self._logger.info(f"Generating hashtags via LiteLLM {model_str}")
+
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("generate_hashtags.jinja2")
+
+        prompt = template.render(
+            target_language=get_language_name(target_language),
+            title=title,
+            summary=summary,
+        )
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=messages,
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            **self._get_completion_kwargs(model_str, default_max_tokens=256),
+        )
+
+        response_text = response.choices[0].message.content
+        if not response_text:
+            self._logger.warning("LLM returned empty hashtag response, using defaults")
+            return ["fyp", "storytime", "reddit"]
+
+        try:
+            data = json.loads(self._clean_json(response_text))
+            tags = data.get("hashtags", [])
+            return [t.lstrip("#") for t in tags] if tags else ["fyp", "storytime", "reddit"]
+        except (json.JSONDecodeError, AttributeError):
+            self._logger.warning("Failed to parse hashtag JSON: %s", response_text)
+            return ["fyp", "storytime", "reddit"]
 
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language

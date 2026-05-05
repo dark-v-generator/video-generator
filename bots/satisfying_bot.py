@@ -1,9 +1,12 @@
 """Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit."""
 
+from __future__ import annotations
+
 import asyncio
 import datetime
 import logging
 import os
+import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
@@ -21,6 +24,8 @@ from telegram.ext import (
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
+from src.entities.story_candidate import EvaluatedStory
+from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
 
 from bots.base import (
     is_user_allowed,
@@ -227,6 +232,52 @@ def _parse_subreddits(args: list[str] | None) -> list[str] | None:
     return subreddits or None
 
 
+def _format_find_message(
+    i: int, story: EvaluatedStory, *, include_scores: bool = True,
+) -> str:
+    """Build the text body for a single story message."""
+    post = story.post
+    sub = post.community.replace("r/", "")
+
+    if include_scores:
+        notas = story.evaluation.get("notas", {})
+        lines = [
+            f"#{i + 1} [{story.veredito}] — {story.nota_geral}/100",
+            f"r/{sub} | {post.score or 0} pts | {post.num_comments or 0} comments",
+            "",
+        ]
+        for key, label in LLM_LABELS.items():
+            entry = notas.get(key, {})
+            nota = entry.get("nota", 0)
+            lines.append(f"  {label}: {_format_bar(nota)} {nota}")
+        lines.append("")
+        lines.append(f"{story.resumo[:400]}")
+    else:
+        lines = [
+            f"#{i + 1} — {post.title}",
+            f"r/{sub}",
+            "",
+            story.resumo[:400],
+        ]
+
+    return "\n".join(lines)
+
+
+async def _discover_stories(
+    subreddits: list[str] | None = None,
+) -> list[EvaluatedStory]:
+    """Run the story-finder pipeline and return ranked results."""
+    container.wire(modules=[__name__])
+    finder = container.story_finder_service()
+    return await finder.find_best_stories(
+        sort="top",
+        time_filter="day",
+        top_per_sub=5,
+        language=config.language,
+        subreddits=subreddits,
+    )
+
+
 async def _run_find(
     bot,
     chat_id: int,
@@ -234,16 +285,7 @@ async def _run_find(
 ) -> None:
     """Core /find logic: discover and rank stories, send results with generate buttons."""
     try:
-        container.wire(modules=[__name__])
-        finder = container.story_finder_service()
-
-        results = await finder.find_best_stories(
-            sort="top",
-            time_filter="day",
-            top_per_sub=5,
-            language=config.language,
-            subreddits=subreddits,
-        )
+        results = await _discover_stories(subreddits)
     except Exception as e:
         logger.exception("Failed to find stories")
         await bot.send_message(chat_id, f"Erro ao buscar histórias: {e}")
@@ -254,26 +296,8 @@ async def _run_find(
         return
 
     for i, story in enumerate(results):
-        post = story.post
-        notas = story.evaluation.get("notas", {})
-        sub = post.community.replace("r/", "")
-
-        lines = [
-            f"#{i + 1} [{story.veredito}] — {story.nota_geral}/100",
-            f"r/{sub} | {post.score or 0} pts | {post.num_comments or 0} comments",
-            "",
-        ]
-
-        for key, label in LLM_LABELS.items():
-            entry = notas.get(key, {})
-            nota = entry.get("nota", 0)
-            lines.append(f"  {label}: {_format_bar(nota)} {nota}")
-
-        lines.append("")
-        lines.append(f"{story.resumo[:400]}")
-
-        text = "\n".join(lines)
-        url_key = _store_url(post.url)
+        text = _format_find_message(i, story, include_scores=True)
+        url_key = _store_url(story.post.url)
 
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
@@ -371,12 +395,206 @@ def _cleanup_temp(path: str | None) -> None:
             pass
 
 
+def _parse_slot_times(slot_times: list[str]) -> list[datetime.time]:
+    """Parse and sort HH:MM strings into time objects."""
+    parsed = sorted(
+        datetime.time(int(h), int(m))
+        for h, m in (s.split(":") for s in slot_times)
+    )
+    if not parsed:
+        raise ValueError("publish_slots_local must contain at least one HH:MM entry")
+    return parsed
+
+
+def next_publish_slot(
+    after: datetime.datetime,
+    slot_times: list[str],
+    min_lead_minutes: int,
+    *,
+    _now: datetime.datetime | None = None,
+) -> datetime.datetime:
+    """Return the first eligible slot strictly after *after*.
+
+    Respects *min_lead_minutes* relative to the real clock (now), and
+    also ensures the slot comes after the previous scheduled time so
+    slots never go backwards.
+    """
+    parsed = _parse_slot_times(slot_times)
+    now = _now or datetime.datetime.now()
+    earliest = max(
+        after + datetime.timedelta(minutes=1),
+        now + datetime.timedelta(minutes=min_lead_minutes),
+    )
+    day = earliest.date()
+
+    for _ in range(400):
+        for t in parsed:
+            candidate = datetime.datetime.combine(day, t)
+            if candidate >= earliest:
+                return candidate
+        day += datetime.timedelta(days=1)
+
+    raise RuntimeError("Could not find a valid publish slot within 400 days")
+
+
+def compute_publish_slots(
+    now: datetime.datetime,
+    slot_times: list[str],
+    count: int,
+    min_lead_minutes: int,
+) -> list[datetime.datetime]:
+    """Return the next *count* eligible local-time publish slots starting from *now*.
+
+    Walks configured HH:MM slots forward day-by-day, skipping any slot
+    that falls within *min_lead_minutes* of *now*.
+    """
+    parsed = _parse_slot_times(slot_times)
+    earliest = now + datetime.timedelta(minutes=min_lead_minutes)
+    day = now.date()
+    slots: list[datetime.datetime] = []
+
+    while len(slots) < count:
+        for t in parsed:
+            candidate = datetime.datetime.combine(day, t)
+            if candidate >= earliest and len(slots) < count:
+                slots.append(candidate)
+        day += datetime.timedelta(days=1)
+
+    return slots
+
+
+def _build_tiktok_publisher() -> BrowserUseTikTokPublisherProxy:
+    """Instantiate the TikTok publisher using project config + secrets."""
+    pub_cfg = config.proxies.tiktok_publisher_config
+    return BrowserUseTikTokPublisherProxy(
+        email=secrets.tiktok_email,
+        password=secrets.tiktok_password,
+        openrouter_api_key=secrets.openrouter_api_key,
+        model=pub_cfg.agent_model,
+        cookies_path=pub_cfg.cookies_path,
+        headless=pub_cfg.headless,
+        max_steps=pub_cfg.max_steps,
+        use_vision=pub_cfg.use_vision,
+    )
+
+
+async def run_daily_auto_publish(
+    send_message,
+    *,
+    publish_count: int | None = None,
+) -> None:
+    """Discover stories, generate videos, and schedule them on TikTok.
+
+    *send_message* is an ``async def(text: str) -> None`` callback used
+    for progress updates (Telegram, stdout, etc.).
+    """
+    await send_message("🔄 Busca diária iniciada...")
+
+    try:
+        results = await _discover_stories()
+    except Exception as e:
+        logger.exception("Failed to find stories")
+        await send_message(f"Erro ao buscar histórias: {e}")
+        return
+
+    if not results:
+        await send_message("Nenhuma história boa encontrada hoje.")
+        return
+
+    for i, story in enumerate(results):
+        text = _format_find_message(i, story, include_scores=False)
+        await send_message(text)
+
+    await send_message(f"{len(results)} histórias encontradas.")
+
+    count = min(
+        publish_count or bot_config.daily_auto_publish_count,
+        len(results),
+    )
+    if count == 0:
+        return
+
+    await send_message(f"⏰ Gerando e agendando {count} vídeos...")
+
+    container.wire(modules=[__name__])
+    service = container.reddit_video_service()
+    llm_proxy = container.llm_proxy()
+    publisher = _build_tiktok_publisher()
+
+    last_slot = datetime.datetime.now()
+
+    for idx, story in enumerate(results[:count]):
+        post = story.post
+        label = f"#{idx + 1} — {post.title[:60]}"
+        await send_message(f"⏳ [{label}] Gerando vídeo...")
+
+        tmp_path: str | None = None
+        try:
+            result = await service.generate_satisfying_video(
+                post_url=post.url,
+                language=config.language,
+                low_quality=bot_config.low_quality,
+            )
+
+            fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
+            os.write(fd, result.video)
+            os.close(fd)
+
+            slot = next_publish_slot(
+                after=last_slot,
+                slot_times=bot_config.publish_slots_local,
+                min_lead_minutes=bot_config.publish_min_lead_minutes,
+            )
+
+            hashtags = await llm_proxy.generate_hashtags(
+                title=post.title,
+                summary=story.resumo[:400],
+                target_language=config.language,
+            )
+
+            await send_message(
+                f"📤 [{label}] Agendando para {slot.strftime('%d/%m %H:%M')}...",
+            )
+
+            publish_result = await publisher.publish_video(
+                video_path=tmp_path,
+                description=post.title,
+                hashtags=hashtags,
+                schedule_at=slot,
+            )
+
+            last_slot = slot
+
+            if publish_result:
+                await send_message(
+                    f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}\n{publish_result}",
+                )
+            else:
+                await send_message(
+                    f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}",
+                )
+
+        except Exception as e:
+            logger.exception("Failed to generate/publish %s", post.url)
+            error_text = str(e)
+            if len(error_text) > 300:
+                error_text = error_text[:300] + "…"
+            await send_message(f"❌ [{label}] Erro: {error_text}")
+        finally:
+            _cleanup_temp(tmp_path)
+
+    await send_message("🏁 Busca e agendamento diário concluídos.")
+
+
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Scheduled job: run /find automatically every day."""
+    """Scheduled job: discover stories, send summaries, auto-generate and schedule videos."""
     chat_id = bot_config.allowed_user_ids[0]
-    await context.bot.send_message(chat_id, "🔄 Busca diária iniciada...")
-    await _run_find(context.bot, chat_id)
-    await context.bot.send_message(chat_id, "🏁 Busca diária concluída.")
+    bot = context.bot
+
+    async def send_message(text: str) -> None:
+        await bot.send_message(chat_id, text)
+
+    await run_daily_auto_publish(send_message)
 
 
 async def _post_init(application: Application) -> None:

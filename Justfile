@@ -11,6 +11,14 @@ generate-reddit url output_dir="output":
 generate-reddit-fast url output_dir="output":
     .venv/bin/python scripts/reddit_two_part_history.py {{url}} --output-dir {{output_dir}} --low-quality
 
+# Run the daily auto-publish pipeline locally (find → generate → schedule)
+daily-publish count="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args=""
+    if [ -n "{{count}}" ]; then args="--count {{count}}"; fi
+    uv run python scripts/daily_auto_publish.py $args
+
 # Format code
 fmt:
     .venv/bin/black src scripts tests

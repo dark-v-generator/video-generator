@@ -473,6 +473,37 @@ class DSPyLLMProxy(ILLMProxy):
             "veredito": veredito,
         }
 
+    async def generate_hashtags(
+        self, title: str, summary: str, target_language: Language
+    ) -> list[str]:
+        self._logger.info(
+            f"Generating hashtags via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        class HashtagSignature(dspy.Signature):
+            """Generate TikTok hashtags for a story."""
+            title: str = dspy.InputField()
+            summary: str = dspy.InputField()
+            target_language: str = dspy.InputField()
+            hashtags_json: str = dspy.OutputField(
+                desc='JSON: {"hashtags": ["fyp", "storytime", ...]}'
+            )
+
+        generator = dspy.Predict(HashtagSignature)
+        result = generator(
+            title=title,
+            summary=summary,
+            target_language=get_language_name(target_language),
+        )
+
+        try:
+            data = self._parse_json_text(result.hashtags_json)
+            tags = data.get("hashtags", [])
+            return [t.lstrip("#") for t in tags] if tags else ["fyp", "storytime", "reddit"]
+        except (json.JSONDecodeError, AttributeError):
+            self._logger.warning("Failed to parse hashtag JSON from DSPy")
+            return ["fyp", "storytime", "reddit"]
+
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language
     ) -> dict:
