@@ -130,6 +130,7 @@ prod-tiktok-bootstrap-vnc video_path="output/part1.mp4" schedule_in="30m" descri
     echo "==> Opening SSH tunnel (localhost:5900 -> server) and starting bootstrap..."
     ssh -t -L 5900:localhost:5900 {{PROD_HOST}} \
         "chmod +x {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh && {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh '$REMOTE_VIDEO' --description '{{description}}' --schedule-in {{schedule_in}}"
+    just sync-tiktok-runs
 
 # X11-forwarding alternative (requires XQuartz on macOS). Kept for
 # power users; prefer prod-tiktok-bootstrap-vnc.
@@ -149,7 +150,10 @@ prod-tiktok-bootstrap-x11 video_path="output/part1.mp4" schedule_in="30m" descri
 
 # Daily-cron-style publish on the server. No display needed:
 # Xvfb provides a virtual screen for headful Chromium. Assumes the
-# session was already bootstrapped (see prod-tiktok-bootstrap).
+# session was already bootstrapped (see prod-tiktok-bootstrap-vnc).
+#
+# Auto-pulls the run history + reflected lessons back to the local
+# .storage/ dir at the end so you can inspect what the agent did.
 #
 # Usage:
 #   just prod-tiktok-publish output/part1.mp4
@@ -161,7 +165,8 @@ prod-tiktok-publish video_path="output/part1.mp4" extra_args="--schedule-in 30m 
     rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
     REMOTE_VIDEO="output/$(basename {{video_path}})"
     echo "==> Running xvfb-run + publisher on server..."
-    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/publish_tiktok.py $REMOTE_VIDEO {{extra_args}}"
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish.log && OPENAI_LOG=debug LITELLM_LOG=DEBUG xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/publish_tiktok.py $REMOTE_VIDEO {{extra_args}} 2>&1 | tee \$RUN_LOG"
+    just sync-tiktok-runs
 
 # Inspect the persisted TikTok session on the server.
 prod-tiktok-status:
@@ -170,3 +175,41 @@ prod-tiktok-status:
 # Wipe the persisted TikTok session on the server (forces re-login).
 prod-tiktok-reset:
     ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && rm -rf .storage/tiktok_cookies_userdata .storage/tiktok_cookies.json && echo "session wiped"'
+
+# Pull the latest agent run histories + accumulated lessons from prod.
+# Safe to run any time; one-way (server -> local). Excludes cookies
+# and the user_data_dir so we never overwrite the server's device
+# fingerprint with a Mac one.
+sync-tiktok-runs:
+    @mkdir -p .storage/tiktok_runs
+    rsync -avz --delete-after \
+        {{PROD_HOST}}:{{PROD_DIR}}/.storage/tiktok_runs/ \
+        ./.storage/tiktok_runs/ 2>/dev/null || echo "(no remote runs yet)"
+    rsync -avz \
+        {{PROD_HOST}}:{{PROD_DIR}}/.storage/tiktok_learnings.md \
+        ./.storage/tiktok_learnings.md 2>/dev/null || echo "(no remote lessons yet)"
+    @echo "==> $(ls .storage/tiktok_runs 2>/dev/null | wc -l | tr -d ' ') runs cached locally"
+    @echo "==> Latest:  $(ls -t .storage/tiktok_runs 2>/dev/null | head -1)"
+    @echo "==> Lessons: $(wc -l < .storage/tiktok_learnings.md 2>/dev/null || echo 0) lines"
+
+# Push manually-edited lessons back to prod (after pruning bad ones, etc).
+push-tiktok-learnings:
+    @test -f .storage/tiktok_learnings.md || (echo "no local lessons file" && exit 1)
+    rsync -avz ./.storage/tiktok_learnings.md \
+        {{PROD_HOST}}:{{PROD_DIR}}/.storage/tiktok_learnings.md
+    @echo "==> pushed $(wc -l < .storage/tiktok_learnings.md) lines"
+
+# Show the most-recent run trace (auto-syncs first). Prefers the
+# human-readable .md trace over the raw .json.
+tiktok-last:
+    @just sync-tiktok-runs >/dev/null
+    @latest_md=$(ls -t .storage/tiktok_runs/*.md 2>/dev/null | head -1); \
+     latest_json=$(ls -t .storage/tiktok_runs/*.json 2>/dev/null | head -1); \
+     if [ -n "$latest_md" ]; then echo "==> $latest_md"; cat "$latest_md"; \
+     elif [ -n "$latest_json" ]; then echo "==> $latest_json"; cat "$latest_json"; \
+     else echo "(no runs)"; fi
+
+# Show the accumulated lessons file (auto-syncs first).
+tiktok-lessons:
+    @just sync-tiktok-runs >/dev/null
+    @cat .storage/tiktok_learnings.md 2>/dev/null || echo "(no lessons yet)"

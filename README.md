@@ -208,6 +208,34 @@ just prod-tiktok-reset         # apaga cookies (forçar re-login)
 just prod-tiktok-bootstrap-vnc # re-bootstrap após reset ou se TikTok forçar re-auth
 ```
 
+#### Memória entre runs (lessons file)
+
+Cada execução do agente é capturada em
+`.storage/tiktok_runs/<timestamp>-<outcome>.json` no servidor. Logo após
+capturar, um pequeno LLM "reflector" lê o histórico, extrai 0–5 lições
+acionáveis (rótulos pt-BR que funcionaram, sequências erradas, anti-padrões)
+e mescla em `.storage/tiktok_learnings.md`. Na próxima rodada, o conteúdo
+desse arquivo entra no início do prompt da task — então o agente começa
+cada run mais esperto que o anterior.
+
+O arquivo é seedado com rótulos pt-BR já conhecidos (login, captcha,
+"Programar", etc.) a partir de `assets/tiktok_seed_lessons.md` na primeira
+execução em servidor limpo.
+
+Para inspecionar/editar localmente:
+
+```bash
+just sync-tiktok-runs       # puxa runs + lessons do servidor (read-only)
+just tiktok-last            # mostra o histórico do último run
+just tiktok-lessons         # mostra as lessons acumuladas
+$EDITOR .storage/tiktok_learnings.md  # edita à mão (poda lições ruins)
+just push-tiktok-learnings  # devolve as edições para o servidor
+```
+
+`sync-tiktok-runs` roda automaticamente ao final de `prod-tiktok-publish`
+e do `prod-tiktok-bootstrap-vnc`, então em fluxo normal o `.storage/` local
+fica sempre fresco — não precisa lembrar de sincronizar.
+
 #### Como funciona
 
 Publica (ou agenda) um vídeo já renderizado direto no TikTok usando um

@@ -96,4 +96,17 @@ echo "==> Drag the captcha slider when it appears (agent waits ~2 min)."
 echo "=================================================================="
 echo ""
 
-DISPLAY=":${DISPLAY_NUM}" uv run python scripts/publish_tiktok.py "$@"
+# Tee the entire script + LLM debug stream into a per-run file under
+# .storage/tiktok_runs/ so it gets auto-synced back to the dev machine
+# by `just sync-tiktok-runs`. Used for debugging cases where the model
+# returns malformed JSON or the agent stalls on a popup we can't see.
+RUN_LOG_DIR="$PWD/.storage/tiktok_runs"
+mkdir -p "$RUN_LOG_DIR"
+RUN_LOG="${RUN_LOG_DIR}/$(date -u +%Y%m%dT%H%M%S)-bootstrap.log"
+echo "==> Streaming full output to $RUN_LOG"
+echo ""
+
+DISPLAY=":${DISPLAY_NUM}" \
+  OPENAI_LOG=debug \
+  LITELLM_LOG=DEBUG \
+  uv run python scripts/publish_tiktok.py "$@" 2>&1 | tee "$RUN_LOG"

@@ -5,6 +5,14 @@ proxies:
   cover_config:
     title_font_size: 150
   tiktok_publisher_config:
+    # Text-only DeepSeek V4-Flash. We compensate for the lack of vision
+    # by giving the agent a tighter, more directive task prompt with
+    # stable CSS selectors for the upload zone, hard-coded negative
+    # rules to skip the lookalike sidebar buttons, and a no-todo-list
+    # directive that saves 2-3 steps per run. See _build_task in the
+    # publisher proxy and assets/tiktok_seed_lessons.md for the hints.
+    # GPT-5.4-mini was tried but breaks browser-use's strict JSON
+    # parser by emitting <think> blocks + concatenated objects.
     agent_model: deepseek/deepseek-v4-flash
     cookies_path: .storage/tiktok_cookies.json
     headless: false
