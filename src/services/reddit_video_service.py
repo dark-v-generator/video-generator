@@ -106,6 +106,7 @@ class SingleVideoResult:
     original_post_md: str
     audio: bytes
     captions_json: str
+    localized_title: str
     cover_png: Optional[bytes] = None
 
 
@@ -565,6 +566,7 @@ class RedditVideoService:
             original_post_md=original_post_md,
             audio=speech_result.bytes,
             captions_json=json.dumps(captions_data, ensure_ascii=False, indent=2),
+            localized_title=story_title,
             cover_png=cover_result.bytes,
         )
 

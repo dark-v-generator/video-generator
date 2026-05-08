@@ -49,6 +49,10 @@ class VideoService:
         video_ids = await self._youtube_proxy.list_video_ids(
             self._video_config.youtube_channel_url
         )
+
+        pool = self._video_config.youtube_pool_size
+        if pool > 0:
+            video_ids = video_ids[:pool]
         random.shuffle(video_ids)
 
         video = video_clip.VideoClip()

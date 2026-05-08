@@ -87,52 +87,19 @@ TIKTOK_ALLOWED_DOMAINS: List[str] = [
 
 
 def _build_schedule_steps(schedule_at: datetime) -> str:
-    """Schedule-mode tail. Date via native setter, time via cell clicks.
-
-    Empirical: the date input is plain freetext so the React native
-    value-setter trick commits cleanly. The time input is bound to a
-    wheel picker's internal state — setter triggers re-render which
-    snaps back to the wheel position. The only thing that updates the
-    wheel is a click on the matching cell.
-    """
     iso_date = schedule_at.strftime("%Y-%m-%d")
+    day = str(schedule_at.day)
     hh = schedule_at.strftime("%H")
     mm = schedule_at.strftime("%M")
     return (
-        "7. Reveal schedule controls (works in EN or pt-BR):\n"
-        "   run_js(code=\"\"\"\n"
-        "     const sec = [...document.querySelectorAll('*')].find(el => el.offsetParent && /\\\\b(when to post|quando postar)\\\\b/i.test(el.innerText));\n"
-        "     sec?.scrollIntoView({block: 'center'});\n"
-        "     const radio = [...document.querySelectorAll('[role=\\\"radio\\\"]')].find(r => r.offsetParent && /\\\\b(schedule|programar)\\\\b/i.test(r.innerText));\n"
-        "     radio?.click();\n"
-        "     return {scrolled: !!sec, clickedRadio: !!radio};\n"
-        "   \"\"\")\n"
-        "   If clickedRadio is false, find the schedule radio in the "
-        "DOM and click it via click_element_by_index.\n"
-        f"8. Set DATE = {iso_date} (date input is freetext; React "
-        "native setter works):\n"
-        "   run_js(code=\"\"\"\n"
-        "     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;\n"
-        "     const i = [...document.querySelectorAll('input[type=\\\"text\\\"]')].filter(x => x.offsetParent).find(x => /^\\\\d{4}-\\\\d{2}-\\\\d{2}$/.test(x.value));\n"
-        f"     if (i) {{ set.call(i, '{iso_date}'); ['input','change','blur'].forEach(t => i.dispatchEvent(new Event(t, {{bubbles: true}}))); }}\n"
-        "     return i?.value;\n"
-        "   \"\"\")\n"
-        f"   Expect '{iso_date}'.\n"
-        f"9. Set TIME = {hh}:{mm}. The time input is a wheel picker — "
-        "native setter snaps back, so click cells:\n"
-        "   - Click the time field to open the picker.\n"
-        f"   - run_js to click the minute cell '{mm}':\n"
-        f"       const cells = [...document.querySelectorAll('div, span, li')].filter(el => el.offsetParent && el.innerText.trim() === '{mm}' && el.getBoundingClientRect().width < 80);\n"
-        "       cells[0]?.click();\n"
-        "       return cells.length;\n"
-        f"   - Same for hour cell '{hh}' if needed.\n"
-        f"   - Verify: run_js -> return [...document.querySelectorAll"
-        "('input')].find(i => /^\\\\d{2}:\\\\d{2}$/.test(i.value))?.value; "
-        f"— must be '{hh}:{mm}'.\n"
-        "10. click_by_text 'Schedule' or 'Agendar' (NOT 'Post' / "
-        "'Postar'). Single action.\n"
-        "11. Wait for 'Video scheduled' / 'Vídeo agendado' or /manage "
-        "redirect, then done(success=True, text=<URL>).\n"
+        "7. Scroll 'When to post' into view and click 'Schedule' radio. "
+        "A time picker may auto-open — ignore it and proceed.\n"
+        f"8. Call `set_schedule_date(day='{day}')` to set date to {iso_date}.\n"
+        f"9. Call `set_schedule_time(hour='{hh}', minute='{mm}')` to set time.\n"
+        f"10. Call `get_schedule_values()` to verify it shows {hh}:{mm} and {iso_date}.\n"
+        "11. Call `scroll_to_submit()`, then `click_by_text(text='Schedule', role='button')`.\n"
+        "12. Wait for confirmation or /manage redirect, "
+        "then done(success=True, text=<confirmation or URL>).\n"
     )
 
 
@@ -141,8 +108,6 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
 
     def __init__(
         self,
-        email: str,
-        password: str,
         openrouter_api_key: str,
         model: str,
         cookies_path: str = ".storage/tiktok_cookies.json",
@@ -150,18 +115,12 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         max_steps: int = 60,
         use_vision: bool = False,
     ) -> None:
-        if not email:
-            raise ValueError("TIKTOK_EMAIL is required for the TikTok publisher")
-        if not password:
-            raise ValueError("TIKTOK_PASSWORD is required for the TikTok publisher")
         if not openrouter_api_key:
             raise ValueError(
                 "OPENROUTER_API_KEY is required for the TikTok publisher agent"
             )
 
         self._logger = get_logger(__name__)
-        self._email = email
-        self._password = password
         self._openrouter_api_key = openrouter_api_key
         self._model = model
         self._headless = headless
@@ -252,7 +211,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
             allowed_domains=TIKTOK_ALLOWED_DOMAINS,
             user_agent=DEFAULT_USER_AGENT,
             keep_alive=False,
-            highlight_elements=False,
+            highlight_elements=True,
             # Tuned down from the original belt-and-suspenders 3.0/2.0
             # values. The original CDP-target-not-found cascade we saw
             # was caused by forcing patchright's executable_path with a
@@ -286,18 +245,24 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         )
         self._logger.info("TikTok live log: %s", live_log_path)
 
+        run_ts = Path(live_log_path).stem.split(".")[0]
+        runs_dir = Path(live_log_path).parent
+        gif_path = str(runs_dir / f"{run_ts}.gif")
+        conversation_path = str(runs_dir / f"{run_ts}-conversation.json")
+        self._logger.info("TikTok debug GIF: %s", gif_path)
+        self._logger.info("TikTok conversation log: %s", conversation_path)
+
         agent = Agent(
             task=task,
             llm=llm,
             browser=browser,
             tools=tools,
             available_file_paths=[absolute_video_path],
-            sensitive_data={
-                "tiktok_email": self._email,
-                "tiktok_password": self._password,
-            },
             use_vision=self._use_vision,
             register_new_step_callback=self._make_step_callback(),
+            llm_timeout=180,
+            generate_gif=gif_path,
+            save_conversation_path=conversation_path,
         )
 
         history = None
@@ -305,18 +270,50 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         try:
             await self._start_session_with_stealth(agent)
             history = await agent.run(max_steps=self._max_steps)
-            final_url = self._extract_url(history)
+
+            errors = self._count_errors(history)
+            final_text = self._extract_url(history)
             done_ok = self._extract_done_success(history)
+            last_url = self._extract_last_url(history)
+
+            self._logger.info(
+                "TikTok agent finished: done=%s, errors=%d/%d steps, "
+                "last_url=%s, final_text=%.200s",
+                done_ok,
+                errors["failed_steps"],
+                errors["total_steps"],
+                last_url,
+                final_text,
+            )
+            if errors["failed_steps"] > 0:
+                self._logger.warning(
+                    "TikTok agent had %d failed steps out of %d: %s",
+                    errors["failed_steps"],
+                    errors["total_steps"],
+                    errors["error_messages"],
+                )
+
             if done_ok is True:
+                if not self._looks_like_success(final_text, last_url):
+                    outcome = "false_positive"
+                    raise RuntimeError(
+                        f"TikTok agent claimed success but result doesn't "
+                        f"look right. final_text={final_text!r}, "
+                        f"last_url={last_url!r}, "
+                        f"errors={errors['failed_steps']}/{errors['total_steps']}"
+                    )
                 outcome = "success"
+                return final_text
             elif done_ok is False:
-                # Agent explicitly called done(success=False). The text
-                # in final_url is the failure reason, not a URL.
                 outcome = "agent_reported_failure"
+                raise RuntimeError(
+                    f"TikTok agent reported failure: {final_text or 'no details'}"
+                )
             else:
-                # No done() at all — agent ran out of steps or crashed.
                 outcome = "no_done_call"
-            return final_url
+                raise RuntimeError(
+                    "TikTok agent did not complete — ran out of steps or crashed"
+                )
         except Exception as exc:
             outcome = f"error_{type(exc).__name__}"
             raise
@@ -448,7 +445,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         tag_str = " ".join(f"#{h.lstrip('#')}" for h in hashtags)
         if not description.strip():
             return tag_str
-        return f"{description.strip()}\n\n{tag_str}"
+        return f"{description.strip()}  {tag_str}"
 
     @staticmethod
     def _build_task(
@@ -457,84 +454,57 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         schedule_at: Optional[datetime],
         lessons: str = "",  # noqa: ARG004 — currently unused, kept for API stability
     ) -> str:
-        """Build a tight task prompt (~1.5 KB) for a text-only LLM.
+        """Build a minimal task prompt for the browser agent.
 
-        Design rule of thumb: prompts that are 5+ KB drown the agent.
-        DeepSeek V4-Flash starts hallucinating retries on Step 5 when
-        the prompt is too verbose. This version cuts everything we
-        learned the agent already infers from the DOM dump on its own,
-        and keeps ONLY the things we know it gets wrong without help:
-
-          * which sidebar buttons to ignore (all look the same in DOM)
-          * "upload-fire-and-forget" (it tries 4× otherwise)
-          * "DraftJS caption needs ``input_text(clear_existing=True)``"
-            — manual Ctrl+A + Delete is silently swallowed by DraftJS
-          * "time picker is a scroll wheel" — typing into it is a no-op
-          * no todo.md busywork
+        Only specifies the goal and genuinely tricky parts. The agent
+        decides how to interact with the UI on its own.
         """
         if schedule_at is not None:
             schedule_block = _build_schedule_steps(schedule_at)
         else:
             schedule_block = (
-                "7. click_by_text 'Post' or 'Postar' (single action).\n"
-                "8. Wait for confirmation, done(success=True, text=<URL>).\n"
+                "4. Click 'Post' / 'Postar' to publish immediately.\n"
+                "5. Wait for confirmation, "
+                "then done(success=True, text=<confirmation or URL>).\n"
             )
 
         return (
-            "# TikTok Studio publish task (UI may be EN or pt-BR)\n"
+            "# Publish a video on TikTok Studio\n"
             "\n"
-            "Session is logged in unless redirected to /login. If an "
-            "action fails 3× in a row, done(success=False). NEVER "
-            "re-navigate to /upload — you'll lose progress.\n"
+            "Session is already logged in. DO NOT create todo.md or any "
+            "planning files — execute steps directly.\n"
             "\n"
-            "## Custom actions\n"
-            "- run_js(code) — JS in the active tab. Top-level `return X` "
-            "is auto-wrapped in an IIFE. Returns JSON-serializable values.\n"
-            "- click_by_text(text, role?) — click the first visible "
-            "element whose innerText contains `text` (case-insensitive).\n"
-            "- set_contenteditable(selector, text) — clear+set a "
-            "contenteditable. USE FOR CAPTION (input_text doesn't clear "
-            "DraftJS).\n"
-            "- get_text(selector) — read innerText for verification.\n"
+            "IMPORTANT: For scheduling (date/time), ONLY use the "
+            "set_schedule_date and set_schedule_time tools. Do NOT try "
+            "to click time picker elements by index — the scroll-wheel "
+            "picker elements are not reliably clickable that way.\n"
             "\n"
-            "## Hard rules\n"
-            "- Caption is DraftJS — set_contenteditable only.\n"
-            "- Time-picker cells: click them. React native value-setting "
-            "snaps back.\n"
-            "- Sidebar (class Sidebar_Sidebar_Clickable, 4 lookalike "
-            "buttons): never click.\n"
-            "- upload_file_to_element: call once, then wait(8).\n"
-            "- Multi-action sequences: never put a page-changing action "
-            "(submit click, modal-closer) anywhere but the LAST slot — "
-            "subsequent actions get dropped.\n"
-            "- No write_file / replace_file_str / read_file. No todo.md.\n"
-            "\n"
-            "## JS recipes (use with run_js when needed)\n"
-            "# Read caption (verify):\n"
-            "  return document.querySelector(\"div[contenteditable='true'][role='combobox']\").innerText;\n"
-            "# List visible buttons (discovery):\n"
-            "  return [...document.querySelectorAll('button')].filter(b => b.offsetParent && b.innerText.trim()).slice(0,20).map(b => b.innerText.trim().slice(0,40));\n"
+            "## Your TikTok-specific tools\n"
+            "Use these instead of crafting JS yourself:\n"
+            "- `dismiss_overlay()` — checks for 'Continue editing?' overlay "
+            "and clicks both Discard buttons automatically.\n"
+            "- `set_contenteditable(selector, text)` — clear+fill a DraftJS "
+            "field. Use selector: div[contenteditable='true'][role='combobox']\n"
+            "- `select_cover_frame()` — opens Edit Cover, picks the first "
+            "frame, and clicks Save. Call after upload finishes.\n"
+            "- `set_schedule_date(day)` — opens the date picker and clicks "
+            "a day number (e.g. day='15').\n"
+            "- `set_schedule_time(hour, minute)` — opens time picker, clicks "
+            "hour+minute, closes picker (e.g. hour='13', minute='30').\n"
+            "- `get_schedule_values()` — reads current [time, date] from inputs.\n"
+            "- `scroll_to_submit()` — scrolls the Schedule/Post button into view.\n"
+            "- `click_by_text(text, role?, index?)` — click element by text.\n"
+            "- `upload_video(file_path)` — upload a video via CDP. Handles "
+            "finding the hidden file input automatically.\n"
+            "- `run_js(code)` — run arbitrary JS if needed.\n"
             "\n"
             "## Steps\n"
-            f"1. go_to_url('{TIKTOK_UPLOAD_URL}'); wait(3).\n"
-            "2. If /login: click_by_text 'Use phone' or 'Usar telefone', "
-            "then 'Email' or 'e-mail'. input_text email=`tiktok_email`, "
-            "password=`tiktok_password`. click_by_text 'Log in' or "
-            "'Entrar'. On captcha (slider): wait(30), recheck URL, ≤4×.\n"
-            "3. Dismiss any visible overlay: 'Continue editing?' (click "
-            "Discard), 'Got it' / 'Pronto' (click the button).\n"
-            f"4. upload_file_to_element on the drop zone (`<div "
-            f"role='button'>` containing 'Select video' / 'Selecionar "
-            f"vídeo' / 'Drag and drop'), path='{video_path}'. wait(8).\n"
-            "5. (OPTIONAL — max 2 attempts, then skip) Cover:\n"
-            "   - click_by_text 'Edit cover' or 'Editar capa'.\n"
-            "   - run_js to click the leftmost thumbnail:\n"
-            "       return [...document.querySelectorAll('div[role=\"dialog\"] [role=\"button\"]')].filter(el => el.offsetParent && el.getBoundingClientRect().width < 100).sort((a,b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x)[0]?.click() ? 'ok' : 'no thumbnail';\n"
-            "   - click_by_text 'Save' or 'Salvar'.\n"
-            "   - On any failure: send_keys('Escape'), continue.\n"
-            f"6. Caption: set_contenteditable(selector=\"div[contenteditable"
-            f"='true'][role='combobox']\", text='{description}'). Then "
-            "get_text on the same selector — must equal the text exactly.\n"
+            f"1. Go to {TIKTOK_UPLOAD_URL}\n"
+            "2. Call `dismiss_overlay()` to clear any leftover draft.\n"
+            f"3. Call `upload_video(file_path='{video_path}')`.\n"
+            "4. Wait 8 seconds for the upload to process.\n"
+            f"5. Set the caption (one line, no newlines):\n{description}\n"
+            "6. Call `select_cover_frame()` to fix the black cover.\n"
             f"{schedule_block}"
         )
 
@@ -594,6 +564,63 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         except Exception:
             pass
         return ""
+
+    @staticmethod
+    def _extract_last_url(history) -> str:
+        """Return the browser URL from the last step that had one."""
+        try:
+            for step in reversed(getattr(history, "history", None) or []):
+                state = getattr(step, "state", None)
+                url = getattr(state, "url", None)
+                if url:
+                    return url
+        except Exception:
+            pass
+        return ""
+
+    @staticmethod
+    def _count_errors(history) -> dict:
+        """Summarise step-level errors from the run history."""
+        total = 0
+        failed = 0
+        messages: List[str] = []
+        try:
+            for step in getattr(history, "history", None) or []:
+                total += 1
+                errs = getattr(step, "errors", None) or []
+                if errs:
+                    failed += 1
+                    for e in errs[:2]:
+                        msg = str(e)[:120]
+                        if msg not in messages:
+                            messages.append(msg)
+        except Exception:
+            pass
+        return {
+            "total_steps": total,
+            "failed_steps": failed,
+            "error_messages": messages[:10],
+        }
+
+    @staticmethod
+    def _looks_like_success(final_text: str, last_url: str) -> bool:
+        """Sanity-check whether the run actually scheduled/posted a video.
+
+        The agent should end on a /manage page or report a confirmation
+        like "Video scheduled". If neither is true, the agent lied.
+        """
+        text_lower = final_text.lower()
+        url_lower = last_url.lower()
+
+        success_signals = (
+            "/manage" in url_lower,
+            "scheduled" in text_lower,
+            "agendado" in text_lower,
+            "posted" in text_lower,
+            "publicado" in text_lower,
+            "tiktok.com" in text_lower,
+        )
+        return any(success_signals)
 
     @staticmethod
     def _extract_done_success(history) -> Optional[bool]:

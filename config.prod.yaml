@@ -1,9 +1,15 @@
 language: pt-br
-proxies:  
+proxies:
   reddit_config:
     type: json
   cover_config:
     title_font_size: 150
+  tiktok_publisher_config:
+    agent_model: deepseek/deepseek-v4-flash
+    cookies_path: .storage/tiktok_cookies.json
+    headless: false
+    use_vision: false
+    max_steps: 60
   image_generation_config:
     type: leonardo-v2
     model: "nano-banana-2"
@@ -29,15 +35,16 @@ services:
     font_path: default_font.ttf
   video_config:
     call_to_action_path: assets/call_to_action.png
-    youtube_channel_url: https://www.youtube.com/@foodieboykr
+    youtube_channel_url: https://www.youtube.com/@FoodieBoyKR
+    youtube_pool_size: 50
     ffmpeg_params: ["-crf", "23", "-preset", "medium"]
     anti_fingerprint:
       enabled: true
       mirror: true
-      zoom: 1.06
-      brightness_delta: 0.04
-      contrast_delta: 8.0
-      hue_shift_degrees: 8.0
+      zoom: 1.04
+      brightness_delta: 0.02
+      contrast_delta: 0
+      hue_shift_degrees: 0
       speed_delta: 0.02
 bots:
   image_story_bot:
@@ -48,6 +55,14 @@ bots:
     low_quality: false
     daily_hour_utc: 9
     daily_minute_utc: 30
+    daily_auto_publish_count: 4
+    publish_slots_local:
+      - "11:00"
+      - "13:00"
+      - "18:00"
+      - "20:00"
+    publish_min_lead_minutes: 30
+    publish_hashtags: []
 evaluation:
   subreddits:
     - pettyrevenge

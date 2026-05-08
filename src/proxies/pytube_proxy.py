@@ -39,21 +39,27 @@ class PyTubeProxy(IYouTubeProxy):
             logger.error(f"Failed to list video IDs for {url}: {e}")
             raise e
 
-        # Extract just the IDs from the complete watch URLs to be safe
-        extracted_ids = []
+        # Extract IDs preserving channel order (newest first).
+        seen: set[str] = set()
+        extracted_ids: list[str] = []
         for v_url in video_ids:
+            vid_id = None
             try:
                 if hasattr(v_url, "video_id"):
-                    extracted_ids.append(v_url.video_id)
+                    vid_id = v_url.video_id
                 elif isinstance(v_url, str):
-                    yt = YouTube(v_url)
-                    extracted_ids.append(yt.video_id)
+                    if "v=" in v_url:
+                        vid_id = v_url.split("v=")[1].split("&")[0]
+                    else:
+                        vid_id = YouTube(v_url).video_id
             except Exception:
-                # Fallback extraction if pytube fails
                 if isinstance(v_url, str) and "v=" in v_url:
-                    extracted_ids.append(v_url.split("v=")[1].split("&")[0])
+                    vid_id = v_url.split("v=")[1].split("&")[0]
+            if vid_id and vid_id not in seen:
+                seen.add(vid_id)
+                extracted_ids.append(vid_id)
 
-        return list(set(extracted_ids))
+        return extracted_ids
 
     async def download_video(self, video_id: str, low_quality: bool = False) -> bytes:
         """Download a YouTube video and return its bytes"""

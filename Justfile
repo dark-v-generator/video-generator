@@ -19,6 +19,45 @@ daily-publish count="":
     if [ -n "{{count}}" ]; then args="--count {{count}}"; fi
     uv run python scripts/daily_auto_publish.py $args
 
+# Generate videos only (no publishing). Saves to output/daily/.
+daily-generate count="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args="--generate-only"
+    if [ -n "{{count}}" ]; then args="$args --count {{count}}"; fi
+    uv run python scripts/daily_auto_publish.py $args
+
+# Publish pre-generated videos from a directory (no discovery/generation).
+daily-publish-only dir="output/daily":
+    uv run python scripts/daily_auto_publish.py --publish-only {{dir}}
+
+# Run the full daily pipeline on the prod server.
+prod-daily-publish count="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args=""
+    if [ -n "{{count}}" ]; then args="--count {{count}}"; fi
+    echo "==> Running daily auto-publish on {{PROD_HOST}}..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-daily.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py $args 2>&1 | tee \$RUN_LOG"
+    just sync-tiktok-runs
+
+# Generate videos only on the prod server (saves to output/daily/).
+prod-daily-generate count="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args="--generate-only"
+    if [ -n "{{count}}" ]; then args="$args --count {{count}}"; fi
+    echo "==> Generating videos on {{PROD_HOST}}..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml uv run python scripts/daily_auto_publish.py $args 2>&1"
+
+# Publish pre-generated videos on the prod server.
+prod-daily-publish-only dir="output/daily":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Publishing from {{dir}} on {{PROD_HOST}}..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
+    just sync-tiktok-runs
+
 # Format code
 fmt:
     .venv/bin/black src scripts tests
@@ -46,8 +85,8 @@ deploy:
     echo "==> Installing dependencies on server..."
     ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv sync --frozen --no-dev'
 
-    echo "==> Installing Playwright browsers..."
-    ssh -t {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && sudo env PATH="$HOME/.local/bin:$PATH" uv run playwright install --with-deps chrome'
+    echo "==> Installing systemd service unit..."
+    ssh {{PROD_HOST}} 'mkdir -p ~/.config/systemd/user && cp {{PROD_DIR}}/deploy/video-bot.service ~/.config/systemd/user/video-bot.service'
 
     echo "==> Restarting bot service..."
     ssh {{PROD_HOST}} 'systemctl --user daemon-reload && systemctl --user restart video-bot.service'
@@ -139,6 +178,26 @@ prod-tiktok-bootstrap-vnc video_path="output/part1.mp4" schedule_in="30m" descri
     ssh -t -L 5900:localhost:5900 {{PROD_HOST}} \
         "chmod +x {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh && {{PROD_DIR}}/scripts/server-tiktok-vnc-bootstrap.sh '$REMOTE_VIDEO' --description '{{description}}' --schedule-in {{schedule_in}}"
     just sync-tiktok-runs
+
+# Interactive REPL for testing TikTok tools against a live browser.
+# Opens Chromium with the saved session and drops into a Python console
+# where you can call click_by_text, run_js, set_contenteditable, etc.
+tiktok-repl:
+    uv run python scripts/tiktok_repl.py
+
+# Same but on the prod server via VNC so you can watch the browser.
+prod-tiktok-repl:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        ( sleep 10 && open "vnc://localhost:5900" ) &
+        OPEN_PID=$!
+        trap 'kill $OPEN_PID 2>/dev/null || true' EXIT
+        echo "==> macOS detected: VNC client will auto-open in ~10s."
+    else
+        echo "==> Open vnc://localhost:5900 in your VNC client once Xvfb starts."
+    fi
+    ssh -t -L 5900:localhost:5900 {{PROD_HOST}} 'export PATH="$HOME/.local/bin:$PATH" && cd {{PROD_DIR}} && (kill $(cat /tmp/.X98-lock 2>/dev/null) 2>/dev/null || true) && rm -f /tmp/.X98-lock /tmp/.X11-unix/X98 2>/dev/null; Xvfb :98 -screen 0 1920x1080x24 -nolisten tcp & XVFB_PID=$!; sleep 1; x11vnc -display :98 -localhost -passwd tiktok -forever -shared -q & VNC_PID=$!; sleep 1; DISPLAY=:98 uv run python scripts/tiktok_repl.py; kill $VNC_PID $XVFB_PID 2>/dev/null'
 
 # X11-forwarding alternative (requires XQuartz on macOS). Kept for
 # power users; prefer prod-tiktok-bootstrap-vnc.

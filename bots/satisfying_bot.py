@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-config = MainConfig.from_yaml("config.yaml")
+config = MainConfig.from_yaml(os.environ.get("CONFIG_PATH", "config.yaml"))
 bot_config = config.bots.satisfying_bot
 
 WAITING_URL = 0
@@ -467,8 +467,6 @@ def _build_tiktok_publisher() -> BrowserUseTikTokPublisherProxy:
     """Instantiate the TikTok publisher using project config + secrets."""
     pub_cfg = config.proxies.tiktok_publisher_config
     return BrowserUseTikTokPublisherProxy(
-        email=secrets.tiktok_email,
-        password=secrets.tiktok_password,
         openrouter_api_key=secrets.openrouter_api_key,
         model=pub_cfg.agent_model,
         cookies_path=pub_cfg.cookies_path,
@@ -478,16 +476,65 @@ def _build_tiktok_publisher() -> BrowserUseTikTokPublisherProxy:
     )
 
 
-async def run_daily_auto_publish(
+import json as _json
+
+
+_DEFAULT_OUTPUT_DIR = "output/daily"
+
+
+@dataclass
+class GeneratedVideo:
+    """Metadata for a generated video ready to publish."""
+    video_path: str
+    title: str
+    summary: str
+    post_url: str
+
+
+def _save_manifest(video: GeneratedVideo, output_dir: str) -> None:
+    manifest = {
+        "video_path": video.video_path,
+        "title": video.title,
+        "summary": video.summary,
+        "post_url": video.post_url,
+    }
+    base = os.path.splitext(os.path.basename(video.video_path))[0]
+    path = os.path.join(output_dir, f"{base}.json")
+    with open(path, "w") as f:
+        _json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+
+def load_generated_videos(directory: str) -> list[GeneratedVideo]:
+    """Load previously generated videos from a directory of .json manifests."""
+    videos = []
+    for name in sorted(os.listdir(directory)):
+        if not name.endswith(".json"):
+            continue
+        path = os.path.join(directory, name)
+        with open(path) as f:
+            data = _json.load(f)
+        mp4 = data["video_path"]
+        if not os.path.isabs(mp4):
+            mp4 = os.path.join(directory, os.path.basename(mp4))
+        if not os.path.exists(mp4):
+            logger.warning("Video file missing, skipping: %s", mp4)
+            continue
+        videos.append(GeneratedVideo(
+            video_path=mp4,
+            title=data["title"],
+            summary=data.get("summary", ""),
+            post_url=data.get("post_url", ""),
+        ))
+    return videos
+
+
+async def run_daily_generate(
     send_message,
     *,
     publish_count: int | None = None,
-) -> None:
-    """Discover stories, generate videos, and schedule them on TikTok.
-
-    *send_message* is an ``async def(text: str) -> None`` callback used
-    for progress updates (Telegram, stdout, etc.).
-    """
+    output_dir: str = _DEFAULT_OUTPUT_DIR,
+) -> list[GeneratedVideo]:
+    """Stage 1: Discover stories and generate videos. Saves .mp4 + .json manifests."""
     await send_message("🔄 Busca diária iniciada...")
 
     try:
@@ -495,11 +542,11 @@ async def run_daily_auto_publish(
     except Exception as e:
         logger.exception("Failed to find stories")
         await send_message(f"Erro ao buscar histórias: {e}")
-        return
+        return []
 
     if not results:
         await send_message("Nenhuma história boa encontrada hoje.")
-        return
+        return []
 
     for i, story in enumerate(results):
         text = _format_find_message(i, story, include_scores=False)
@@ -512,23 +559,22 @@ async def run_daily_auto_publish(
         len(results),
     )
     if count == 0:
-        return
+        return []
 
-    await send_message(f"⏰ Gerando e agendando {count} vídeos...")
+    os.makedirs(output_dir, exist_ok=True)
+
+    await send_message(f"⏰ Gerando {count} vídeos...")
 
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
-    llm_proxy = container.llm_proxy()
-    publisher = _build_tiktok_publisher()
 
-    last_slot = datetime.datetime.now()
+    generated: list[GeneratedVideo] = []
 
     for idx, story in enumerate(results[:count]):
         post = story.post
         label = f"#{idx + 1} — {post.title[:60]}"
         await send_message(f"⏳ [{label}] Gerando vídeo...")
 
-        tmp_path: str | None = None
         try:
             result = await service.generate_satisfying_video(
                 post_url=post.url,
@@ -536,10 +582,55 @@ async def run_daily_auto_publish(
                 low_quality=bot_config.low_quality,
             )
 
-            fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
-            os.write(fd, result.video)
-            os.close(fd)
+            video_path = os.path.join(output_dir, f"story_{idx + 1:02d}.mp4")
+            with open(video_path, "wb") as f:
+                f.write(result.video)
 
+            video = GeneratedVideo(
+                video_path=video_path,
+                title=result.localized_title,
+                summary=story.resumo[:400],
+                post_url=post.url,
+            )
+            _save_manifest(video, output_dir)
+            generated.append(video)
+
+            await send_message(f"💾 [{label}] Vídeo salvo em {video_path}")
+
+        except Exception as e:
+            logger.exception("Failed to generate video for %s", post.url)
+            error_text = str(e)
+            if len(error_text) > 300:
+                error_text = error_text[:300] + "…"
+            await send_message(f"❌ [{label}] Erro na geração: {error_text}")
+
+    await send_message(
+        f"🏁 Geração concluída: {len(generated)}/{count} vídeos salvos em {output_dir}",
+    )
+    return generated
+
+
+async def run_daily_publish(
+    send_message,
+    videos: list[GeneratedVideo],
+) -> None:
+    """Stage 2: Schedule pre-generated videos on TikTok."""
+    if not videos:
+        await send_message("Nenhum vídeo para publicar.")
+        return
+
+    await send_message(f"📤 Agendando {len(videos)} vídeos...")
+
+    container.wire(modules=[__name__])
+    llm_proxy = container.llm_proxy()
+    publisher = _build_tiktok_publisher()
+
+    last_slot = datetime.datetime.now()
+
+    for idx, video in enumerate(videos):
+        label = f"#{idx + 1} — {video.title[:60]}"
+
+        try:
             slot = next_publish_slot(
                 after=last_slot,
                 slot_times=bot_config.publish_slots_local,
@@ -547,8 +638,8 @@ async def run_daily_auto_publish(
             )
 
             hashtags = await llm_proxy.generate_hashtags(
-                title=post.title,
-                summary=story.resumo[:400],
+                title=video.title,
+                summary=video.summary,
                 target_language=config.language,
             )
 
@@ -557,33 +648,42 @@ async def run_daily_auto_publish(
             )
 
             publish_result = await publisher.publish_video(
-                video_path=tmp_path,
-                description=post.title,
+                video_path=video.video_path,
+                description=video.title,
                 hashtags=hashtags,
                 schedule_at=slot,
             )
 
             last_slot = slot
 
+            msg = f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}"
             if publish_result:
-                await send_message(
-                    f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}\n{publish_result}",
-                )
-            else:
-                await send_message(
-                    f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}",
-                )
+                msg += f"\n{publish_result}"
+            await send_message(msg)
 
         except Exception as e:
-            logger.exception("Failed to generate/publish %s", post.url)
+            logger.exception("Failed to publish %s", video.video_path)
             error_text = str(e)
             if len(error_text) > 300:
                 error_text = error_text[:300] + "…"
             await send_message(f"❌ [{label}] Erro: {error_text}")
-        finally:
-            _cleanup_temp(tmp_path)
 
-    await send_message("🏁 Busca e agendamento diário concluídos.")
+    await send_message("🏁 Agendamento concluído.")
+
+
+async def run_daily_auto_publish(
+    send_message,
+    *,
+    publish_count: int | None = None,
+    output_dir: str = _DEFAULT_OUTPUT_DIR,
+) -> None:
+    """Full pipeline: discover, generate, and publish. Combines both stages."""
+    videos = await run_daily_generate(
+        send_message,
+        publish_count=publish_count,
+        output_dir=output_dir,
+    )
+    await run_daily_publish(send_message, videos)
 
 
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:

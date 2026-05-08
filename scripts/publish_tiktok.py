@@ -185,11 +185,6 @@ def _resolve_schedule_at(args: argparse.Namespace) -> Optional[datetime]:
 async def _run(args: argparse.Namespace) -> int:
     logger = get_logger("publish_tiktok")
 
-    if not secrets.tiktok_email or not secrets.tiktok_password:
-        logger.error(
-            "TIKTOK_EMAIL and TIKTOK_PASSWORD must be set (in .env or env)."
-        )
-        return 2
     if not secrets.openrouter_api_key:
         logger.error("OPENROUTER_API_KEY must be set (in .env or env).")
         return 2
@@ -214,8 +209,6 @@ async def _run(args: argparse.Namespace) -> int:
     )
 
     proxy = BrowserUseTikTokPublisherProxy(
-        email=secrets.tiktok_email,
-        password=secrets.tiktok_password,
         openrouter_api_key=secrets.openrouter_api_key,
         model=model,
         cookies_path=cookies_path,
