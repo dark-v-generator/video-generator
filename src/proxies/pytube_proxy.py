@@ -3,6 +3,8 @@ from pytubefix import YouTube, Channel, Playlist
 from src.proxies.interfaces import IYouTubeProxy
 from src.entities.configs.proxies.youtube import PyTubeYouTubeConfig
 import logging
+import os
+import subprocess
 import tempfile
 import asyncio
 
@@ -70,13 +72,16 @@ class PyTubeProxy(IYouTubeProxy):
             url = f"https://www.youtube.com/watch?v={video_id}"
             yt = YouTube(url)
 
-            # Get progressive streams
+            if not low_quality:
+                result = self._try_adaptive_download(yt)
+                if result is not None:
+                    return result
+
             streams = yt.streams.filter(
                 progressive=True, file_extension="mp4"
             ).order_by("resolution")
             stream = streams.first() if low_quality else streams.desc().first()
             if not stream:
-                # fallback to any mp4 stream
                 fallback_streams = yt.streams.filter(file_extension="mp4").order_by(
                     "resolution"
                 )
@@ -90,6 +95,7 @@ class PyTubeProxy(IYouTubeProxy):
                         f"No suitable mp4 stream found for video_id {video_id}"
                     )
 
+            logger.info("Downloading progressive %s for %s", stream.resolution, video_id)
             with tempfile.TemporaryDirectory() as temp_dir:
                 file_path = stream.download(output_path=temp_dir)
                 with open(file_path, "rb") as f:
@@ -98,3 +104,57 @@ class PyTubeProxy(IYouTubeProxy):
         except Exception as e:
             logger.error(f"Failed to download video {video_id}: {e}")
             raise e
+
+    def _try_adaptive_download(self, yt: YouTube) -> bytes | None:
+        """Download separate video+audio adaptive streams and mux with ffmpeg.
+
+        Returns the muxed MP4 bytes, or None if adaptive streams are
+        unavailable so the caller can fall back to progressive.
+        """
+        candidates = (
+            yt.streams
+            .filter(adaptive=True, file_extension="mp4", only_video=True, res="1080p")
+        )
+        if not candidates:
+            candidates = (
+                yt.streams
+                .filter(adaptive=True, file_extension="mp4", only_video=True, res="720p")
+            )
+        video_stream = candidates.first() if candidates else None
+        if not video_stream:
+            return None
+
+        audio_stream = (
+            yt.streams
+            .filter(adaptive=True, only_audio=True)
+            .order_by("abr")
+            .desc()
+            .first()
+        )
+        if not audio_stream:
+            return None
+
+        logger.info(
+            "Downloading adaptive %s video + %s audio for %s",
+            video_stream.resolution, audio_stream.abr, yt.video_id,
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            video_path = video_stream.download(output_path=td, filename="video.mp4")
+            audio_ext = "webm" if "webm" in (audio_stream.mime_type or "") else "mp4"
+            audio_path = audio_stream.download(output_path=td, filename=f"audio.{audio_ext}")
+            output_path = os.path.join(td, "muxed.mp4")
+
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", video_path,
+                "-i", audio_path,
+                "-c:v", "copy", "-c:a", "aac",
+                "-shortest",
+                "-loglevel", "error",
+                output_path,
+            ]
+            subprocess.run(cmd, check=True, timeout=300)
+
+            with open(output_path, "rb") as f:
+                return f.read()
