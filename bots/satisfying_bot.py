@@ -21,11 +21,14 @@ from telegram.ext import (
     filters,
 )
 
+import litellm
+
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
+from src.services.reddit_video_service import PreparedStory
 
 from bots.base import (
     is_user_allowed,
@@ -528,13 +531,42 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
     return videos
 
 
+_STORY_RETRY_MAX = 3
+_STORY_RETRY_BASE_DELAY = 5
+
+
+def _is_transient_error(exc: Exception) -> bool:
+    """Return True for errors that are worth retrying (rate-limits, timeouts, server errors)."""
+    if isinstance(exc, litellm.RateLimitError):
+        return True
+
+    exc_str = str(exc).lower()
+    transient_signals = ["429", "rate limit", "too many requests", "timeout", "503", "502"]
+    return any(s in exc_str for s in transient_signals)
+
+
+def _is_content_filter_error(exc: Exception) -> bool:
+    """Return True for errors caused by content/safety filters (not worth retrying)."""
+    exc_str = str(exc).lower()
+    filter_signals = ["safety filter", "content filter", "nsfw", "blocked", "content policy"]
+    return any(s in exc_str for s in filter_signals)
+
+
 async def run_daily_generate(
     send_message,
     *,
     publish_count: int | None = None,
     output_dir: str = _DEFAULT_OUTPUT_DIR,
 ) -> list[GeneratedVideo]:
-    """Stage 1: Discover stories and generate videos. Saves .mp4 + .json manifests."""
+    """Discover stories, prepare scripts (with retries/skip), then generate videos.
+
+    Three stages:
+    1. Discover & rank stories from Reddit.
+    2. Prepare stories (scrape + LLM script) — the most failure-prone step.
+       Retries transient errors; skips stories that hit content filters and
+       pulls the next candidate so we end up with the desired count.
+    3. Generate videos from the successfully prepared stories.
+    """
     await send_message("🔄 Busca diária iniciada...")
 
     try:
@@ -563,21 +595,89 @@ async def run_daily_generate(
 
     os.makedirs(output_dir, exist_ok=True)
 
-    await send_message(f"⏰ Gerando {count} vídeos...")
-
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
 
+    # ------------------------------------------------------------------
+    # Stage 1: Prepare stories (LLM script generation — most likely to fail)
+    # ------------------------------------------------------------------
+    await send_message(f"📝 Preparando roteiros para {count} histórias...")
+
+    prepared: list[tuple[PreparedStory, EvaluatedStory]] = []
+    candidate_idx = 0
+
+    while len(prepared) < count and candidate_idx < len(results):
+        story = results[candidate_idx]
+        candidate_idx += 1
+        post = story.post
+        label = f"#{candidate_idx} — {post.title[:60]}"
+
+        for attempt in range(1, _STORY_RETRY_MAX + 1):
+            try:
+                await send_message(f"📝 [{label}] Gerando roteiro...")
+                ps = await service.prepare_satisfying_story(
+                    post_url=post.url,
+                    language=config.language,
+                )
+                prepared.append((ps, story))
+                await send_message(
+                    f"✅ [{label}] Roteiro pronto ({len(prepared)}/{count})"
+                )
+                break
+
+            except Exception as e:
+                if _is_content_filter_error(e):
+                    logger.warning(
+                        "Content filter on %s, skipping: %s", post.url, e,
+                    )
+                    await send_message(
+                        f"⚠️ [{label}] Bloqueado por filtro de conteúdo, pulando."
+                    )
+                    break
+
+                if _is_transient_error(e) and attempt < _STORY_RETRY_MAX:
+                    delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                    logger.warning(
+                        "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
+                        post.url, attempt, _STORY_RETRY_MAX, delay, e,
+                    )
+                    await send_message(
+                        f"⏳ [{label}] Erro temporário, tentando de novo em {delay}s "
+                        f"(tentativa {attempt}/{_STORY_RETRY_MAX})..."
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                logger.exception(
+                    "Failed to prepare story for %s (attempt %d/%d)",
+                    post.url, attempt, _STORY_RETRY_MAX,
+                )
+                error_text = str(e)
+                if len(error_text) > 300:
+                    error_text = error_text[:300] + "…"
+                await send_message(f"❌ [{label}] Erro no roteiro: {error_text}")
+                break
+
+    if not prepared:
+        await send_message("❌ Nenhum roteiro gerado com sucesso.")
+        return []
+
+    await send_message(
+        f"📝 {len(prepared)} roteiros prontos. Gerando vídeos..."
+    )
+
+    # ------------------------------------------------------------------
+    # Stage 2: Generate videos from prepared stories
+    # ------------------------------------------------------------------
     generated: list[GeneratedVideo] = []
 
-    for idx, story in enumerate(results[:count]):
-        post = story.post
-        label = f"#{idx + 1} — {post.title[:60]}"
+    for idx, (ps, story) in enumerate(prepared):
+        label = f"#{idx + 1} — {ps.story_title[:60]}"
         await send_message(f"⏳ [{label}] Gerando vídeo...")
 
         try:
-            result = await service.generate_satisfying_video(
-                post_url=post.url,
+            result = await service.generate_satisfying_video_from_story(
+                ps,
                 language=config.language,
                 low_quality=bot_config.low_quality,
             )
@@ -590,7 +690,7 @@ async def run_daily_generate(
                 video_path=video_path,
                 title=result.localized_title,
                 summary=story.resumo[:400],
-                post_url=post.url,
+                post_url=ps.post.url,
             )
             _save_manifest(video, output_dir)
             generated.append(video)
@@ -598,14 +698,14 @@ async def run_daily_generate(
             await send_message(f"💾 [{label}] Vídeo salvo em {video_path}")
 
         except Exception as e:
-            logger.exception("Failed to generate video for %s", post.url)
+            logger.exception("Failed to generate video for %s", ps.post.url)
             error_text = str(e)
             if len(error_text) > 300:
                 error_text = error_text[:300] + "…"
-            await send_message(f"❌ [{label}] Erro na geração: {error_text}")
+            await send_message(f"❌ [{label}] Erro na geração de vídeo: {error_text}")
 
     await send_message(
-        f"🏁 Geração concluída: {len(generated)}/{count} vídeos salvos em {output_dir}",
+        f"🏁 Geração concluída: {len(generated)}/{len(prepared)} vídeos salvos em {output_dir}",
     )
     return generated
 
@@ -614,7 +714,7 @@ async def run_daily_publish(
     send_message,
     videos: list[GeneratedVideo],
 ) -> None:
-    """Stage 2: Schedule pre-generated videos on TikTok."""
+    """Stage 3: Schedule pre-generated videos on TikTok."""
     if not videos:
         await send_message("Nenhum vídeo para publicar.")
         return

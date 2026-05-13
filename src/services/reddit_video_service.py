@@ -98,6 +98,21 @@ class TwoPartVideoResult:
 
 
 @dataclass
+class PreparedStory:
+    """Intermediate result from Stage 1: scrape + LLM story generation.
+
+    Contains everything needed to produce the video without further LLM calls.
+    """
+
+    post: RedditPost
+    script_text: str
+    story_title: str
+    narrator_gender: str
+    resolved_gender: Literal["male", "female"]
+    original_post_md: str
+
+
+@dataclass
 class SingleVideoResult:
     """All generated artifacts for a single satisfying-background video."""
 
@@ -474,16 +489,14 @@ class RedditVideoService:
             cover_part2_png=cover2.bytes,
         )
 
-    async def generate_satisfying_video(
+    async def prepare_satisfying_story(
         self,
         *,
         post_url: str,
         language: Language = Language.PORTUGUESE,
         speech_gender: Optional[Literal["male", "female"]] = None,
-        speech_rate: float = 1.0,
-        low_quality: bool = False,
-    ) -> SingleVideoResult:
-        """Full pipeline: scrape -> single story -> speech -> captions -> satisfying background video."""
+    ) -> PreparedStory:
+        """Stage 1: scrape + LLM story generation (the most failure-prone step)."""
 
         post = self.scrape_post(post_url)
         original_post_md = f"# {post.title}\n\n{post.content}\n"
@@ -500,9 +513,28 @@ class RedditVideoService:
             narrator_gender if narrator_gender in ("male", "female") else "male"
         )
 
+        return PreparedStory(
+            post=post,
+            script_text=script_text,
+            story_title=story.get("title", post.title),
+            narrator_gender=narrator_gender,
+            resolved_gender=resolved_gender,
+            original_post_md=original_post_md,
+        )
+
+    async def generate_satisfying_video_from_story(
+        self,
+        prepared: PreparedStory,
+        *,
+        speech_rate: float = 1.0,
+        low_quality: bool = False,
+        language: Language = Language.PORTUGUESE,
+    ) -> SingleVideoResult:
+        """Stage 2: speech, captions, cover, video composition from an already-prepared story."""
+
         speech_result = await self._speech_service.generate_speech(
-            text=script_text,
-            gender=resolved_gender,
+            text=prepared.script_text,
+            gender=prepared.resolved_gender,
             rate=speech_rate,
             language=language,
         )
@@ -511,7 +543,7 @@ class RedditVideoService:
             audio_bytes=speech_result.bytes,
             enhance_captions=True,
             language=language,
-            base_text=script_text,
+            base_text=prepared.script_text,
         )
 
         segments_data = [
@@ -519,19 +551,16 @@ class RedditVideoService:
             for s in captions_result.captions.segments
         ]
 
-        story_title = story.get("title", post.title)
         intro_end_time, cta_start_time = self._compute_satisfying_boundaries(
-            story_title, segments_data
+            prepared.story_title, segments_data
         )
 
         captions_data = [
             seg for seg in segments_data if seg["start"] >= intro_end_time
         ]
 
-        # Censor exported JSON captions (visible text).
         captions_data = self._text_censor.censor_word_dicts(captions_data)
 
-        # Filter clip captions (no cover overlap) then censor on-screen text.
         captions_result.clip.captions = Captions(
             segments=self._text_censor.censor_segments(
                 captions_result.clip.captions.after_time(intro_end_time).segments
@@ -540,10 +569,10 @@ class RedditVideoService:
 
         cover_result = await self._cover_service.generate_cover(
             RedditCover(
-                title=self._text_censor.censor(story_title),
-                community=post.community,
-                author=post.author,
-                image_url=post.community_url_photo,
+                title=self._text_censor.censor(prepared.story_title),
+                community=prepared.post.community,
+                author=prepared.post.author,
+                image_url=prepared.post.community_url_photo,
             )
         )
 
@@ -556,18 +585,41 @@ class RedditVideoService:
             cta_start=cta_start_time,
         )
 
-        story_md = f"# {story.get('title', 'Untitled')}\n\n"
-        story_md += f"**Narrator gender:** {narrator_gender} → resolved: {resolved_gender}\n\n"
-        story_md += f"{script_text}\n"
+        story_md = f"# {prepared.story_title}\n\n"
+        story_md += f"**Narrator gender:** {prepared.narrator_gender} → resolved: {prepared.resolved_gender}\n\n"
+        story_md += f"{prepared.script_text}\n"
 
         return SingleVideoResult(
             video=video_bytes,
             story_md=story_md,
-            original_post_md=original_post_md,
+            original_post_md=prepared.original_post_md,
             audio=speech_result.bytes,
             captions_json=json.dumps(captions_data, ensure_ascii=False, indent=2),
-            localized_title=story_title,
+            localized_title=prepared.story_title,
             cover_png=cover_result.bytes,
+        )
+
+    async def generate_satisfying_video(
+        self,
+        *,
+        post_url: str,
+        language: Language = Language.PORTUGUESE,
+        speech_gender: Optional[Literal["male", "female"]] = None,
+        speech_rate: float = 1.0,
+        low_quality: bool = False,
+    ) -> SingleVideoResult:
+        """Full pipeline: scrape -> single story -> speech -> captions -> satisfying background video."""
+
+        prepared = await self.prepare_satisfying_story(
+            post_url=post_url,
+            language=language,
+            speech_gender=speech_gender,
+        )
+        return await self.generate_satisfying_video_from_story(
+            prepared,
+            speech_rate=speech_rate,
+            low_quality=low_quality,
+            language=language,
         )
 
     async def generate_image_story_video(

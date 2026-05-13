@@ -4,7 +4,6 @@ from src.proxies.interfaces import IYouTubeProxy
 from src.entities.configs.proxies.youtube import PyTubeYouTubeConfig
 import logging
 import os
-import subprocess
 import tempfile
 import asyncio
 
@@ -106,9 +105,9 @@ class PyTubeProxy(IYouTubeProxy):
             raise e
 
     def _try_adaptive_download(self, yt: YouTube) -> bytes | None:
-        """Download separate video+audio adaptive streams and mux with ffmpeg.
+        """Download a video-only adaptive stream (no audio needed).
 
-        Returns the muxed MP4 bytes, or None if adaptive streams are
+        Returns the MP4 bytes, or None if adaptive streams are
         unavailable so the caller can fall back to progressive.
         """
         candidates = (
@@ -124,37 +123,12 @@ class PyTubeProxy(IYouTubeProxy):
         if not video_stream:
             return None
 
-        audio_stream = (
-            yt.streams
-            .filter(adaptive=True, only_audio=True)
-            .order_by("abr")
-            .desc()
-            .first()
-        )
-        if not audio_stream:
-            return None
-
         logger.info(
-            "Downloading adaptive %s video + %s audio for %s",
-            video_stream.resolution, audio_stream.abr, yt.video_id,
+            "Downloading adaptive %s video-only for %s",
+            video_stream.resolution, yt.video_id,
         )
 
         with tempfile.TemporaryDirectory() as td:
-            video_path = video_stream.download(output_path=td, filename="video.mp4")
-            audio_ext = "webm" if "webm" in (audio_stream.mime_type or "") else "mp4"
-            audio_path = audio_stream.download(output_path=td, filename=f"audio.{audio_ext}")
-            output_path = os.path.join(td, "muxed.mp4")
-
-            cmd = [
-                "ffmpeg", "-y",
-                "-i", video_path,
-                "-i", audio_path,
-                "-c:v", "copy", "-c:a", "aac",
-                "-shortest",
-                "-loglevel", "error",
-                output_path,
-            ]
-            subprocess.run(cmd, check=True, timeout=300)
-
-            with open(output_path, "rb") as f:
+            file_path = video_stream.download(output_path=td, filename="video.mp4")
+            with open(file_path, "rb") as f:
                 return f.read()
