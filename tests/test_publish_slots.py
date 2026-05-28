@@ -1,10 +1,15 @@
 """Tests for the daily auto-publish schedule slot computation."""
 
 import datetime
+from types import SimpleNamespace
 
 import pytest
 
+from bots import satisfying_bot
 from bots.satisfying_bot import compute_publish_slots, next_publish_slot
+from src.entities.reddit_post import RedditPost
+from src.entities.story_candidate import EvaluatedStory
+from src.services.reddit_video_service import PreparedStory
 
 
 SLOTS = ["11:00", "13:00", "18:00", "20:00"]
@@ -140,3 +145,127 @@ class TestNextPublishSlot:
         after = datetime.datetime(2026, 5, 5, 12, 0)
         with pytest.raises(ValueError):
             next_publish_slot(after, [], min_lead_minutes=30)
+
+
+class TestDailyAutoPublishPipeline:
+    @pytest.mark.asyncio
+    async def test_full_pipeline_skips_failed_publish_and_tries_next_story(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        posts = [
+            RedditPost(
+                title=f"Story {i}",
+                content="body",
+                community="r/test",
+                url=f"url-{i}",
+            )
+            for i in range(1, 4)
+        ]
+        stories = [
+            EvaluatedStory(post=post, evaluation={"resumo": f"summary {i}"})
+            for i, post in enumerate(posts, start=1)
+        ]
+
+        class FakeService:
+            def __init__(self):
+                self.prepared_urls = []
+                self.generated_titles = []
+
+            async def prepare_satisfying_story(self, *, post_url, language):
+                self.prepared_urls.append(post_url)
+                post = next(post for post in posts if post.url == post_url)
+                return PreparedStory(
+                    post=post,
+                    script_text="script",
+                    story_title=post.title,
+                    narrator_gender="unknown",
+                    resolved_gender="male",
+                    original_post_md="original",
+                )
+
+            async def generate_satisfying_video_from_story(
+                self,
+                prepared,
+                *,
+                language,
+                low_quality,
+            ):
+                self.generated_titles.append(prepared.story_title)
+                return SimpleNamespace(
+                    video=b"video",
+                    localized_title=prepared.story_title,
+                )
+
+        class FakeLLM:
+            async def generate_hashtags(self, *, title, summary, target_language):
+                return ["fyp"]
+
+        class FakePublisher:
+            def __init__(self):
+                self.calls = []
+
+            async def publish_video(
+                self,
+                *,
+                video_path,
+                description,
+                hashtags,
+                schedule_at,
+            ):
+                self.calls.append((video_path, description, schedule_at))
+                if len(self.calls) == 1:
+                    raise RuntimeError("non retryable browser failure")
+                return "scheduled"
+
+        class FakeContainer:
+            def __init__(self, service, llm):
+                self._service = service
+                self._llm = llm
+
+            def wire(self, modules):
+                return None
+
+            def reddit_video_service(self):
+                return self._service
+
+            def llm_proxy(self):
+                return self._llm
+
+        service = FakeService()
+        publisher = FakePublisher()
+        messages = []
+
+        async def discover_stories():
+            return stories
+
+        async def send_message(text):
+            messages.append(text)
+
+        monkeypatch.setattr(satisfying_bot, "_discover_stories", discover_stories)
+        monkeypatch.setattr(
+            satisfying_bot,
+            "container",
+            FakeContainer(service, FakeLLM()),
+        )
+        monkeypatch.setattr(
+            satisfying_bot,
+            "_build_tiktok_publisher",
+            lambda: publisher,
+        )
+
+        await satisfying_bot.run_daily_auto_publish(
+            send_message,
+            publish_count=2,
+            output_dir=str(tmp_path),
+        )
+
+        assert service.prepared_urls == ["url-1", "url-2", "url-3"]
+        assert service.generated_titles == ["Story 1", "Story 2", "Story 3"]
+        assert [call[1] for call in publisher.calls] == [
+            "Story 1",
+            "Story 2",
+            "Story 3",
+        ]
+        assert any("Pipeline e2e concluído: 2/2" in message for message in messages)

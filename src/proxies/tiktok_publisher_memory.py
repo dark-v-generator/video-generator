@@ -88,6 +88,7 @@ class RunRecord:
     urls_visited: List[str]
     step_count: int
     steps: List[StepRecord]
+    raw_llm_failure_artifact: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -101,6 +102,7 @@ class RunRecord:
             "urls_visited": self.urls_visited,
             "step_count": self.step_count,
             "steps": [s.to_dict() for s in self.steps],
+            "raw_llm_failure_artifact": self.raw_llm_failure_artifact,
         }
 
 
@@ -131,6 +133,7 @@ class TikTokPublisherMemory:
         # even if the process is killed mid-run, all completed steps are
         # already on disk in this file.
         self._live_log_path: Optional[Path] = None
+        self._llm_failure_artifact_path: Optional[Path] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -149,6 +152,7 @@ class TikTokPublisherMemory:
         """
         ts = datetime.now().strftime("%Y%m%dT%H%M%S")
         self._live_log_path = self._runs_dir / f"{ts}.live.jsonl"
+        self._llm_failure_artifact_path = None
         header = {
             "type": "header",
             "ts": datetime.now().isoformat(timespec="seconds"),
@@ -158,6 +162,10 @@ class TikTokPublisherMemory:
         }
         self._append_jsonl(self._live_log_path, header)
         return self._live_log_path
+
+    def record_llm_failure_artifact(self, path: Path) -> None:
+        """Remember the raw LLM failure artifact path for this run."""
+        self._llm_failure_artifact_path = path
 
     def append_live_step(self, step: dict) -> None:
         """Append one step record to the live log. Best-effort.
@@ -310,6 +318,11 @@ class TikTokPublisherMemory:
             urls_visited=urls_visited[:50],
             step_count=len(steps),
             steps=steps,
+            raw_llm_failure_artifact=(
+                str(self._llm_failure_artifact_path)
+                if self._llm_failure_artifact_path is not None
+                else None
+            ),
         )
 
     @staticmethod
@@ -405,6 +418,10 @@ class TikTokPublisherMemory:
         if record.schedule_at:
             lines.append(f"- **Schedule at:** {record.schedule_at}")
         lines.append(f"- **Steps:** {record.step_count}")
+        if record.raw_llm_failure_artifact:
+            lines.append(
+                f"- **LLM failure artifact:** `{record.raw_llm_failure_artifact}`"
+            )
         if record.final_result:
             lines.append("")
             lines.append("## Final result")

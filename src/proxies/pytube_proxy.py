@@ -1,11 +1,13 @@
-from typing import List
+import asyncio
+import logging
+import re
+import tempfile
+from typing import Any, List, Literal
+
 from pytubefix import YouTube, Channel, Playlist
+
 from src.proxies.interfaces import IYouTubeProxy
 from src.entities.configs.proxies.youtube import PyTubeYouTubeConfig
-import logging
-import os
-import tempfile
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +16,19 @@ class PyTubeProxy(IYouTubeProxy):
     def __init__(self, config: PyTubeYouTubeConfig):
         self.config = config
 
-    async def list_video_ids(self, url: str) -> List[str]:
+    async def list_video_ids(
+        self,
+        url: str,
+        surface: Literal["videos", "shorts"] = "videos",
+    ) -> List[str]:
         """List video IDs from a YouTube channel or playlist URL"""
-        return await asyncio.to_thread(self._extract_video_ids, url)
+        return await asyncio.to_thread(self._extract_video_ids, url, surface)
 
-    def _extract_video_ids(self, url: str) -> List[str]:
-        video_ids = []
+    def _extract_video_ids(
+        self,
+        url: str,
+        surface: Literal["videos", "shorts"] = "videos",
+    ) -> List[str]:
         try:
             if "playlist" in url or "list=" in url:
                 playlist = Playlist(url)
@@ -31,7 +40,18 @@ class PyTubeProxy(IYouTubeProxy):
                 or url.startswith("https://www.youtube.com/@")
             ):
                 channel = Channel(url)
-                video_ids = [vid for vid in channel.video_urls]
+                if surface == "shorts" or url.rstrip("/").endswith("/shorts"):
+                    video_ids = self._collect_video_ids(channel.shorts)
+                    if not video_ids:
+                        channel.html_url = channel.shorts_url
+                        video_ids = self._collect_video_ids(channel.initial_data)
+                    return video_ids
+
+                video_ids = self._collect_video_ids(channel.video_urls)
+                if not video_ids:
+                    channel.html_url = channel.videos_url
+                    video_ids = self._collect_video_ids(channel.initial_data)
+                return video_ids
             else:
                 # Assume it's a single video url
                 yt = YouTube(url)
@@ -40,27 +60,53 @@ class PyTubeProxy(IYouTubeProxy):
             logger.error(f"Failed to list video IDs for {url}: {e}")
             raise e
 
-        # Extract IDs preserving channel order (newest first).
-        seen: set[str] = set()
-        extracted_ids: list[str] = []
-        for v_url in video_ids:
-            vid_id = None
-            try:
-                if hasattr(v_url, "video_id"):
-                    vid_id = v_url.video_id
-                elif isinstance(v_url, str):
-                    if "v=" in v_url:
-                        vid_id = v_url.split("v=")[1].split("&")[0]
-                    else:
-                        vid_id = YouTube(v_url).video_id
-            except Exception:
-                if isinstance(v_url, str) and "v=" in v_url:
-                    vid_id = v_url.split("v=")[1].split("&")[0]
-            if vid_id and vid_id not in seen:
-                seen.add(vid_id)
-                extracted_ids.append(vid_id)
+        return self._collect_video_ids(video_ids)
 
-        return extracted_ids
+    @classmethod
+    def _collect_video_ids(cls, value: Any) -> List[str]:
+        """Extract unique YouTube video IDs from pytubefix channel shapes.
+
+        pytubefix 10.3.8 currently returns ``Channel.video_urls`` entries as
+        empty lists for some handle URLs, while ``initial_data`` still has
+        ``videoId`` fields. This recursive collector handles both the old URL
+        list shape and the current nested dict/list shape.
+        """
+        extracted: list[str] = []
+        seen: set[str] = set()
+
+        def add(video_id: str | None) -> None:
+            if (
+                video_id
+                and re.fullmatch(r"[-_A-Za-z0-9]{11}", video_id)
+                and video_id not in seen
+            ):
+                seen.add(video_id)
+                extracted.append(video_id)
+
+        def visit(item: Any) -> None:
+            if hasattr(item, "video_id"):
+                add(item.video_id)
+                return
+
+            if isinstance(item, str):
+                if "v=" in item:
+                    add(item.split("v=")[1].split("&")[0])
+                return
+
+            if isinstance(item, dict):
+                video_id = item.get("videoId")
+                if isinstance(video_id, str):
+                    add(video_id)
+                for nested in item.values():
+                    visit(nested)
+                return
+
+            if isinstance(item, (list, tuple)):
+                for nested in item:
+                    visit(nested)
+
+        visit(value)
+        return extracted
 
     async def download_video(self, video_id: str, low_quality: bool = False) -> bytes:
         """Download a YouTube video and return its bytes"""

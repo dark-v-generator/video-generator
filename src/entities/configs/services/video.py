@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
@@ -65,11 +65,19 @@ class VideoConfig(BaseYAMLModel):
     height: int = Field(1920, title="Height of the video")
     youtube_channel_url: str = Field(
         "https://www.youtube.com/@FoodieBoyKR",
-        title="Youtube channel url",
+        title="Fallback YouTube channel url",
+    )
+    youtube_channel_urls: List[str] = Field(
+        default_factory=list,
+        title="YouTube channel urls to randomly choose from",
     )
     youtube_pool_size: int = Field(
         50,
         title="Only consider the N newest videos from the channel. 0 = all.",
+    )
+    youtube_surface: Literal["videos", "shorts"] = Field(
+        "videos",
+        title="Which YouTube channel surface to use for background clips",
     )
     ffmpeg_params: List[str] = Field([], title="ffmpeg params")
     draw_transition_duration: float = Field(

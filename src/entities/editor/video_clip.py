@@ -69,8 +69,7 @@ class VideoClip:
             repeats = int(-(-duration // video_duration))
             self.clip = self.clip * repeats
         elif duration < video_duration:
-            start_time = random.uniform(0, video_duration - duration)
-            self.clip = self.clip.subclipped(start_time, start_time + duration)
+            self.clip = self.clip.subclipped(0, duration)
 
     def apply_anti_fingerprint(self, config: AntiFingerprintConfig) -> None:
         """Apply randomized geometric/color/speed jitter to evade fingerprinting.

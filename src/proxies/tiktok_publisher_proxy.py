@@ -25,11 +25,15 @@ import asyncio
 import json
 import logging
 import os
+import re
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from browser_use import Agent, Browser, ChatOpenAI
+from openai._constants import RAW_RESPONSE_HEADER
+from openai.resources.chat.completions.completions import AsyncCompletions
 from playwright_stealth import Stealth
 
 from src.core.logging_config import get_logger
@@ -86,6 +90,191 @@ TIKTOK_ALLOWED_DOMAINS: List[str] = [
 ]
 
 
+class _LLMFailureRecorder:
+    """Persist one raw provider failure artifact for the active run."""
+
+    _SENSITIVE_HEADER_KEYS = {
+        "authorization",
+        "proxy-authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "api-key",
+    }
+
+    def __init__(
+        self,
+        *,
+        runs_dir: Path,
+        run_ts: str,
+        model: str,
+        max_body_chars: int,
+        enabled: bool,
+        memory: TikTokPublisherMemory,
+        logger: logging.Logger,
+    ) -> None:
+        self._runs_dir = runs_dir
+        self._run_ts = run_ts
+        self._model = model
+        self._max_body_chars = max_body_chars
+        self._enabled = enabled
+        self._memory = memory
+        self._logger = logger
+        self._failure_path: Optional[Path] = None
+        self._latest_response_snapshot: Optional[dict[str, Any]] = None
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    def note_response(self, snapshot: dict[str, Any]) -> None:
+        self._latest_response_snapshot = snapshot
+
+    def capture_provider_parse_failure(
+        self, exc: Exception, snapshot: dict[str, Any]
+    ) -> Optional[Path]:
+        return self._write_failure(
+            parse_stage="provider_http_parse",
+            exc=exc,
+            snapshot=snapshot,
+        )
+
+    def capture_structured_output_failure_from_content(
+        self,
+        message_content: str,
+        snapshot: dict[str, Any],
+    ) -> Optional[Path]:
+        try:
+            json.loads(message_content)
+        except Exception as exc:
+            snapshot = dict(snapshot)
+            snapshot["message_content"] = self._truncate_and_redact(message_content)
+            return self._write_failure(
+                parse_stage="structured_output_json",
+                exc=exc,
+                snapshot=snapshot,
+            )
+        return None
+
+    def capture_structured_output_failure_from_exception(
+        self, exc: Exception
+    ) -> Optional[Path]:
+        if self._failure_path is not None:
+            return self._failure_path
+        if self._latest_response_snapshot is None:
+            return None
+        message = str(exc)
+        if "AgentOutput" not in message and "Invalid JSON" not in message:
+            return None
+        return self._write_failure(
+            parse_stage="structured_output_validation",
+            exc=exc,
+            snapshot=self._latest_response_snapshot,
+        )
+
+    def build_snapshot(
+        self,
+        *,
+        raw_response: Any,
+        raw_body: str,
+        request_model: Optional[str],
+    ) -> dict[str, Any]:
+        headers = {}
+        try:
+            response_headers = dict(getattr(raw_response, "headers", {}) or {})
+        except Exception:
+            response_headers = {}
+
+        for key, value in response_headers.items():
+            lower = key.lower()
+            if (
+                lower in self._SENSITIVE_HEADER_KEYS
+                or lower.startswith("x-")
+                or lower in {"content-type", "content-length", "date", "server", "via"}
+            ):
+                headers[key] = self._redact_header_value(key, str(value))
+
+        request_url = ""
+        status_code = None
+        request_id = None
+        try:
+            request_url = str(getattr(getattr(raw_response, "http_request", None), "url", ""))
+        except Exception:
+            request_url = ""
+        try:
+            status_code = getattr(raw_response, "status_code", None)
+        except Exception:
+            status_code = None
+        try:
+            request_id = getattr(raw_response, "request_id", None)
+        except Exception:
+            request_id = None
+
+        return {
+            "request_url": request_url,
+            "status_code": status_code,
+            "request_id": request_id,
+            "model": request_model or self._model,
+            "response_headers": headers,
+            "raw_body": self._truncate_and_redact(raw_body),
+        }
+
+    def _write_failure(
+        self,
+        *,
+        parse_stage: str,
+        exc: Exception,
+        snapshot: dict[str, Any],
+    ) -> Optional[Path]:
+        if not self._enabled:
+            return None
+        if self._failure_path is not None:
+            return self._failure_path
+
+        payload = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "parse_stage": parse_stage,
+            "exception_type": type(exc).__name__,
+            "exception_message": self._truncate_and_redact(str(exc)),
+            **snapshot,
+        }
+
+        path = self._runs_dir / f"{self._run_ts}.llm_failure.json"
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        self._memory.record_llm_failure_artifact(path)
+        self._failure_path = path
+        self._logger.warning("Captured raw LLM failure artifact: %s", path)
+        return path
+
+    def _truncate_and_redact(self, value: str) -> str:
+        redacted = self._redact_text(value)
+        if len(redacted) <= self._max_body_chars:
+            return redacted
+        return redacted[: self._max_body_chars] + "...<truncated>"
+
+    def _redact_text(self, value: str) -> str:
+        patterns = (
+            (r"(?i)bearer\s+[a-z0-9._-]+", "Bearer ***REDACTED***"),
+            (r"(?i)(sk-[a-z0-9_-]+)", "***REDACTED***"),
+            (r"(?i)(api[_-]?key['\"=: ]+)([^'\"\\s,}]+)", r"\1***REDACTED***"),
+            (r"(?i)(authorization['\"=: ]+)([^'\"\\s,}]+)", r"\1***REDACTED***"),
+            (r"(?i)(cookie['\"=: ]+)([^'\"\\n]+)", r"\1***REDACTED***"),
+            (r"(?i)(set-cookie['\"=: ]+)([^'\"\\n]+)", r"\1***REDACTED***"),
+        )
+        redacted = value
+        for pattern, replacement in patterns:
+            redacted = re.sub(pattern, replacement, redacted)
+        return redacted
+
+    def _redact_header_value(self, key: str, value: str) -> str:
+        if key.lower() in self._SENSITIVE_HEADER_KEYS:
+            return "***REDACTED***"
+        return self._truncate_and_redact(value)
+
+
 def _build_schedule_steps(schedule_at: datetime) -> str:
     iso_date = schedule_at.strftime("%Y-%m-%d")
     day = str(schedule_at.day)
@@ -114,6 +303,9 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         headless: bool = False,
         max_steps: int = 60,
         use_vision: bool = False,
+        use_thinking: bool = False,
+        capture_raw_llm_failures: bool = True,
+        raw_llm_body_max_chars: int = 65536,
     ) -> None:
         if not openrouter_api_key:
             raise ValueError(
@@ -126,6 +318,9 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         self._headless = headless
         self._max_steps = max_steps
         self._use_vision = use_vision
+        self._use_thinking = use_thinking
+        self._capture_raw_llm_failures = capture_raw_llm_failures
+        self._raw_llm_body_max_chars = raw_llm_body_max_chars
 
         # We persist via Chromium's `user_data_dir` (sibling of the
         # storage_state file). This captures cookies, localStorage,
@@ -251,6 +446,15 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         conversation_path = str(runs_dir / f"{run_ts}-conversation.json")
         self._logger.info("TikTok debug GIF: %s", gif_path)
         self._logger.info("TikTok conversation log: %s", conversation_path)
+        llm_failure_recorder = _LLMFailureRecorder(
+            runs_dir=runs_dir,
+            run_ts=run_ts,
+            model=self._model,
+            max_body_chars=self._raw_llm_body_max_chars,
+            enabled=self._capture_raw_llm_failures,
+            memory=self._memory,
+            logger=self._logger,
+        )
 
         agent = Agent(
             task=task,
@@ -259,6 +463,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
             tools=tools,
             available_file_paths=[absolute_video_path],
             use_vision=self._use_vision,
+            use_thinking=self._use_thinking,
             register_new_step_callback=self._make_step_callback(),
             llm_timeout=180,
             generate_gif=gif_path,
@@ -268,8 +473,9 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         history = None
         outcome = "unknown"
         try:
-            await self._start_session_with_stealth(agent)
-            history = await agent.run(max_steps=self._max_steps)
+            with self._capture_openai_raw_failures(llm_failure_recorder):
+                await self._start_session_with_stealth(agent)
+                history = await agent.run(max_steps=self._max_steps)
 
             errors = self._count_errors(history)
             final_text = self._extract_url(history)
@@ -315,6 +521,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
                     "TikTok agent did not complete — ran out of steps or crashed"
                 )
         except Exception as exc:
+            llm_failure_recorder.capture_structured_output_failure_from_exception(exc)
             outcome = f"error_{type(exc).__name__}"
             raise
         finally:
@@ -382,6 +589,65 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
                 logger.warning("Step callback failed: %s", exc)
 
         return callback
+
+    @contextmanager
+    def _capture_openai_raw_failures(self, recorder: _LLMFailureRecorder):
+        """Temporarily patch OpenAI chat completions for raw failure capture."""
+
+        if not recorder.enabled:
+            yield
+            return
+
+        original_create = AsyncCompletions.create
+
+        async def patched_create(async_self, *args, **kwargs):
+            extra_headers = dict(kwargs.get("extra_headers") or {})
+            extra_headers[RAW_RESPONSE_HEADER] = "true"
+            kwargs["extra_headers"] = extra_headers
+            raw_response = await original_create(async_self, *args, **kwargs)
+
+            if not hasattr(raw_response, "parse") or not hasattr(
+                raw_response, "http_response"
+            ):
+                return raw_response
+
+            raw_body = getattr(raw_response, "text", "")
+            if callable(raw_body):
+                raw_body = raw_body()
+
+            snapshot = recorder.build_snapshot(
+                raw_response=raw_response,
+                raw_body=raw_body or "",
+                request_model=kwargs.get("model"),
+            )
+
+            try:
+                parsed = raw_response.parse()
+            except Exception as exc:
+                recorder.capture_provider_parse_failure(exc, snapshot)
+                raise
+
+            recorder.note_response(snapshot)
+
+            try:
+                choices = getattr(parsed, "choices", None) or []
+                if choices:
+                    message = getattr(choices[0], "message", None)
+                    content = getattr(message, "content", None)
+                    if isinstance(content, str):
+                        recorder.capture_structured_output_failure_from_content(
+                            content, snapshot
+                        )
+            except Exception:
+                pass
+
+            return parsed
+
+        AsyncCompletions.create = patched_create
+        try:
+            yield
+        finally:
+            AsyncCompletions.create = original_create
 
     async def _start_session_with_stealth(self, agent: Agent) -> None:
         """Boot the browser and inject playwright-stealth init scripts.

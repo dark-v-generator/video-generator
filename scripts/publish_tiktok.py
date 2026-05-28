@@ -215,6 +215,9 @@ async def _run(args: argparse.Namespace) -> int:
         headless=headless,
         max_steps=max_steps,
         use_vision=use_vision,
+        use_thinking=publisher_cfg.use_thinking,
+        capture_raw_llm_failures=publisher_cfg.capture_raw_llm_failures,
+        raw_llm_body_max_chars=publisher_cfg.raw_llm_body_max_chars,
     )
 
     schedule_at = _resolve_schedule_at(args)

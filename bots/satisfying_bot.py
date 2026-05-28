@@ -171,6 +171,10 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     url = update.message.text.strip()
+    if url.startswith("/"):
+        handled = await _handle_text_command(update, context, url)
+        return ConversationHandler.END if handled else WAITING_URL
+
     if "reddit.com" not in url:
         await update.message.reply_text("Manda um link válido do Reddit.")
         return WAITING_URL
@@ -533,6 +537,7 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
 
 _STORY_RETRY_MAX = 3
 _STORY_RETRY_BASE_DELAY = 5
+_daily_auto_publish_lock: asyncio.Lock | None = None
 
 
 def _is_transient_error(exc: Exception) -> bool:
@@ -552,21 +557,183 @@ def _is_content_filter_error(exc: Exception) -> bool:
     return any(s in exc_str for s in filter_signals)
 
 
+def _truncate_error(exc: Exception, limit: int = 300) -> str:
+    error_text = str(exc)
+    if len(error_text) > limit:
+        error_text = error_text[:limit] + "…"
+    return error_text
+
+
+def _target_count(results: list[EvaluatedStory], publish_count: int | None) -> int:
+    return min(
+        publish_count
+        if publish_count is not None
+        else bot_config.daily_auto_publish_count,
+        len(results),
+    )
+
+
+async def _prepare_story_with_retries(
+    send_message,
+    service,
+    story: EvaluatedStory,
+    *,
+    candidate_number: int,
+    target_count: int,
+) -> PreparedStory | None:
+    post = story.post
+    label = f"#{candidate_number} — {post.title[:60]}"
+
+    for attempt in range(1, _STORY_RETRY_MAX + 1):
+        try:
+            await send_message(f"📝 [{label}] Gerando roteiro...")
+            prepared = await service.prepare_satisfying_story(
+                post_url=post.url,
+                language=config.language,
+            )
+            await send_message(f"✅ [{label}] Roteiro pronto")
+            return prepared
+
+        except Exception as e:
+            if _is_content_filter_error(e):
+                logger.warning("Content filter on %s, skipping: %s", post.url, e)
+                await send_message(
+                    f"⚠️ [{label}] Bloqueado por filtro de conteúdo, pulando."
+                )
+                return None
+
+            if _is_transient_error(e) and attempt < _STORY_RETRY_MAX:
+                delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                logger.warning(
+                    "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
+                    post.url, attempt, _STORY_RETRY_MAX, delay, e,
+                )
+                await send_message(
+                    f"⏳ [{label}] Erro temporário, tentando de novo em {delay}s "
+                    f"(tentativa {attempt}/{_STORY_RETRY_MAX})..."
+                )
+                await asyncio.sleep(delay)
+                continue
+
+            logger.exception(
+                "Failed to prepare story for %s (attempt %d/%d)",
+                post.url, attempt, _STORY_RETRY_MAX,
+            )
+            await send_message(
+                f"❌ [{label}] Erro no roteiro: {_truncate_error(e)}. "
+                f"Tentando outra história para completar {target_count}."
+            )
+            return None
+
+    return None
+
+
+async def _generate_video_for_story(
+    send_message,
+    service,
+    prepared: PreparedStory,
+    story: EvaluatedStory,
+    *,
+    output_dir: str,
+    candidate_number: int,
+    success_number: int,
+    target_count: int,
+) -> GeneratedVideo | None:
+    label = f"#{candidate_number} — {prepared.story_title[:60]}"
+    await send_message(
+        f"⏳ [{label}] Gerando vídeo ({success_number}/{target_count})..."
+    )
+
+    try:
+        result = await service.generate_satisfying_video_from_story(
+            prepared,
+            language=config.language,
+            low_quality=bot_config.low_quality,
+        )
+
+        video_path = os.path.join(output_dir, f"story_{candidate_number:02d}.mp4")
+        with open(video_path, "wb") as f:
+            f.write(result.video)
+
+        video = GeneratedVideo(
+            video_path=video_path,
+            title=result.localized_title,
+            summary=story.resumo[:400],
+            post_url=prepared.post.url,
+        )
+        _save_manifest(video, output_dir)
+
+        await send_message(f"💾 [{label}] Vídeo salvo em {video_path}")
+        return video
+
+    except Exception as e:
+        logger.exception("Failed to generate video for %s", prepared.post.url)
+        await send_message(
+            f"❌ [{label}] Erro na geração de vídeo: {_truncate_error(e)}. "
+            "Pulando para a próxima história."
+        )
+        return None
+
+
+async def _publish_one_video(
+    send_message,
+    llm_proxy,
+    publisher,
+    video: GeneratedVideo,
+    *,
+    last_slot: datetime.datetime,
+    success_number: int,
+    target_count: int,
+) -> datetime.datetime | None:
+    label = f"#{success_number} — {video.title[:60]}"
+
+    try:
+        slot = next_publish_slot(
+            after=last_slot,
+            slot_times=bot_config.publish_slots_local,
+            min_lead_minutes=bot_config.publish_min_lead_minutes,
+        )
+
+        hashtags = await llm_proxy.generate_hashtags(
+            title=video.title,
+            summary=video.summary,
+            target_language=config.language,
+        )
+
+        await send_message(
+            f"📤 [{label}] Agendando para {slot.strftime('%d/%m %H:%M')} "
+            f"({success_number}/{target_count})...",
+        )
+
+        publish_result = await publisher.publish_video(
+            video_path=video.video_path,
+            description=video.title,
+            hashtags=hashtags,
+            schedule_at=slot,
+        )
+
+        msg = f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}"
+        if publish_result:
+            msg += f"\n{publish_result}"
+        await send_message(msg)
+        return slot
+
+    except Exception as e:
+        logger.exception("Failed to publish %s", video.video_path)
+        await send_message(
+            f"❌ [{label}] Erro ao publicar: {_truncate_error(e)}. "
+            "Pulando para uma nova história."
+        )
+        return None
+
+
 async def run_daily_generate(
     send_message,
     *,
     publish_count: int | None = None,
     output_dir: str = _DEFAULT_OUTPUT_DIR,
 ) -> list[GeneratedVideo]:
-    """Discover stories, prepare scripts (with retries/skip), then generate videos.
-
-    Three stages:
-    1. Discover & rank stories from Reddit.
-    2. Prepare stories (scrape + LLM script) — the most failure-prone step.
-       Retries transient errors; skips stories that hit content filters and
-       pulls the next candidate so we end up with the desired count.
-    3. Generate videos from the successfully prepared stories.
-    """
+    """Discover stories and generate videos one candidate at a time."""
     await send_message("🔄 Busca diária iniciada...")
 
     try:
@@ -586,10 +753,7 @@ async def run_daily_generate(
 
     await send_message(f"{len(results)} histórias encontradas.")
 
-    count = min(
-        publish_count or bot_config.daily_auto_publish_count,
-        len(results),
-    )
+    count = _target_count(results, publish_count)
     if count == 0:
         return []
 
@@ -598,114 +762,39 @@ async def run_daily_generate(
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
 
-    # ------------------------------------------------------------------
-    # Stage 1: Prepare stories (LLM script generation — most likely to fail)
-    # ------------------------------------------------------------------
-    await send_message(f"📝 Preparando roteiros para {count} histórias...")
-
-    prepared: list[tuple[PreparedStory, EvaluatedStory]] = []
-    candidate_idx = 0
-
-    while len(prepared) < count and candidate_idx < len(results):
-        story = results[candidate_idx]
-        candidate_idx += 1
-        post = story.post
-        label = f"#{candidate_idx} — {post.title[:60]}"
-
-        for attempt in range(1, _STORY_RETRY_MAX + 1):
-            try:
-                await send_message(f"📝 [{label}] Gerando roteiro...")
-                ps = await service.prepare_satisfying_story(
-                    post_url=post.url,
-                    language=config.language,
-                )
-                prepared.append((ps, story))
-                await send_message(
-                    f"✅ [{label}] Roteiro pronto ({len(prepared)}/{count})"
-                )
-                break
-
-            except Exception as e:
-                if _is_content_filter_error(e):
-                    logger.warning(
-                        "Content filter on %s, skipping: %s", post.url, e,
-                    )
-                    await send_message(
-                        f"⚠️ [{label}] Bloqueado por filtro de conteúdo, pulando."
-                    )
-                    break
-
-                if _is_transient_error(e) and attempt < _STORY_RETRY_MAX:
-                    delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
-                    logger.warning(
-                        "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
-                        post.url, attempt, _STORY_RETRY_MAX, delay, e,
-                    )
-                    await send_message(
-                        f"⏳ [{label}] Erro temporário, tentando de novo em {delay}s "
-                        f"(tentativa {attempt}/{_STORY_RETRY_MAX})..."
-                    )
-                    await asyncio.sleep(delay)
-                    continue
-
-                logger.exception(
-                    "Failed to prepare story for %s (attempt %d/%d)",
-                    post.url, attempt, _STORY_RETRY_MAX,
-                )
-                error_text = str(e)
-                if len(error_text) > 300:
-                    error_text = error_text[:300] + "…"
-                await send_message(f"❌ [{label}] Erro no roteiro: {error_text}")
-                break
-
-    if not prepared:
-        await send_message("❌ Nenhum roteiro gerado com sucesso.")
-        return []
-
-    await send_message(
-        f"📝 {len(prepared)} roteiros prontos. Gerando vídeos..."
-    )
-
-    # ------------------------------------------------------------------
-    # Stage 2: Generate videos from prepared stories
-    # ------------------------------------------------------------------
+    await send_message(f"🎬 Gerando até {count} vídeos em fluxo sequencial...")
     generated: list[GeneratedVideo] = []
 
-    for idx, (ps, story) in enumerate(prepared):
-        label = f"#{idx + 1} — {ps.story_title[:60]}"
-        await send_message(f"⏳ [{label}] Gerando vídeo...")
+    for candidate_idx, story in enumerate(results, start=1):
+        if len(generated) >= count:
+            break
 
-        try:
-            result = await service.generate_satisfying_video_from_story(
-                ps,
-                language=config.language,
-                low_quality=bot_config.low_quality,
-            )
+        prepared = await _prepare_story_with_retries(
+            send_message,
+            service,
+            story,
+            candidate_number=candidate_idx,
+            target_count=count,
+        )
+        if prepared is None:
+            continue
 
-            video_path = os.path.join(output_dir, f"story_{idx + 1:02d}.mp4")
-            with open(video_path, "wb") as f:
-                f.write(result.video)
-
-            video = GeneratedVideo(
-                video_path=video_path,
-                title=result.localized_title,
-                summary=story.resumo[:400],
-                post_url=ps.post.url,
-            )
-            _save_manifest(video, output_dir)
+        video = await _generate_video_for_story(
+            send_message,
+            service,
+            prepared,
+            story,
+            output_dir=output_dir,
+            candidate_number=candidate_idx,
+            success_number=len(generated) + 1,
+            target_count=count,
+        )
+        if video is not None:
             generated.append(video)
 
-            await send_message(f"💾 [{label}] Vídeo salvo em {video_path}")
-
-        except Exception as e:
-            logger.exception("Failed to generate video for %s", ps.post.url)
-            error_text = str(e)
-            if len(error_text) > 300:
-                error_text = error_text[:300] + "…"
-            await send_message(f"❌ [{label}] Erro na geração de vídeo: {error_text}")
-
     await send_message(
-        f"🏁 Geração concluída: {len(generated)}/{len(prepared)} vídeos salvos em {output_dir}",
+        f"🏁 Geração concluída: {len(generated)}/{count} vídeos salvos "
+        f"em {output_dir}",
     )
     return generated
 
@@ -777,13 +866,174 @@ async def run_daily_auto_publish(
     publish_count: int | None = None,
     output_dir: str = _DEFAULT_OUTPUT_DIR,
 ) -> None:
-    """Full pipeline: discover, generate, and publish. Combines both stages."""
-    videos = await run_daily_generate(
+    """Full pipeline: for each candidate, run story -> video -> publish."""
+    await send_message("🔄 Busca diária iniciada...")
+
+    try:
+        results = await _discover_stories()
+    except Exception as e:
+        logger.exception("Failed to find stories")
+        await send_message(f"Erro ao buscar histórias: {e}")
+        return
+
+    if not results:
+        await send_message("Nenhuma história boa encontrada hoje.")
+        return
+
+    for i, story in enumerate(results):
+        text = _format_find_message(i, story, include_scores=False)
+        await send_message(text)
+
+    await send_message(f"{len(results)} histórias encontradas.")
+
+    count = _target_count(results, publish_count)
+    if count == 0:
+        return
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    container.wire(modules=[__name__])
+    service = container.reddit_video_service()
+    llm_proxy = container.llm_proxy()
+    publisher = _build_tiktok_publisher()
+
+    last_slot = datetime.datetime.now()
+    published = 0
+
+    await send_message(
+        "🎬 Fluxo e2e iniciado: roteiro → vídeo → agendamento para cada "
+        f"história até completar {count} publicações."
+    )
+
+    for candidate_idx, story in enumerate(results, start=1):
+        if published >= count:
+            break
+
+        prepared = await _prepare_story_with_retries(
+            send_message,
+            service,
+            story,
+            candidate_number=candidate_idx,
+            target_count=count,
+        )
+        if prepared is None:
+            continue
+
+        video = await _generate_video_for_story(
+            send_message,
+            service,
+            prepared,
+            story,
+            output_dir=output_dir,
+            candidate_number=candidate_idx,
+            success_number=published + 1,
+            target_count=count,
+        )
+        if video is None:
+            continue
+
+        slot = await _publish_one_video(
+            send_message,
+            llm_proxy,
+            publisher,
+            video,
+            last_slot=last_slot,
+            success_number=published + 1,
+            target_count=count,
+        )
+        if slot is None:
+            continue
+
+        last_slot = slot
+        published += 1
+
+    await send_message(
+        f"🏁 Pipeline e2e concluído: {published}/{count} vídeos agendados."
+    )
+
+
+def _get_daily_auto_publish_lock() -> asyncio.Lock:
+    global _daily_auto_publish_lock
+    if _daily_auto_publish_lock is None:
+        _daily_auto_publish_lock = asyncio.Lock()
+    return _daily_auto_publish_lock
+
+
+async def _run_daily_auto_publish_locked(
+    send_message,
+    *,
+    publish_count: int | None = None,
+) -> None:
+    lock = _get_daily_auto_publish_lock()
+    if lock.locked():
+        await send_message("Já existe um fluxo de auto-post em andamento.")
+        return
+
+    async with lock:
+        await run_daily_auto_publish(send_message, publish_count=publish_count)
+
+
+def _parse_optional_count(args: list[str] | None) -> int | None:
+    if not args:
+        return None
+
+    try:
+        count = int(args[0])
+    except ValueError as exc:
+        raise ValueError("Use /autopost ou /autopost 2") from exc
+
+    if count < 1:
+        raise ValueError("A quantidade precisa ser maior que zero.")
+    return count
+
+
+def _split_text_command(text: str) -> tuple[str, list[str]]:
+    parts = text.strip().split()
+    command = parts[0].split("@", 1)[0].lower()
+    return command, parts[1:]
+
+
+async def _handle_text_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+) -> bool:
+    command, args = _split_text_command(text)
+    context.args = args
+
+    if command in ("/autopost", "/auto_publish"):
+        await cmd_autopost(update, context)
+        return True
+
+    if command == "/find":
+        await cmd_find(update, context)
+        return True
+
+    return False
+
+
+async def cmd_autopost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
+        await reject_unauthorized(update)
+        return
+
+    try:
+        publish_count = _parse_optional_count(context.args)
+    except ValueError as e:
+        await update.message.reply_text(str(e))
+        return
+
+    chat_id = update.effective_chat.id
+
+    async def send_message(text: str) -> None:
+        await context.bot.send_message(chat_id, text)
+
+    await send_message("🚀 Auto-post manual iniciado.")
+    await _run_daily_auto_publish_locked(
         send_message,
         publish_count=publish_count,
-        output_dir=output_dir,
     )
-    await run_daily_publish(send_message, videos)
 
 
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -794,7 +1044,7 @@ async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
     async def send_message(text: str) -> None:
         await bot.send_message(chat_id, text)
 
-    await run_daily_auto_publish(send_message)
+    await _run_daily_auto_publish_locked(send_message)
 
 
 async def _post_init(application: Application) -> None:
@@ -826,6 +1076,7 @@ def main() -> None:
 
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("find", cmd_find))
+    app.add_handler(CommandHandler(["autopost", "auto_publish"], cmd_autopost))
     app.add_handler(CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}"))
     app.add_handler(CallbackQueryHandler(handle_retry, pattern=f"^{RETRY_CALLBACK_PREFIX}"))
 

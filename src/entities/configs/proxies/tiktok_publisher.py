@@ -26,7 +26,19 @@ class TikTokPublisherConfig(BaseYAMLModel):
         False,
         title="Send screenshots to the LLM (required for image captchas)",
     )
+    use_thinking: bool = Field(
+        False,
+        title="Include the optional thinking field in AgentOutput responses",
+    )
     max_steps: int = Field(
         60,
         title="Maximum agent steps before giving up",
+    )
+    capture_raw_llm_failures: bool = Field(
+        True,
+        title="Persist raw provider responses when LLM parsing fails",
+    )
+    raw_llm_body_max_chars: int = Field(
+        65536,
+        title="Maximum raw provider body size to persist in failure artifacts",
     )

@@ -1,4 +1,5 @@
 import io
+import logging
 import random
 from dataclasses import dataclass
 from typing import Optional, List
@@ -13,6 +14,9 @@ from ..entities.configs.services.video import VideoConfig
 from ..entities.image_story import ImageStory
 
 from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -46,8 +50,12 @@ class VideoService:
     ) -> YouTubeCompilationResult:
         """Create video compilation from YouTube content"""
 
+        channel_url = self._select_youtube_channel_url()
+        logger.info("Creating YouTube compilation from channel %s", channel_url)
+
         video_ids = await self._youtube_proxy.list_video_ids(
-            self._video_config.youtube_channel_url
+            channel_url,
+            surface=self._video_config.youtube_surface,
         )
 
         pool = self._video_config.youtube_pool_size
@@ -58,20 +66,29 @@ class VideoService:
         video = video_clip.VideoClip()
         downloaded_bytes: List[bytes] = []
         total_duration = 0
-        processed_videos = 0
-        total_videos_to_process = min(len(video_ids), 2)
 
-        for video_id in video_ids[:total_videos_to_process]:
-            video_bytes = await self._youtube_proxy.download_video(
-                video_id, low_quality
-            )
+        for video_id in video_ids:
+            try:
+                video_bytes = await self._youtube_proxy.download_video(
+                    video_id, low_quality
+                )
+                new_video = video_clip.VideoClip(bytes=video_bytes)
+                duration = float(new_video.clip.duration or 0)
+            except Exception:
+                logger.exception("Skipping unusable YouTube background %s", video_id)
+                continue
+
+            if duration <= 0:
+                logger.warning(
+                    "Skipping zero-duration YouTube background %s",
+                    video_id,
+                )
+                continue
+
             downloaded_bytes.append(video_bytes)
-
-            new_video = video_clip.VideoClip(bytes=video_bytes)
             new_video.apply_anti_fingerprint(self._video_config.anti_fingerprint)
             video.concat(new_video)
-            total_duration += new_video.clip.duration
-            processed_videos += 1
+            total_duration += duration
 
             if total_duration >= min_duration:
                 return YouTubeCompilationResult(
@@ -82,6 +99,18 @@ class VideoService:
                 f"Video compilation completed with {total_duration:.1f}s duration (all available videos used)"
             )
         return YouTubeCompilationResult(clip=video, downloaded_bytes=downloaded_bytes)
+
+    def _select_youtube_channel_url(self) -> str:
+        channel_urls = [
+            url.strip()
+            for url in self._video_config.youtube_channel_urls
+            if url and url.strip()
+        ]
+        if not channel_urls and self._video_config.youtube_channel_url:
+            channel_urls = [self._video_config.youtube_channel_url.strip()]
+        if not channel_urls:
+            raise ValueError("At least one YouTube channel URL must be configured")
+        return random.choice(channel_urls)
 
     def generate_video(
         self,

@@ -176,7 +176,11 @@ class ILLMProxy(ABC):
 
 class IYouTubeProxy(ABC):
     @abstractmethod
-    async def list_video_ids(self, url: str) -> List[str]:
+    async def list_video_ids(
+        self,
+        url: str,
+        surface: Literal["videos", "shorts"] = "videos",
+    ) -> List[str]:
         """List video IDs from a YouTube channel or playlist URL"""
         ...
 

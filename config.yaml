@@ -44,6 +44,11 @@ services:
   video_config:
     call_to_action_path: assets/call_to_action.png
     youtube_channel_url: https://www.youtube.com/@FoodieBoyKR
+    youtube_channel_urls:
+      - https://www.youtube.com/@FoodieBoyKR
+      - https://www.youtube.com/@cookming
+      - https://www.youtube.com/@menwiththepot
+    youtube_surface: shorts
     youtube_pool_size: 50
     ffmpeg_params: ["-crf", "23", "-preset", "medium"]
     anti_fingerprint:
