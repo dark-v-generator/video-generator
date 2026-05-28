@@ -70,10 +70,10 @@ bots:
     daily_minute_utc: 30
     daily_auto_publish_count: 4
     publish_slots_local:
-      - "11:00"
-      - "13:00"
-      - "18:00"
-      - "20:00"
+      - "12:00"
+      - "17:30"
+      - "18:30"
+      - "19:30"
     publish_min_lead_minutes: 30
     publish_hashtags: []
 evaluation:

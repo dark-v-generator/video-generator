@@ -3,6 +3,7 @@ from typing import List
 from .interfaces import ILLMProxy
 from ..entities.image_story import ImageStory, StoryImage
 from ..entities.language import Language
+from ..services.tiktok_caption import normalize_hashtags
 
 MOCK_STORY = {
     "title": "Minha ex reapareceu depois de 10 anos e me chamou de mentiroso quando viu que eu já tinha seguido em frente",
@@ -376,7 +377,7 @@ class MockLLMProxy(ILLMProxy):
     async def generate_hashtags(
         self, title: str, summary: str, target_language: Language
     ) -> list[str]:
-        return ["fyp", "storytime", "reddit", "viral"]
+        return normalize_hashtags(["viral"])
 
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language

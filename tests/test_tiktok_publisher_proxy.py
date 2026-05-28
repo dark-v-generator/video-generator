@@ -87,6 +87,24 @@ def _make_proxy(tmp_path: Path, **kwargs) -> BrowserUseTikTokPublisherProxy:
     )
 
 
+def test_format_description_strips_old_hashtags_and_dedupes_new_tags():
+    result = BrowserUseTikTokPublisherProxy._format_description(
+        "Meu chefe me proibiu de decidir  #fyp #storytime",
+        ["#reddit", "#fyp", "chefeToxico#reddit", "obedienciaCega"],
+    )
+
+    assert result == (
+        "Meu chefe me proibiu de decidir  "
+        "#fyp #storytime #reddit #chefeToxico #obedienciaCega"
+    )
+
+
+def test_format_description_without_hashtags_does_not_add_defaults():
+    result = BrowserUseTikTokPublisherProxy._format_description("caption", None)
+
+    assert result == "caption"
+
+
 @pytest.mark.asyncio
 async def test_publish_video_builds_agent_with_thinking_disabled(
     monkeypatch, tmp_path: Path

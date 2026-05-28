@@ -9,6 +9,7 @@ from src.entities.configs.proxies.llm import PromptLLMConfig
 from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
+from src.services.tiktok_caption import normalize_hashtags
 import os
 import json
 import yaml
@@ -383,10 +384,10 @@ class PromptLLMProxy(ILLMProxy):
         try:
             data = json.loads(self._clean_json(response_text))
             tags = data.get("hashtags", [])
-            return [t.lstrip("#") for t in tags] if tags else ["fyp", "storytime", "reddit"]
+            return normalize_hashtags(tags)
         except (json.JSONDecodeError, AttributeError):
             self._logger.warning("Failed to parse hashtag JSON: %s", response_text)
-            return ["fyp", "storytime", "reddit"]
+            return normalize_hashtags([])
 
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language

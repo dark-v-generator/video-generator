@@ -40,6 +40,7 @@ from src.core.logging_config import get_logger
 from src.proxies.interfaces import ITikTokPublisherProxy
 from src.proxies.tiktok_publisher_memory import TikTokPublisherMemory
 from src.proxies.tiktok_publisher_tools import build_tools
+from src.services.tiktok_caption import normalize_hashtags, strip_trailing_hashtags
 
 # TikTok only allows scheduling posts up to 10 days in the future via
 # the native scheduler in TikTok Studio (Creator/Business accounts).
@@ -706,12 +707,16 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
     def _format_description(
         description: str, hashtags: Optional[List[str]]
     ) -> str:
-        if not hashtags:
-            return description.strip()
-        tag_str = " ".join(f"#{h.lstrip('#')}" for h in hashtags)
-        if not description.strip():
+        clean_description = strip_trailing_hashtags(description)
+        if hashtags is None:
+            return clean_description
+        clean_hashtags = normalize_hashtags(hashtags)
+        if not clean_hashtags:
+            return clean_description
+        tag_str = " ".join(f"#{h}" for h in clean_hashtags)
+        if not clean_description:
             return tag_str
-        return f"{description.strip()}  {tag_str}"
+        return f"{clean_description}  {tag_str}"
 
     @staticmethod
     def _build_task(
@@ -769,7 +774,11 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
             "2. Call `dismiss_overlay()` to clear any leftover draft.\n"
             f"3. Call `upload_video(file_path='{video_path}')`.\n"
             "4. Wait 8 seconds for the upload to process.\n"
-            f"5. Set the caption (one line, no newlines):\n{description}\n"
+            "5. Call `set_contenteditable("
+            "selector=\"div[contenteditable='true'][role='combobox']\", "
+            f"text={description!r})` exactly once to set the caption. "
+            "Do not type or append hashtags manually; the text already "
+            "contains the complete caption.\n"
             "6. Call `select_cover_frame()` to fix the black cover.\n"
             f"{schedule_block}"
         )

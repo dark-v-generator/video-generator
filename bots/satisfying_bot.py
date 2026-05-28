@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import datetime
 import logging
 import os
@@ -29,6 +30,7 @@ from src.entities.config import MainConfig
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
 from src.services.reddit_video_service import PreparedStory
+from src.services.tiktok_caption import normalize_hashtags
 
 from bots.base import (
     is_user_allowed,
@@ -487,6 +489,7 @@ import json as _json
 
 
 _DEFAULT_OUTPUT_DIR = "output/daily"
+_DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
 
 
 @dataclass
@@ -509,6 +512,56 @@ def _save_manifest(video: GeneratedVideo, output_dir: str) -> None:
     path = os.path.join(output_dir, f"{base}.json")
     with open(path, "w") as f:
         _json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+
+def _prepare_publish_hashtags(raw_hashtags: list[str] | None) -> list[str]:
+    configured = bot_config.publish_hashtags or []
+    return normalize_hashtags([*configured, *(raw_hashtags or [])])
+
+
+def _append_publish_log(
+    video: GeneratedVideo,
+    *,
+    status: str,
+    schedule_at: datetime.datetime | None,
+    hashtags: list[str] | None,
+    publish_result: str = "",
+    error: str = "",
+) -> None:
+    path = os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
+    fields = [
+        "created_at",
+        "status",
+        "scheduled_at",
+        "video_path",
+        "title",
+        "post_url",
+        "hashtags",
+        "publish_result",
+        "error",
+    ]
+    row = {
+        "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        "status": status,
+        "scheduled_at": schedule_at.isoformat(timespec="minutes") if schedule_at else "",
+        "video_path": video.video_path,
+        "title": video.title,
+        "post_url": video.post_url,
+        "hashtags": " ".join(f"#{tag}" for tag in hashtags or []),
+        "publish_result": publish_result,
+        "error": error,
+    }
+
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        file_exists = os.path.exists(path)
+        with open(path, "a", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
+    except Exception:
+        logger.exception("Failed to append TikTok publish log")
 
 
 def load_generated_videos(directory: str) -> list[GeneratedVideo]:
@@ -686,6 +739,8 @@ async def _publish_one_video(
     target_count: int,
 ) -> datetime.datetime | None:
     label = f"#{success_number} — {video.title[:60]}"
+    slot: datetime.datetime | None = None
+    hashtags: list[str] = []
 
     try:
         slot = next_publish_slot(
@@ -694,11 +749,12 @@ async def _publish_one_video(
             min_lead_minutes=bot_config.publish_min_lead_minutes,
         )
 
-        hashtags = await llm_proxy.generate_hashtags(
+        raw_hashtags = await llm_proxy.generate_hashtags(
             title=video.title,
             summary=video.summary,
             target_language=config.language,
         )
+        hashtags = _prepare_publish_hashtags(raw_hashtags)
 
         await send_message(
             f"📤 [{label}] Agendando para {slot.strftime('%d/%m %H:%M')} "
@@ -715,11 +771,25 @@ async def _publish_one_video(
         msg = f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}"
         if publish_result:
             msg += f"\n{publish_result}"
+        _append_publish_log(
+            video,
+            status="scheduled",
+            schedule_at=slot,
+            hashtags=hashtags,
+            publish_result=publish_result,
+        )
         await send_message(msg)
         return slot
 
     except Exception as e:
         logger.exception("Failed to publish %s", video.video_path)
+        _append_publish_log(
+            video,
+            status="failed",
+            schedule_at=slot,
+            hashtags=hashtags,
+            error=_truncate_error(e),
+        )
         await send_message(
             f"❌ [{label}] Erro ao publicar: {_truncate_error(e)}. "
             "Pulando para uma nova história."
@@ -818,6 +888,8 @@ async def run_daily_publish(
 
     for idx, video in enumerate(videos):
         label = f"#{idx + 1} — {video.title[:60]}"
+        slot: datetime.datetime | None = None
+        hashtags: list[str] = []
 
         try:
             slot = next_publish_slot(
@@ -826,11 +898,12 @@ async def run_daily_publish(
                 min_lead_minutes=bot_config.publish_min_lead_minutes,
             )
 
-            hashtags = await llm_proxy.generate_hashtags(
+            raw_hashtags = await llm_proxy.generate_hashtags(
                 title=video.title,
                 summary=video.summary,
                 target_language=config.language,
             )
+            hashtags = _prepare_publish_hashtags(raw_hashtags)
 
             await send_message(
                 f"📤 [{label}] Agendando para {slot.strftime('%d/%m %H:%M')}...",
@@ -848,6 +921,13 @@ async def run_daily_publish(
             msg = f"✅ [{label}] Agendado — {slot.strftime('%d/%m %H:%M')}"
             if publish_result:
                 msg += f"\n{publish_result}"
+            _append_publish_log(
+                video,
+                status="scheduled",
+                schedule_at=slot,
+                hashtags=hashtags,
+                publish_result=publish_result,
+            )
             await send_message(msg)
 
         except Exception as e:
@@ -855,6 +935,13 @@ async def run_daily_publish(
             error_text = str(e)
             if len(error_text) > 300:
                 error_text = error_text[:300] + "…"
+            _append_publish_log(
+                video,
+                status="failed",
+                schedule_at=slot,
+                hashtags=hashtags,
+                error=error_text,
+            )
             await send_message(f"❌ [{label}] Erro: {error_text}")
 
     await send_message("🏁 Agendamento concluído.")

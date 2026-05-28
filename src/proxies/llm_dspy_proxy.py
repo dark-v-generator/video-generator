@@ -7,6 +7,7 @@ from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
+from src.services.tiktok_caption import normalize_hashtags
 
 
 class TwoPartTikTokStorySignature(dspy.Signature):
@@ -499,10 +500,10 @@ class DSPyLLMProxy(ILLMProxy):
         try:
             data = self._parse_json_text(result.hashtags_json)
             tags = data.get("hashtags", [])
-            return [t.lstrip("#") for t in tags] if tags else ["fyp", "storytime", "reddit"]
+            return normalize_hashtags(tags)
         except (json.JSONDecodeError, AttributeError):
             self._logger.warning("Failed to parse hashtag JSON from DSPy")
-            return ["fyp", "storytime", "reddit"]
+            return normalize_hashtags([])
 
     async def revise_story(
         self, current_script: dict, feedback: str, target_language: Language
