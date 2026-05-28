@@ -268,4 +268,5 @@ class TestDailyAutoPublishPipeline:
             "Story 2",
             "Story 3",
         ]
-        assert any("Pipeline e2e concluído: 2/2" in message for message in messages)
+        assert any("Fluxo finalizado: 2/2" in message for message in messages)
+        assert not any("scheduled" == message for message in messages)
