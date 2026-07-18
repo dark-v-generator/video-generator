@@ -43,6 +43,9 @@ services:
     font_path: default_font.ttf
   video_config:
     call_to_action_path: assets/call_to_action.png
+    # Cover (title + "Parte N.") overlays the first seconds of the story while it
+    # is already narrated — the title is not narrated. Keep it short.
+    cover_duration: 3
     youtube_channel_url: https://www.youtube.com/@FoodieBoyKR
     youtube_channel_urls:
       - https://www.youtube.com/@FoodieBoyKR
