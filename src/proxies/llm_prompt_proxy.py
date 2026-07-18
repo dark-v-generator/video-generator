@@ -44,8 +44,10 @@ class PromptLLMProxy(ILLMProxy):
         """Normalize LLM output so it can be parsed as JSON.
 
         Handles markdown fences, double-brace wrappers produced by some
-        OpenRouter models (e.g. gpt-oss-120b), and escaped-JSON-as-string
-        wrappers like ``{"": "{\\"resumo\\": ...}"}``.
+        OpenRouter models (e.g. gpt-oss-120b), escaped-JSON-as-string
+        wrappers like ``{"": "{\\"resumo\\": ...}"}``, and raw control
+        characters (literal newlines/tabs) inside string values that some
+        models emit when they pretty-print multi-line strings.
         """
         text = text.strip()
         if text.startswith("```json"):
@@ -74,39 +76,86 @@ class PromptLLMProxy(ILLMProxy):
             except json.JSONDecodeError:
                 return None
 
-        # Fast path: already valid JSON
-        result = _try_parse_and_unwrap(text)
-        if result is not None:
-            return result
+        # Some models pretty-print multi-line string values with literal
+        # newlines/tabs, which are invalid inside JSON strings. Try the text as
+        # is first, then a variant with those control chars escaped.
+        candidates = [text]
+        escaped = PromptLLMProxy._escape_control_chars_in_strings(text)
+        if escaped != text:
+            candidates.append(escaped)
+
+        # Fast path: already valid JSON (or valid after escaping).
+        for candidate in candidates:
+            result = _try_parse_and_unwrap(candidate)
+            if result is not None:
+                return result
 
         # Double-brace wrapper: "{\n{...}\n}" → strip outer braces then retry
-        if text.startswith("{"):
-            inner = text[1:].strip()
-            if inner.startswith("{"):
-                # Try stripping both outer braces
-                if text.endswith("}"):
-                    result = _try_parse_and_unwrap(text[1:-1].strip())
+        for candidate in candidates:
+            if candidate.startswith("{"):
+                inner = candidate[1:].strip()
+                if inner.startswith("{"):
+                    # Try stripping both outer braces
+                    if candidate.endswith("}"):
+                        result = _try_parse_and_unwrap(candidate[1:-1].strip())
+                        if result is not None:
+                            return result
+                    # Outer closing brace may be missing; just skip the first one
+                    result = _try_parse_and_unwrap(inner)
                     if result is not None:
                         return result
-                # Outer closing brace may be missing; just skip the first one
-                result = _try_parse_and_unwrap(inner)
-                if result is not None:
-                    return result
 
         # Last resort: find the first valid JSON object via raw_decode
         decoder = json.JSONDecoder()
-        for i, ch in enumerate(text):
-            if ch in "{[":
-                try:
-                    obj, _ = decoder.raw_decode(text, i)
-                    unwrapped = _try_unwrap_string_value(obj)
-                    if unwrapped:
-                        return unwrapped
-                    return json.dumps(obj, ensure_ascii=False)
-                except json.JSONDecodeError:
-                    continue
+        for candidate in candidates:
+            for i, ch in enumerate(candidate):
+                if ch in "{[":
+                    try:
+                        obj, _ = decoder.raw_decode(candidate, i)
+                        unwrapped = _try_unwrap_string_value(obj)
+                        if unwrapped:
+                            return unwrapped
+                        return json.dumps(obj, ensure_ascii=False)
+                    except json.JSONDecodeError:
+                        continue
 
         return text
+
+    @staticmethod
+    def _escape_control_chars_in_strings(text: str) -> str:
+        """Escape raw newlines/CR/tabs that appear inside JSON string literals.
+
+        Structural whitespace between tokens is left untouched; only control
+        characters inside a quoted string are converted to their JSON escapes so
+        ``json.loads`` accepts the payload.
+        """
+        out = []
+        in_string = False
+        escaped = False
+        for ch in text:
+            if in_string:
+                if escaped:
+                    out.append(ch)
+                    escaped = False
+                elif ch == "\\":
+                    out.append(ch)
+                    escaped = True
+                elif ch == '"':
+                    out.append(ch)
+                    in_string = False
+                elif ch == "\n":
+                    out.append("\\n")
+                elif ch == "\r":
+                    out.append("\\r")
+                elif ch == "\t":
+                    out.append("\\t")
+                else:
+                    out.append(ch)
+            else:
+                if ch == '"':
+                    in_string = True
+                out.append(ch)
+        return "".join(out)
 
     def _get_model_string(self) -> str:
         provider = self.config.provider
