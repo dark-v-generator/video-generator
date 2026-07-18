@@ -9,18 +9,19 @@ guarda: testes devem falhar se a forma abaixo mudar.
 
 ```json
 {
-  "title": "<gancho falado, string não vazia>",
+  "title": "<gancho para a CAPA (não narrado), string não vazia>",
   "narrator_gender": "<male | female | unknown>",
-  "part1": "<'<title>. Parte 1.' + setup que abre no conflito, termina antes do clímax + CTA parte 2>",
-  "part2": "<'<title>. Parte 2.' + clímax e resolução + pergunta de engajamento + CTA final>"
+  "part1": "<abre direto no conflito (sem título, sem 'Parte 1.'), termina antes do clímax + CTA parte 2>",
+  "part2": "<continua direto na história (sem título, sem 'Parte 2.'), clímax e resolução + pergunta de engajamento + CTA final>"
 }
 ```
 
 **Regras verificáveis**:
 - Chaves exatamente `title`, `narrator_gender`, `part1`, `part2` (nenhuma adicionada/removida).
+- `title` é string não vazia — é o gancho **exibido na capa**, **não narrado**.
 - `narrator_gender` ∈ {`male`, `female`, `unknown`}.
-- `part1` e `part2` começam com o título seguido do marcador localizado
-  ("Parte 1." / "Parte 2." em pt-br).
+- `part1` e `part2` **NÃO** começam pelo título nem pelo marcador "Parte N." — a narração
+  entra direto na história (o título e "Parte N." vão só na capa).
 - `part1` termina com CTA de parte 2 (pt-br: "Curta e me siga para a parte 2.").
 - `part2` termina com pergunta de engajamento + CTA final (pt-br:
   "Curta, me siga e deixe nos comentários" / "Curta, me siga e conta nos comentários").
@@ -32,16 +33,19 @@ guarda: testes devem falhar se a forma abaixo mudar.
 
 ```json
 {
-  "title": "<gancho falado, string não vazia>",
+  "title": "<gancho para a CAPA (não narrado), string não vazia>",
   "narrator_gender": "<male | female | unknown>",
-  "script": "<'<title>. ' + história completa + pergunta de engajamento + CTA final>"
+  "script": "<história completa começando direto no conflito (sem título) + pergunta de engajamento + CTA final>"
 }
 ```
 
-**Regras verificáveis**: chaves exatamente `title`, `narrator_gender`, `script`; demais
-regras de política de palavras fortes e CTA final análogas ao caminho 2-part.
+**Regras verificáveis**: chaves exatamente `title`, `narrator_gender`, `script`; `script`
+**não** começa pelo título; demais regras de política de palavras fortes e CTA final
+análogas ao caminho 2-part.
 
 ## Nota
 
-A feature altera **o conteúdo do `title` e a abertura de `part1`/`script`** (qualidade do
-gancho), não a **forma** destes objetos.
+A feature altera **o conteúdo do `title` (gancho da capa) e a abertura de `part1`/`script`**
+(que agora começam direto na história). O título e o marcador "Parte N." deixam de ser
+narrados: são exibidos apenas na imagem de capa (ver FR-014/FR-015). As chaves do JSON
+permanecem as mesmas.

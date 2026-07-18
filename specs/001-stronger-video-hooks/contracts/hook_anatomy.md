@@ -23,7 +23,7 @@ base dos critérios de sucesso (SC-002, SC-003).
 
 | ID | Critério | Verificação |
 |----|----------|-------------|
-| O1 | Abre no conflito/stakes após "Parte 1." | A primeira frase entra na tensão, não em preâmbulo. |
+| O1 | Abre no conflito/stakes na primeira palavra narrada (sem título nem "Parte 1.") | A primeira frase entra na tensão, não em preâmbulo. |
 | O2 | Dá continuidade à promessa do título | Sem repetir o desfecho nem antecipar o clímax. |
 | O3 | Sem palavras proibidas | Nenhum termo da política de palavras fortes. |
 

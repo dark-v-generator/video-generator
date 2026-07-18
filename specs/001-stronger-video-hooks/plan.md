@@ -148,6 +148,34 @@ projetado: 2** (dentro do limite de 8).
 - Verificação multilíngue: amostra em pt-br + um segundo idioma alvo mantém a anatomia com
   fraseado local natural (SC-006).
 
+## Refinement — Título fora da narração (repair, 2026-07-18)
+
+Decisão do usuário: **não narrar o título** (nem o marcador "Parte N."), para não gastar os
+primeiros segundos de áudio. Decisões aprovadas: D1=A, D2=B, D3=C (com duração curta em
+config), D4=A (refinar a feature 001, não abrir feature nova).
+
+**Comportamento novo**:
+- `title` continua sendo gerado, mas é o gancho **exibido na capa** (não narrado). O marcador
+  "Parte N." também vai só na capa (já é adicionado como `part_label` em
+  `RedditVideoService.generate_cover`).
+- `part1`/`part2` começam **direto na história** (sem `"<title>. Parte N."`).
+- A capa é sobreposta aos primeiros segundos do vídeo enquanto a história já narra por baixo,
+  por `video_config.cover_duration` (reduzido para uma duração curta). O caminho ativo
+  (`compose_two_part_video` → `VideoService.generate_video`) já sobrepõe a capa em t=0 por
+  `cover_duration` quando `intro_end<=0` — ou seja, D3=C sai naturalmente do formato novo.
+
+**Impacto de arquitetura**:
+- Legendas/limites: `_strip_introduction` vira no-op natural (sem "Parte N." para remover);
+  `_compute_content_boundaries` precisa parar de descartar a primeira palavra quando não há
+  marcador (bug para o formato novo) e usar `cover_duration` como janela da capa.
+- `enhance_transcription.jinja2` deixa de instruir a remoção do título/marcador (não estão
+  mais na narração).
+- Guard tests do M1 mudam: `title` não é mais prefixo de `part1`; passa a valer o inverso
+  (`part1`/`part2` não começam pelo título nem por "Parte N.").
+
+**Constituição**: sem violações novas — mudança de conteúdo de prompt + ajuste de borda
+(`src/proxies`, `src/services` de vídeo). Fail-fast preservado (menos ramos de "strip intro").
+
 ## Complexity Tracking
 
 > Nenhuma violação de constituição a justificar. Seção intencionalmente vazia.

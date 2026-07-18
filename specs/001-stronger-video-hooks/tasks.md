@@ -120,6 +120,37 @@ ganchos com a mesma anatomia do caminho ativo, e o efeito se sustenta em ≥ 2 i
 
 ---
 
+## Phase 6: Repair — Título fora da narração (D1=A, D2=B, D3=C, D4=A)
+
+**Purpose**: tirar o título e o marcador "Parte N." da narração (ficam só na capa); a
+narração começa direto na história; a capa é sobreposta aos primeiros segundos por uma
+duração curta configurável. Refina a feature 001 (não é feature nova).
+
+**Independent test criteria**:
+- Numa amostra, 100% dos `part1`/`part2` NÃO começam pelo título nem por "Parte N.".
+- `title` continua presente e não vazio (gancho da capa), sem palavras proibidas.
+- Guard tests verdes; a nota "gancho" não regride vs. o resultado do M1.
+
+- [X] RT018 [P] Reescrever item 5 de `src/proxies/prompts/two_part_story.jinja2`: a narração de cada parte começa **direto na história**, sem título e sem marcador "Parte N."; o título/marcador são exibidos só na capa
+- [X] RT019 [P] Atualizar `src/proxies/examples/two_part_story.yaml`: `part1`/`part2` começam direto na história (remover o `"<title>. Parte N."` do início); manter o campo `title` como gancho da capa
+- [X] RT020 [P] `src/proxies/prompts/enhance_transcription.jinja2`: remover a instrução de "strip introduction" (título/marcador não estão mais na narração)
+- [X] RT021 Corrigir `_compute_content_boundaries` em `src/services/reddit_video_service.py` para não descartar a primeira palavra quando não há marcador, e usar `video_config.cover_duration` como janela da capa; revisar `_strip_introduction` (vira no-op)
+- [X] RT022 [P] Reduzir `video_config.cover_duration` (duração curta) em `config.yaml`/`config.dev.yaml`/`config.prod.yaml` e no default do entity `src/entities/configs/services/video.py`
+- [X] RT023 [P] Alinhar caminhos paralelos: `src/proxies/prompts/story.jinja2`, `src/proxies/prompts/revise_story.jinja2` e as signatures DSPy (`src/proxies/llm_dspy_proxy.py`) para não narrar título/marcador
+- [X] RT024 [P] Atualizar guards em `tests/services/test_hook_quality.py`: `title` não vazio e sem palavras proibidas; `part1`/`part2` NÃO começam pelo título nem por "Parte N."; `part1` termina com o CTA
+
+### Live verification (repair gate)
+
+- [X] RT025 Gerar amostra pelo caminho ativo (LLM) e confirmar: narração começa na história (sem título/"Parte N."), `title` presente para a capa, `pytest tests/services/test_hook_quality.py -q` verde e nota "gancho" sem regressão
+  - **Formato — PASSOU** (LLM `moonshotai/kimi-k2.6`): 100% das amostras geradas têm `part1`/`part2` que NÃO começam pelo título nem por "Parte N."; a narração entra direto na história; `title` presente para a capa. Evidência: `results-repair.json`.
+  - **Guards — PASSOU**: `.venv/bin/pytest tests/services/test_hook_quality.py -q` → `4 passed`; suíte `tests/services/` → `49 passed`.
+  - **Nota "gancho" — RESSALVA**: 87.0 vs 93.0 do M1 (queda ~5 pts nos mesmos posts). Esperado: o avaliador `evaluate_story` premia o gancho da **primeira frase narrada**, que antes era o título punchy e agora é a abertura da história (título foi pra capa). A régua ficou parcialmente desalinhada com o novo design (ela não "vê" a capa). Não é regressão de qualidade do gancho geral — é o trade-off aprovado (D1/D2). Decisão do usuário se aceitável.
+  - **Achado (fora do escopo)**: `PromptLLMProxy._clean_json` não trata JSON com quebras de linha literais dentro de strings — 1 dos 3 posts falhou a geração de forma determinística. Bug de robustez pré-existente do proxy; registrar como follow-up.
+
+**Checkpoint**: Repair — implementação + guards + formato de narração OK; ressalva na métrica "gancho" (ver RT025) para decisão do usuário.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

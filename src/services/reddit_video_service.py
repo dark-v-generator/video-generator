@@ -836,28 +836,34 @@ class RedditVideoService:
     def _normalize_marker_word(cls, word: str) -> str:
         return word.strip().lower().strip(".,!?;:¿¡")
 
-    @classmethod
     def _compute_content_boundaries(
-        cls, raw_transcription: list[dict]
+        self, raw_transcription: list[dict]
     ) -> tuple[float, float, float, list[dict]]:
         """Slice content from raw transcription and shift timestamps to zero-based.
+
+        The title and "Parte N." marker are no longer narrated (they live on the
+        cover image), so by default nothing is stripped and the cover simply
+        overlays the first ``cover_duration`` seconds of the story. A leading
+        "Parte N." marker is still detected for backward compatibility with older
+        scripts that embedded it in the narration.
 
         Returns (intro_end_time, cta_start_time, offset, zero_based_content).
         """
         n = len(raw_transcription)
+        cover_duration = float(self._video_service._video_config.cover_duration)
 
-        # --- intro: find "Parte N." near the start ---
-        intro_end_idx = 0
-        intro_end_time = raw_transcription[4]["end"] if n > 4 else 2.0
+        # --- intro: default keeps the first word (no marker to strip) ---
+        intro_end_idx = -1
+        intro_end_time = cover_duration
         for i, w in enumerate(raw_transcription[:30]):
             word = w.get("word", "").strip()
             if re.match(r"^\d+[.,]?$", word):
                 prev = (
-                    cls._normalize_marker_word(raw_transcription[i - 1].get("word", ""))
+                    self._normalize_marker_word(raw_transcription[i - 1].get("word", ""))
                     if i > 0
                     else ""
                 )
-                if prev in cls.PART_MARKERS:
+                if prev in self.PART_MARKERS:
                     intro_end_idx = i
                     intro_end_time = w["end"]
                     break
@@ -869,8 +875,8 @@ class RedditVideoService:
         )
         search_start = max(intro_end_idx + 1, n - 20)
         for i in range(search_start, n):
-            word = cls._normalize_marker_word(raw_transcription[i].get("word", ""))
-            if word in cls.CTA_START_WORDS:
+            word = self._normalize_marker_word(raw_transcription[i].get("word", ""))
+            if word in self.CTA_START_WORDS:
                 cta_start_idx = i
                 cta_start_time = raw_transcription[i]["start"]
                 break
@@ -884,7 +890,7 @@ class RedditVideoService:
                 len(content),
             )
             content = list(raw_transcription)
-            intro_end_time = content[4]["end"] if len(content) > 4 else 2.0
+            intro_end_time = cover_duration
             cta_start_time = (
                 content[-3]["start"] if len(content) > 3 else intro_end_time + 10
             )
@@ -944,8 +950,10 @@ class RedditVideoService:
     def _strip_introduction(transcription: list[dict]) -> list[dict]:
         """Remove words up to and including 'Parte N.' from the transcription.
 
-        The title and "Parte 1/2" are spoken at the beginning but shown as
-        a cover image, so subtitles for them are redundant.
+        The title and "Parte N." are no longer narrated (they live on the cover),
+        so for current scripts no marker is found and the full transcription is
+        returned unchanged. Kept for backward compatibility with older scripts
+        that still embed the spoken marker.
         """
         parte_idx = -1
         for i, w in enumerate(transcription):

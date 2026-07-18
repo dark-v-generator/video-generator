@@ -60,7 +60,14 @@ class VideoConfig(BaseYAMLModel):
     )
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
-    cover_duration: int = Field(5, title="Cover duration")
+    cover_duration: int = Field(
+        3,
+        title=(
+            "Cover overlay duration in seconds. The cover (title + 'Parte N.') is "
+            "shown over the start of the story while it is already being narrated, "
+            "since the title is no longer narrated. Keep it short."
+        ),
+    )
     width: int = Field(1080, title="Width of the video")
     height: int = Field(1920, title="Height of the video")
     youtube_channel_url: str = Field(

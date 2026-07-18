@@ -5,8 +5,9 @@ two-part output contract. They do NOT test LLM generation (non-deterministic);
 hook quality itself is verified by manual review of a sample plus the "gancho"
 score comparison described in the feature quickstart.
 
-Shared helpers live here so both Milestone 1 (two-part path) and Milestone 2
-(single-part / DSPy paths) guards can reuse them.
+Contract note (repair 2026-07-18, FR-014/FR-015): the `title` is the hook shown
+on the COVER and is NOT narrated. `part1`/`part2` begin directly in the story —
+they must NOT start with the title nor with a "Parte N." marker.
 """
 
 import os
@@ -26,10 +27,9 @@ _EXAMPLES_PATH = os.path.join(
     "two_part_story.yaml",
 )
 
-# Localized markers / CTA for the active (pt-br) few-shot examples.
-PART1_MARKER = ". Parte 1."
-PART2_MARKER = ". Parte 2."
 PART1_CTA = "Curta e me siga para a parte 2."
+# Markers that must NOT be spoken (they live on the cover, not the narration).
+PART_MARKERS = ("Parte 1.", "Parte 2.")
 
 
 def load_two_part_examples():
@@ -57,39 +57,32 @@ def assert_no_forbidden_words(text):
     assert not hits, f"forbidden word(s) present: {hits}"
 
 
-def assert_two_part_structure(entry):
-    """Assert the two-part markers and the end-of-part-1 CTA are present.
+def assert_narration_starts_in_story(entry):
+    """Assert the narration begins in the story, not on the title/marker.
 
-    Both ``part1`` and ``part2`` must start with the explicit ``title`` followed
-    by the localized marker, and ``part1`` must end with the part-2 CTA.
+    Neither ``part1`` nor ``part2`` may start with the (cover-only) title, and
+    neither may open with a "Parte N." marker in its first words.
     """
     title = entry["title"]
-    part1 = entry["part1"].strip()
-    part2 = entry["part2"].strip()
-
-    assert part1.startswith(title + PART1_MARKER), (
-        f"part1 must start with '{title}{PART1_MARKER}'"
-    )
-    assert part2.startswith(title + PART2_MARKER), (
-        f"part2 must start with '{title}{PART2_MARKER}'"
-    )
-    assert part1.endswith(PART1_CTA), (
-        f"part1 must end with the part-2 CTA '{PART1_CTA}'"
-    )
+    for key in ("part1", "part2"):
+        text = entry[key].strip()
+        assert not text.startswith(title), (
+            f"{key} must not start with the title (title is cover-only, not narrated)"
+        )
+        head = text[:40]
+        for marker in PART_MARKERS:
+            assert marker not in head, (
+                f"{key} must not open with the spoken marker '{marker}'"
+            )
 
 
-# --- Milestone 1: two-part active path guards -------------------------------
+# --- Milestone 1 + repair: two-part active path guards ----------------------
 
 
-def test_examples_have_explicit_title_matching_part1_prefix():
-    """Each example exposes a `title` equal to the part1 hook before the marker."""
+def test_examples_have_cover_title():
+    """Each example exposes a non-empty `title` used as the cover hook."""
     for entry in load_two_part_examples():
         assert entry.get("title"), "every example must define a non-empty `title`"
-        prefix = entry["part1"].split(PART1_MARKER)[0].strip()
-        assert entry["title"] == prefix, (
-            f"title must equal the part1 prefix before '{PART1_MARKER}': "
-            f"{entry['title']!r} != {prefix!r}"
-        )
 
 
 def test_examples_have_no_forbidden_words():
@@ -99,6 +92,13 @@ def test_examples_have_no_forbidden_words():
         assert_no_forbidden_words(entry["part2"])
 
 
-def test_examples_preserve_two_part_structure():
+def test_narration_excludes_title_and_marker():
     for entry in load_two_part_examples():
-        assert_two_part_structure(entry)
+        assert_narration_starts_in_story(entry)
+
+
+def test_part1_ends_with_cta():
+    for entry in load_two_part_examples():
+        assert entry["part1"].strip().endswith(PART1_CTA), (
+            f"part1 must end with the part-2 CTA '{PART1_CTA}'"
+        )
