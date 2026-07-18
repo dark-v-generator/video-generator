@@ -145,7 +145,7 @@ duração curta configurável. Refina a feature 001 (não é feature nova).
   - **Formato — PASSOU** (LLM `moonshotai/kimi-k2.6`): 100% das amostras geradas têm `part1`/`part2` que NÃO começam pelo título nem por "Parte N."; a narração entra direto na história; `title` presente para a capa. Evidência: `results-repair.json`.
   - **Guards — PASSOU**: `.venv/bin/pytest tests/services/test_hook_quality.py -q` → `4 passed`; suíte `tests/services/` → `49 passed`.
   - **Nota "gancho" — RESSALVA**: 87.0 vs 93.0 do M1 (queda ~5 pts nos mesmos posts). Esperado: o avaliador `evaluate_story` premia o gancho da **primeira frase narrada**, que antes era o título punchy e agora é a abertura da história (título foi pra capa). A régua ficou parcialmente desalinhada com o novo design (ela não "vê" a capa). Não é regressão de qualidade do gancho geral — é o trade-off aprovado (D1/D2). Decisão do usuário se aceitável.
-  - **Achado (fora do escopo)**: `PromptLLMProxy._clean_json` não trata JSON com quebras de linha literais dentro de strings — 1 dos 3 posts falhou a geração de forma determinística. Bug de robustez pré-existente do proxy; registrar como follow-up.
+  - **Achado (CORRIGIDO)**: `PromptLLMProxy._clean_json` não tratava JSON com quebras de linha literais dentro de strings — 1 dos 3 posts falhou a geração de forma determinística. Bug de robustez pré-existente do proxy, **corrigido** em commit separado (escape de control chars dentro de strings + testes de regressão `tests/services/test_clean_json.py`).
 
 **Checkpoint**: Repair — implementação + guards + formato de narração OK; ressalva na métrica "gancho" (ver RT025) para decisão do usuário.
 
