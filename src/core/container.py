@@ -52,6 +52,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
     reddit_proxy = providers.Singleton(
         proxies_factories.RedditProxyFactory.create,
         config=main_config.provided.proxies.reddit_config,
+        reddit_client_id=secrets.reddit_client_id,
+        reddit_client_secret=secrets.reddit_client_secret,
+        reddit_user_agent=secrets.reddit_user_agent,
     )
     llm_proxy = providers.Singleton(
         proxies_factories.LLMProxyFactory.create,

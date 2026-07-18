@@ -5,6 +5,7 @@ import requests
 
 from ..proxies.interfaces import IRedditProxy
 from ..entities.reddit_post import RedditPost
+from ..proxies.reddit_availability import assert_reddit_post_available
 
 from ..core.logging_config import get_logger
 from ..entities.configs.proxies.reddit import BS4RedditConfig, JsonRedditConfig
@@ -31,13 +32,17 @@ class BS4RedditProxy(IRedditProxy):
             raise ValueError(
                 f"Could not find post content. Reddit may have blocked the request (status {response.status_code})."
             )
-        reddit_post_params["title"] = post.find("h1").text.strip()
+        title = post.find("h1").text.strip()
+        content = self.__get_post_content(post)
+        assert_reddit_post_available(title, content, url=url)
+
+        reddit_post_params["title"] = title
         reddit_post_params["community"] = post.find(
             "a", class_="subreddit-name"
         ).text.strip()
         reddit_post_params["author"] = self.__get_author_name(post)
         reddit_post_params["community_url_photo"] = self.__get_community_url_photo(post)
-        reddit_post_params["content"] = self.__get_post_content(post)
+        reddit_post_params["content"] = content
 
         return RedditPost(**reddit_post_params)
 
@@ -50,9 +55,10 @@ class BS4RedditProxy(IRedditProxy):
             return DEFAUL_URL_PHOTO
 
     def __get_post_content(self, post: Tag) -> str:
-        lines: ResultSet[Tag] = post.find(
-            "div", class_="text-neutral-content"
-        ).find_all("p")
+        content_container = post.find("div", class_="text-neutral-content")
+        if content_container is None:
+            return ""
+        lines: ResultSet[Tag] = content_container.find_all("p")
         content = ""
         for line in lines:
             content += line.text.strip() + "\n"
