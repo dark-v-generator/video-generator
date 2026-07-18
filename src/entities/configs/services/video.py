@@ -69,11 +69,18 @@ class VideoConfig(BaseYAMLModel):
     )
     youtube_channel_urls: List[str] = Field(
         default_factory=list,
-        title="YouTube channel urls to randomly choose from",
+        title="YouTube channel urls available for background clips",
+    )
+    youtube_channel_strategy: Literal["random", "all"] = Field(
+        "random",
+        title=(
+            "How to use configured YouTube channels: random selects one channel, "
+            "all merges candidates from every channel."
+        ),
     )
     youtube_pool_size: int = Field(
         50,
-        title="Only consider the N newest videos from the channel. 0 = all.",
+        title="Only consider the N newest videos per selected channel. 0 = all.",
     )
     youtube_surface: Literal["videos", "shorts"] = Field(
         "videos",

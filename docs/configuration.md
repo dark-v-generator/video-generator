@@ -174,6 +174,8 @@ video_config:
   youtube_channel_urls:
     - "https://www.youtube.com/@channel-one"
     - "https://www.youtube.com/@channel-two"
+  youtube_channel_strategy: "all"
+  youtube_pool_size: 100
   watermark_path: null
   ffmpeg_params: []
 ```
@@ -186,7 +188,9 @@ video_config:
 | `cover_duration` | `int` | `5` | Seconds the cover image is shown at the start |
 | `end_silece_seconds` | `int` | `3` | Silent padding appended to the end of the audio |
 | `youtube_channel_url` | `str` | *(see default)* | Fallback YouTube channel for background video compilation |
-| `youtube_channel_urls` | `list[str]` | `[]` | YouTube channels to choose from randomly. When populated, this takes precedence over `youtube_channel_url` |
+| `youtube_channel_urls` | `list[str]` | `[]` | YouTube channels available for background video compilation. When populated, this takes precedence over `youtube_channel_url` |
+| `youtube_channel_strategy` | `"random"` or `"all"` | `"random"` | Whether each compilation uses one random configured channel or merges candidates from all configured channels |
+| `youtube_pool_size` | `int` | `50` | Newest videos/shorts to consider per selected channel. `0` means all returned IDs |
 | `watermark_path` | `str?` | `null` | Path to a watermark image file (loaded at startup) |
 | `ffmpeg_params` | `list[str]` | `[]` | Extra ffmpeg parameters for video encoding |
 

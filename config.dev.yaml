@@ -27,6 +27,8 @@ services:
       - https://www.youtube.com/@cookming
       - https://www.youtube.com/@menwiththepot
     youtube_surface: shorts
+    youtube_channel_strategy: all
+    youtube_pool_size: 100
     ffmpeg_params: ["-crf", "28", "-preset", "fast"]
     anti_fingerprint:
       enabled: true

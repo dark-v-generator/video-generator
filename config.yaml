@@ -49,7 +49,8 @@ services:
       - https://www.youtube.com/@cookming
       - https://www.youtube.com/@menwiththepot
     youtube_surface: shorts
-    youtube_pool_size: 50
+    youtube_channel_strategy: all
+    youtube_pool_size: 100
     ffmpeg_params: ["-crf", "23", "-preset", "medium"]
     anti_fingerprint:
       enabled: true
@@ -71,9 +72,9 @@ bots:
     daily_auto_publish_count: 4
     publish_slots_local:
       - "12:00"
-      - "17:30"
-      - "18:30"
-      - "19:30"
+      - "18:00"
+      - "19:00"
+      - "20:00"
     publish_min_lead_minutes: 30
     publish_hashtags: []
 evaluation:

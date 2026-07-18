@@ -13,7 +13,7 @@ class TelegramBotConfig(BaseYAMLModel):
         4, title="Number of top stories to auto-generate and schedule daily",
     )
     publish_slots_local: List[str] = Field(
-        default_factory=lambda: ["11:00", "13:00", "18:00", "20:00"],
+        default_factory=lambda: ["12:00", "18:00", "19:00", "20:00"],
         title="Local-time slots for scheduled TikTok posts (HH:MM)",
     )
     publish_min_lead_minutes: int = Field(
