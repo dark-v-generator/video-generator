@@ -3,10 +3,10 @@ Take the provided original Reddit post and transform it into a 2-part engaging T
 
 # INSTRUCTIONS
 1. Translate or adapt the story into {{ target_language }}, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-2. Add a short, clickbaity title in {{ target_language }} that hooks the viewer in the first 3 seconds. The title is the FIRST thing the audience hears — it must create curiosity and make them want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without giving the story away. It should still sound natural and spoken (not robotic or generic), but it MUST grab attention. If {{ target_language }} is Portuguese (Brazil), good patterns include: "Minha sogra tentou me expulsar da minha própria casa", "Descobri que meu melhor amigo estava mentindo pra mim por 5 anos", "Meu chefe me demitiu e se arrependeu no dia seguinte". For other target languages, create equally natural local equivalents instead of copying these examples.
+2. Open with a title in {{ target_language }} that is the strongest hook of the whole video. It is the first thing the audience hears while the cover image is shown, and it is what decides whether they keep watching. A hook works when the viewer feels the stakes right away: it centers on a concrete harm or injustice done to someone worth rooting for, and it makes the antagonist or the unfairness clear, so the viewer wants to stay and see the turnaround or the justice. Imply that a turn is coming, but do not reveal how it ends — the payoff belongs in the story, not in the title, so never give away the outcome. Keep a natural spoken voice, as if you were telling a friend the one detail that would make them stop scrolling, and get straight to the point instead of warming up. When the story genuinely offers a short, outrageous line that someone actually said, quoting it can make a great hook — but only use it when the story really provides one. The title must promise something the story actually delivers; it is a real promise, not a misleading tease.
 3. Use natural, colloquial {{ target_language }}. Prefer everyday words people actually use in casual speech.
 4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
-5. Each part must start with the title followed by "Parte 1." or "Parte 2." before the story text. For example: "Meu vizinho me perseguiu por meses. Parte 1. Tudo começou quando...". This is spoken as an intro while a cover image is shown.
+5. Each part starts with the title, then the localized marker "Parte 1." or "Parte 2." before the story text, spoken as an intro while the cover image is shown. Right after the marker, drop the viewer straight into the conflict or the stakes — no preamble, no scene-setting warm-up — picking up exactly the promise the title made and starting to deliver on it. For example: "Meu vizinho me perseguiu por meses. Parte 1. Ele começou batendo na minha porta às três da manhã...". The opening seconds carry the same job as the title: give the viewer a reason to stay instead of scrolling away.
 6. Part 1 must end before the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution are saved for Part 2. Part 1 MUST end with a natural {{ target_language }} call to action equivalent to "like and follow me for part 2". If {{ target_language }} is Portuguese (Brazil), use exactly: "Curta e me siga para a parte 2."
 7. Part 2 must contain the climax and resolve the story naturally. Part 2 MUST end with a story-specific engagement question in {{ target_language }} that invites the viewer to share their opinion, followed by a natural localized equivalent of "like, follow me, and leave it in the comments". If {{ target_language }} is Portuguese (Brazil), use: "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma.
 8. Provide your output in a JSON format matching this structure:
@@ -75,7 +75,8 @@ Original Post Text:
 Expected Output JSON:
 ```json
 {
-  "title": "{{ example.original_post.title }}",
+  "title": {{ example.title | tojson }},
+  "narrator_gender": {{ example.narrator_gender | tojson }},
   "part1": {{ example.part1 | tojson }},
   "part2": {{ example.part2 | tojson }}
 }

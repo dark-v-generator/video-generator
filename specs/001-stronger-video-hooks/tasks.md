@@ -31,8 +31,8 @@ Single project em Clean Architecture. Prompts/exemplos em `src/proxies/`; testes
 
 **Purpose**: Preparar a medição comparativa e a fonte única de verdade para as guardas.
 
-- [ ] T001 Capturar o baseline da nota "gancho": gerar roteiros para uma amostra fixa de posts do Reddit com o prompt atual (via `tests/test_two_part_story.py`) e registrar a nota `gancho` (0–100) de `evaluate_story` por post e a média em `specs/001-stronger-video-hooks/baseline-gancho.md`
-- [ ] T002 [P] Extrair a lista canônica de palavras proibidas (da política de palavras fortes em `src/proxies/prompts/two_part_story.jinja2`) para uma fixture compartilhada em `tests/services/forbidden_words.py` como fonte única dos guard tests
+- [X] T001 Capturar o baseline da nota "gancho": gerar roteiros para uma amostra fixa de posts do Reddit com o prompt atual (via `tests/test_two_part_story.py`) e registrar a nota `gancho` (0–100) de `evaluate_story` por post e a média em `specs/001-stronger-video-hooks/baseline-gancho.md` — **FEITO** com `moonshotai/kimi-k2.6` (OpenRouter): amostra fixa de 3 posts, prompt antigo via `git stash`. **Média baseline = 92.3** (ver `baseline-gancho.md` e `results-baseline.json`).
+- [X] T002 [P] Extrair a lista canônica de palavras proibidas (da política de palavras fortes em `src/proxies/prompts/two_part_story.jinja2`) para uma fixture compartilhada em `tests/services/forbidden_words.py` como fonte única dos guard tests
 
 ---
 
@@ -42,7 +42,7 @@ Single project em Clean Architecture. Prompts/exemplos em `src/proxies/`; testes
 
 **⚠️ CRITICAL**: bloqueia os dois milestones — deve estar pronto antes de M1/M2.
 
-- [ ] T003 Criar o módulo de guarda `tests/services/test_hook_quality.py` com helpers: `load_two_part_examples()` (lê `src/proxies/examples/two_part_story.yaml`), `assert_no_forbidden_words(text)` (usa `tests/services/forbidden_words.py`) e `assert_two_part_structure(entry)` (valida marcadores "Parte 1./2." e o CTA "Curta e me siga para a parte 2." ao fim de `part1`)
+- [X] T003 Criar o módulo de guarda `tests/services/test_hook_quality.py` com helpers: `load_two_part_examples()` (lê `src/proxies/examples/two_part_story.yaml`), `assert_no_forbidden_words(text)` (usa `tests/services/forbidden_words.py`) e `assert_two_part_structure(entry)` (valida marcadores "Parte 1./2." e o CTA "Curta e me siga para a parte 2." ao fim de `part1`)
 
 **Checkpoint**: infra de guarda pronta — implementação dos milestones pode começar.
 
@@ -64,17 +64,26 @@ coerentes e invariantes preservadas.
 
 ### Implementation for Milestone 1
 
-- [ ] T004 [US1] Reescrever a instrução de título (item 2) em `src/proxies/prompts/two_part_story.jinja2` por racional: liderar por dano concreto a alguém por quem torcer, antagonista/injustiça claros, promessa implícita de virada, tom falado, ir direto ao ponto sem revelar o desfecho; apresentar a anatomia como critérios a perseguir e a citação revoltante como opcional; remover linguagem prescritiva/"clickbait" e CAPS
-- [ ] T005 [US2] Reescrever a abertura das partes (item 5) em `src/proxies/prompts/two_part_story.jinja2` para que, após "Parte 1.", a narração entre direto no conflito/stakes (sem preâmbulo) dando continuidade à promessa do título (depende de T004 — mesmo arquivo)
-- [ ] T006 [P] [US1] Adicionar o campo `title` (gancho forte traduzido, idêntico ao trecho de `part1` antes de "Parte 1.") a cada entrada de `src/proxies/examples/two_part_story.yaml`, e revisar títulos que revelam o desfecho (ex.: "Fiz minha chefe ser demitida…") para liderarem pelo dano/injustiça sem entregar o resultado (H5)
-- [ ] T007 [US1] Atualizar o bloco `# EXAMPLES` em `src/proxies/prompts/two_part_story.jinja2` para referenciar `{{ example.title }}` (e `narrator_gender`) no "Expected Output JSON", substituindo `{{ example.original_post.title }}` (depende de T005, T006)
-- [ ] T008 [P] [US1] Adicionar teste de guarda em `tests/services/test_hook_quality.py`: para cada exemplo, `title` == prefixo de `part1` antes de "Parte 1.", `assert_no_forbidden_words` em `title`/`part1`/`part2`, e `assert_two_part_structure` válido
+- [X] T004 [US1] Reescrever a instrução de título (item 2) em `src/proxies/prompts/two_part_story.jinja2` por racional: liderar por dano concreto a alguém por quem torcer, antagonista/injustiça claros, promessa implícita de virada, tom falado, ir direto ao ponto sem revelar o desfecho; apresentar a anatomia como critérios a perseguir e a citação revoltante como opcional; remover linguagem prescritiva/"clickbait" e CAPS
+- [X] T005 [US2] Reescrever a abertura das partes (item 5) em `src/proxies/prompts/two_part_story.jinja2` para que, após "Parte 1.", a narração entre direto no conflito/stakes (sem preâmbulo) dando continuidade à promessa do título (depende de T004 — mesmo arquivo)
+- [X] T006 [P] [US1] Adicionar o campo `title` (gancho forte traduzido, idêntico ao trecho de `part1` antes de "Parte 1.") a cada entrada de `src/proxies/examples/two_part_story.yaml`, e revisar títulos que revelam o desfecho (ex.: "Fiz minha chefe ser demitida…") para liderarem pelo dano/injustiça sem entregar o resultado (H5)
+- [X] T007 [US1] Atualizar o bloco `# EXAMPLES` em `src/proxies/prompts/two_part_story.jinja2` para referenciar `{{ example.title }}` (e `narrator_gender`) no "Expected Output JSON", substituindo `{{ example.original_post.title }}` (depende de T005, T006)
+- [X] T008 [P] [US1] Adicionar teste de guarda em `tests/services/test_hook_quality.py`: para cada exemplo, `title` == prefixo de `part1` antes de "Parte 1.", `assert_no_forbidden_words` em `title`/`part1`/`part2`, e `assert_two_part_structure` válido
 
 ### Live verification (milestone gate)
 
-- [ ] T009 [US1] Gerar roteiros para a amostra pelo caminho ativo, revisar contra `contracts/hook_anatomy.md` (títulos H1–H6 ≥ 80%, aberturas O1 ≥ 80%), rodar `pytest tests/services/test_hook_quality.py -q` (verde), reavaliar a nota "gancho" e confirmar melhora vs. baseline (T001)
+- [X] T009 [US1] Gerar roteiros para a amostra pelo caminho ativo, revisar contra `contracts/hook_anatomy.md` (títulos H1–H6 ≥ 80%, aberturas O1 ≥ 80%), rodar `pytest tests/services/test_hook_quality.py -q` (verde), reavaliar a nota "gancho" e confirmar melhora vs. baseline (T001)
+  - **Portão automático — PASSOU**: `.venv/bin/pytest tests/services/test_hook_quality.py -q` → `3 passed`
+    (contrato/marcadores/CTA preservados; `title` == prefixo de `part1`; sem palavras proibidas em título/part1/part2).
+    Suíte completa `tests/services/` → `48 passed`. Render do template validado: usa
+    `example.title` + `narrator_gender`, sem `original_post.title`.
+  - **Portão manual/LLM — PASSOU** (LLM `moonshotai/kimi-k2.6` via OpenRouter, amostra fixa de 3 posts):
+    - Títulos H1–H6: **3/3 = 100%** (≥ 80% ✅) — lideram por dano/injustiça, vítima + antagonista, dano concreto, tom falado, **sem revelar o desfecho**.
+    - Aberturas O1: **3/3 = 100%** (≥ 80% ✅) — entram direto no conflito após "Parte 1.", sem preâmbulo.
+    - Contrato/marcadores/CTA + sem palavras proibidas: 100% da amostra ✅.
+    - Nota "gancho" média: **93.0 (depois) vs 92.3 (baseline) → +0.7 ✅** (SC-001). Evidência em `baseline-gancho.md`, `results-after.json`, `results-baseline.json`.
 
-**Checkpoint**: Milestone 1 DONE — MVP entregável (1 PR).
+**Checkpoint**: Milestone 1 DONE — MVP entregável (1 PR). Portão automático + manual/LLM aprovados.
 
 ---
 

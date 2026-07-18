@@ -1,0 +1,34 @@
+{
+  "mode": "after",
+  "model": "moonshotai/kimi-k2.6",
+  "avg_gancho": 93.0,
+  "results": [
+    {
+      "source_title": "My neighbor kept parking in my reserved spot, so I had his car towed every single day",
+      "gen_title": "Meu vizinho novo ficava estacionando na minha vaga paga e riu na minha cara quando eu reclamei",
+      "part1": "Meu vizinho novo ficava estacionando na minha vaga paga e riu na minha cara quando eu reclamei. Parte 1. Eu alugo uma vaga no estacionamento do meu prédio, pago a mais por ela, e tem o número bem claro na parede. Faz uns meses chegou um vizinho novo e começou a estacionar o BMW dele justamente na minha vaga. Deixei bilhetes, pedi com educação, cheguei a falar com o síndico. Sabe o que ele me disse? \"Boa sorte provando que é sua.\" E deu risada. Eu fiquei quieto, mas não esqueci. Liguei pra empresa de guincho que o prédio tem contrato, passei meu número de vaga e uma foto. Eles levaram o carro dele. Ele ficou furioso e teve que pagar 250 dólares pra recuperar. No dia seguinte ele fez de novo. Então eu liguei de novo. E de novo. Na quarta vez numa semana... Curta e me siga para a parte 2.",
+      "part2": "Meu vizinho novo ficava estacionando na minha vaga paga e riu na minha cara quando eu reclamei. Parte 2. Na quarta vez numa semana, ele finalmente aprendeu. Parou de estacionar na minha vaga e agora deixa o carro duas quadras dali. Tudo porque eu simplesmente usei o que já tinha direito. Ele achou que ia passar por cima de mim e rir da minha cara, mas quem riu por último fui eu. E você, teria paciência de pedir mais vezes ou faria a mesma coisa? Curta, me siga e deixa nos comentários.",
+      "gancho_nota": 91,
+      "gancho_justificativa": "O título é um gancho poderoso que cria identificação imediata e promete justiça contra um antagonista que riu da cara do protagonista, fazendo o espectador parar o scroll para ver o desfecho.",
+      "nota_geral": 88.4
+    },
+    {
+      "source_title": "My sister tried to ban my kids from her wedding, then demanded I still pay for the open bar",
+      "gen_title": "Minha irmã baniu meus filhos do casamento dela e ainda exigiu que eu pagasse 3 mil dólares no bar aberto",
+      "part1": "Minha irmã baniu meus filhos do casamento dela e ainda exigiu que eu pagasse 3 mil dólares no bar aberto. Parte 1. Minha irmã, que tem 29 anos, vai casar. Dois meses atrás ela anunciou que o casamento seria sem crianças. Beleza, escolha dela. Só que ela disse especificamente que meus três filhos não eram bem-vindos, enquanto os filhos da nossa prima foram convidados pra serem daminhas. Aquilo magoou, mas eu disse que tudo bem, eu iria. Sem problema. Aí semana passada ela me ligou e lembrou que eu tinha prometido pagar o bar aberto da festa. Três mil dólares. Só que eu nunca prometi nada disso. E quando ela veio com essa cobrança absurda, eu decidi que não ia deixar barato. Curta e me siga para a parte 2.\n",
+      "part2": "Minha irmã baniu meus filhos do casamento dela e ainda exigiu que eu pagasse 3 mil dólares no bar aberto. Parte 2. Eu falei pra ela que nunca tinha prometido nada. E completei: se meus filhos não são família o suficiente pra estar no casamento, a minha carteira também não é família o suficiente pra bancar a festa. Ela pirou. Começou a me chamar de egoísta, disse que eu tava estragando o dia mais importante da vida dela. E pra piorar, a nossa mãe tá do lado dela, dizendo que eu deveria ajudar porque é família. Eu fiquei firme. Não vou pagar um centavo. E vocês, teriam pagado os 3 mil mesmo assim? Curta, me siga e deixe nos comentários.\n",
+      "gancho_nota": 95,
+      "gancho_justificativa": "O título combina duas injustiças absurdas em uma única frase, funcionando como um gancho impecável. A abertura cria um laço de curiosidade irresistível sobre a reação da protagonista.",
+      "nota_geral": 89.8
+    },
+    {
+      "source_title": "My manager took credit for my project in front of the CEO, so I let him present the part I broke",
+      "gen_title": "Meu chefe tirou o crédito do meu projeto de três meses na frente do CEO e me proibiu de ir na apresentação",
+      "part1": "Meu chefe tirou o crédito do meu projeto de três meses na frente do CEO e me proibiu de ir na apresentação. Parte 1. Eu passei três meses desenvolvendo um painel pra cliente que a diretoria tava super empolgada. Meu gerente, o Lucas, marcou uma demonstração com o CEO e falou que eu não precisava estar lá. Só que eu descobri que ele ia apresentar tudo como se fosse trabalho dele. Três meses do meu esforço, e ele ia simplesmente levar o crédito? Fiquei furiosa. Então, antes da apresentação, sem ninguém perceber, eu voltei uma funcionalidade principal pra versão antiga que não funcionava direito, e deixei todo o resto impecável. A apresentação tava prestes a começar e eu tava na minha mesa, só observando. Curta e me siga para a parte 2.\n",
+      "part2": "Meu chefe tirou o crédito do meu projeto de três meses na frente do CEO e me proibiu de ir na apresentação. Parte 2. Durante a demonstração, o CEO pediu pra ele clicar naquela funcionalidade específica. Deu erro na hora. O CEO começou a fazer perguntas técnicas sobre como aquilo funcionava, e o Lucas não conseguiu responder nada. Ele ficou perdido, gaguejando. Depois da reunião, o CEO me chamou de lado, porque um colega tinha comentado que eu que construí tudo aquilo. A cara do Lucas quando descobriu que eu era a verdadeira responsável pelo projeto? Impagável. E você, já passou por algo assim com um chefe? Curta, me siga e deixe nos comentários.\n",
+      "gancho_nota": 93,
+      "gancho_justificativa": "O título gera raiva instantânea e curiosidade ('proibiu de ir na apresentação'), e a primeira frase estabelece imediatamente o conflito e um loop emocional irresistível.",
+      "nota_geral": 89.6
+    }
+  ]
+}
