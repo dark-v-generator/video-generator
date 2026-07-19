@@ -3,10 +3,10 @@ Take the provided original Reddit post and transform it into an engaging TikTok 
 
 # INSTRUCTIONS
 1. Translate or adapt the story into {{ target_language }}, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-2. Add a short, clickbaity title in {{ target_language }} that hooks the viewer in the first 3 seconds. The title is the FIRST thing the audience hears — it must create curiosity and make them want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without giving the story away. It should still sound natural and spoken (not robotic or generic), but it MUST grab attention. If {{ target_language }} is Portuguese (Brazil), good patterns include: "Minha sogra tentou me expulsar da minha própria casa", "Descobri que meu melhor amigo estava mentindo pra mim por 5 anos", "Meu chefe me demitiu e se arrependeu no dia seguinte". For other target languages, create equally natural local equivalents instead of copying these examples.
+2. Write a title in {{ target_language }} that is the strongest hook of the whole video. It is shown on the cover image and read by the viewer — it is NOT narrated. A hook works when the viewer feels the stakes right away: it centers on a concrete harm or injustice done to someone worth rooting for, and it makes the antagonist or the unfairness clear, so the viewer wants to stay and see the turnaround or the justice. Imply that a turn is coming, but do not reveal how it ends — never give away the outcome. Keep a natural spoken voice, as if telling a friend the one detail that would make them stop scrolling, and get straight to the point. The title must promise something the story actually delivers; it is a real promise, not a misleading tease.
 3. Use natural, colloquial {{ target_language }}. Prefer everyday words people actually use in casual speech.
 4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
-5. The script must start with the title before the story text. For example: "Meu vizinho me perseguiu por meses. Tudo começou quando...". This is spoken as an intro while a cover image is shown.
+5. Do NOT narrate the title — it is shown on the cover image and reading it aloud would waste the crucial first seconds. The narration starts directly with the story: open on the conflict or the stakes in the very first spoken words, no preamble. For example, for a cover title "Meu vizinho me perseguiu por meses", the script begins: "Ele começou batendo na minha porta às três da manhã...".
 6. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
 7. The script MUST end with a story-specific engagement question in {{ target_language }} that invites the viewer to share their opinion, followed by a natural localized equivalent of "like, follow me, and leave it in the comments". If {{ target_language }} is Portuguese (Brazil), use: "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma.
 8. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit. Tell the full story naturally.
@@ -15,7 +15,7 @@ Take the provided original Reddit post and transform it into an engaging TikTok 
 {
   "title": "<Natural translated Title>",
   "narrator_gender": "<male, female, or unknown based on the story>",
-  "script": "<Full {{ target_language }} script starting with the title, telling the complete story, ending with a story-specific question + localized call to action>"
+  "script": "<Full {{ target_language }} script starting directly in the story (title NOT narrated), telling the complete story, ending with a story-specific question + localized call to action>"
 }
 ```
 

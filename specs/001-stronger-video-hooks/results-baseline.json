@@ -1,0 +1,34 @@
+{
+  "mode": "baseline",
+  "model": "moonshotai/kimi-k2.6",
+  "avg_gancho": 92.3,
+  "results": [
+    {
+      "source_title": "My neighbor kept parking in my reserved spot, so I had his car towed every single day",
+      "gen_title": "Meu vizinho de BMW achou que minha vaga era dele. Eu fiz ele estacionar a dois quarteirões de casa.",
+      "part1": "Meu vizinho de BMW achou que minha vaga era dele. Eu fiz ele estacionar a dois quarteirões de casa. Parte 1. Eu alugo uma vaga na garagem do meu prédio e pago a parte por ela. Tem meses que o meu vizinho novo, o Ricardo, ficava estacionando o BMW dele na minha vaga, que tem o número bem clarinho. Eu deixei bilhete no carro dele, pedi educado, até falei com o síndico. Ele só deu risada e falou \"boa sorte provando que é sua\". Eu tava ficando sem paciência. Paguei por aquela vaga, era minha, e o cara ainda ria da minha cara. Cheguei num ponto que decidi que não ia mais pedir. Eu ia fazer ele aprender da forma difícil. Curta e me siga para a parte 2.",
+      "part2": "Meu vizinho de BMW achou que minha vaga era dele. Eu fiz ele estacionar a dois quarteirões de casa. Parte 2. Liguei pra empresa de reboque que o prédio tem contrato e passei o número da minha vaga junto com uma foto. Eles rebocaram o carro do Ricardo. Ele ficou furioso e teve que pagar 250 dólares pra pegar o carro de volta. Só que no dia seguinte, adivinha? Ele estava lá de novo. Então liguei de novo. E de novo. Depois do quarto reboque em uma semana, ele finalmente parou. Agora ele estaciona a dois quarteirões de casa. E você, o que faria se seu vizinho usasse sua vaga de garagem? Curta, me siga e deixe nos comentários.",
+      "gancho_nota": 90,
+      "gancho_justificativa": "O título funciona como uma promessa de vingança irresistível e a revelação da arrogância do vizinho nos primeiros segundos cria um loop de curiosidade forte o suficiente para impedir o scroll.",
+      "nota_geral": 88.4
+    },
+    {
+      "source_title": "My sister tried to ban my kids from her wedding, then demanded I still pay for the open bar",
+      "gen_title": "Minha irmã baniu meus filhos do casamento dela e ainda quis que eu pagasse o open bar",
+      "part1": "Minha irmã baniu meus filhos do casamento dela e ainda quis que eu pagasse o open bar. Parte 1. Minha irmã, a Camila, tá pra se casar. Ela tem 29 anos. Dois meses atrás ela anunciou que o casamento dela ia ser sem crianças. Tudo bem, é a escolha dela, né? Só que ela chegou e falou especificamente que os meus três filhos não podiam ir. Enquanto isso, as crianças do nosso primo foram convidadas pra serem daminhas. Aquilo doeu demais, mas eu engoli seco e falei que tudo bem, que eu ia sozinha. Agora, semana passada, ela me ligou do nada e soltou que eu tinha prometido pagar o open bar. Três mil. Falou isso na maior cara de pau, como se a gente tivesse combinado. Eu fiquei em choque. E foi aí que eu decidi que não ia deixar passar. Curta e me siga para a parte 2.",
+      "part2": "Minha irmã baniu meus filhos do casamento dela e ainda quis que eu pagasse o open bar. Parte 2. Eu respondi na lata que eu nunca tinha prometido nada. E falei mais: se meus filhos não são família o suficiente pra participar do casamento, a minha carteira também não é família o suficiente pra financiar a festa. Ela pirou. Me chamou de egoísta, disse que eu tava estragando o dia mais importante da vida dela. E a nossa mãe ainda tá do lado dela, falando que eu devia pagar porque é minha irmã. Gente, eu tô chocada. Meus filhos são excluídos, as crianças do primo vão ser daminhas, e eu ainda tenho que bancar bebida pra todo mundo? Não vai rolar. E você, o que faria no meu lugar? Curta, me siga e deixe nos comentários.",
+      "gancho_nota": 95,
+      "gancho_justificativa": "O título já funciona como um gancho irresistível ao contrastar a exclusão dos sobrinhos com a cobrança de três mil reais, criando uma curiosidade imediata e um loop aberto poderoso.",
+      "nota_geral": 91.0
+    },
+    {
+      "source_title": "My manager took credit for my project in front of the CEO, so I let him present the part I broke",
+      "gen_title": "Meu chefe me excluiu da apresentação pro CEO pra roubar meu projeto",
+      "part1": "Meu chefe me excluiu da apresentação pro CEO pra roubar meu projeto. Parte 1. Eu passei três meses desenvolvendo um dashboard pra área de clientes que a diretoria tava super empolgada. Meu gerente, o Ricardo, marcou uma reunião de demonstração com o CEO e me falou que eu 'não precisava ir'. Só que eu descobri que ele ia apresentar tudo como se fosse trabalho dele. Eu fiquei furiosa. Tipo, três meses da minha vida e ele ia simplesmente aparecer como o autor? Sem chance. Na véspera da apresentação, eu entrei no sistema e mudei uma função principal de volta pra uma versão antiga que tava quebrada. Deixei o resto perfeito, sem erro nenhum. Aí chegou o grande dia. O CEO entrou na sala, todo mundo sentou, e eu fiquei assistindo de longe. Curta e me siga para a parte 2.",
+      "part2": "Meu chefe me excluiu da apresentação pro CEO pra roubar meu projeto. Parte 2. No meio da apresentação, o CEO pediu pro Ricardo clicar justamente naquela função que eu tinha alterado. Claro que deu erro. Tela travada, nada funcionava. Aí o CEO começou a questionar: 'E como é que funciona esse algoritmo? Qual a lógica por trás disso?' O Ricardo não conseguiu responder uma pergunta técnica sequer. Ficou gaguejando, passando vergonha na frente de todo mundo. Depois da reunião, o CEO me chamou de canto. Um colega meu tinha comentado que eu quem tinha construído tudo do zero. Aí a verdade veio à tona. E você, já teve um chefe que tentou roubar seu mérito? O que teria feito no meu lugar? Curta, me siga e deixe nos comentários.",
+      "gancho_nota": 92,
+      "gancho_justificativa": "O título já funciona como um gancho irresistível ao prometer roubo de mérito e vingança, e a abertura imediata com a injustiça cria uma curiosidade instantânea para ver o desfecho.",
+      "nota_geral": 87.6
+    }
+  ]
+}

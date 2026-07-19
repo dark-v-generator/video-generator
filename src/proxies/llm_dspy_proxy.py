@@ -17,9 +17,9 @@ class TwoPartTikTokStorySignature(dspy.Signature):
 
     Requirements:
     1. Translate or adapt the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Add a short, clickbaity title in the requested target_language that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to stay for the full story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, but it MUST grab attention.
+    2. Write a title in the requested target_language that is the strongest hook of the whole video. It is shown on the cover image and read by the viewer — it is NOT narrated. Lead by concrete harm or injustice done to someone worth rooting for, with a clear antagonist or unfairness, imply a turn is coming without revealing the outcome, and keep a natural spoken voice.
     3. Use natural, colloquial target_language. Prefer everyday words people actually use in casual speech.
-    4. Each part must start with the title followed by the localized equivalent of "Part 1." or "Part 2." before the story text. Use "Parte 1."/"Parte 2." for Portuguese (Brazil).
+    4. Do NOT narrate the title or a "Part 1."/"Part 2." marker — they are shown on the cover image. Each part's narration begins directly in the story, opening on the conflict or the stakes in the first spoken words.
     5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
     6. Part 1 must end on suspense, with a localized call to action equivalent to "like and follow me for part 2". For Portuguese (Brazil), use "Curta e me siga para a parte 2."
     7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
@@ -54,16 +54,16 @@ class TwoPartTikTokStorySignature(dspy.Signature):
     reddit_post_text = dspy.InputField(desc="The original content of the story.")
 
     viral_title = dspy.OutputField(
-        desc="A short, clickbaity translated title that hooks the viewer in the first 3 seconds. Must create curiosity and make the audience want to hear the story. Use open loops or tease unexpected outcomes. Sound natural and spoken, not robotic."
+        desc="The strong hook shown on the COVER image (read by the viewer, NOT narrated). Leads by concrete harm/injustice with a clear victim and antagonist, without revealing the outcome. Natural and spoken in tone."
     )
     narrator_gender = dspy.OutputField(
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     part1_script = dspy.OutputField(
-        desc="Part 1: starts with '{title}. {localized Part 1 marker}.' then the setup and context, ending before the climax with suspense and a localized call to action."
+        desc="Part 1: begins directly in the story (NO title, NO 'Parte N.' marker), opening on the conflict/stakes, then the setup and context, ending before the climax with suspense and a localized call to action."
     )
     part2_script = dspy.OutputField(
-        desc="Part 2: starts with '{title}. {localized Part 2 marker}.' then the climax and resolution, ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
+        desc="Part 2: continues directly in the story (NO title, NO 'Parte N.' marker), the climax and resolution, ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
     )
 
 
@@ -74,9 +74,9 @@ class TikTokStorySignature(dspy.Signature):
 
     Requirements:
     1. Translate or adapt the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Add a short, clickbaity title in the requested target_language that hooks the viewer in the first 3 seconds. The title must create curiosity and make the audience want to hear the story. Use open loops, tease unexpected outcomes, or hint at drama without spoiling. It should still sound natural and spoken, not robotic.
+    2. Write a title in the requested target_language that is the strongest hook of the whole video. It is shown on the cover image and read by the viewer — it is NOT narrated. Lead by concrete harm or injustice done to someone worth rooting for, with a clear antagonist or unfairness, imply a turn is coming without revealing the outcome, and keep a natural spoken voice.
     3. Use natural, colloquial target_language. Prefer everyday words people actually use in casual speech.
-    4. The script must start with the title before the story text. Example: "Meu vizinho me perseguiu por meses. Tudo começou quando...".
+    4. Do NOT narrate the title — it is shown on the cover image. The script begins directly in the story, opening on the conflict or the stakes. Example cover title "Meu vizinho me perseguiu por meses" → script begins "Ele começou batendo na minha porta às três da manhã...".
     5. Tell the COMPLETE story in a single script — setup, climax, and resolution. Do NOT split it into parts.
     6. The script MUST end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
     7. TikTok allows videos from 15 seconds up to 10 minutes. Use as much time as the story needs — do NOT rush or cut content to fit a short time limit.
@@ -111,13 +111,13 @@ class TikTokStorySignature(dspy.Signature):
     reddit_post_text = dspy.InputField(desc="The original content of the story.")
 
     viral_title = dspy.OutputField(
-        desc="A short, clickbaity translated title that hooks the viewer in the first 3 seconds. Must create curiosity and make the audience want to hear the story. Use open loops or tease unexpected outcomes. Sound natural and spoken, not robotic."
+        desc="The strong hook shown on the COVER image (read by the viewer, NOT narrated). Leads by concrete harm/injustice with a clear victim and antagonist, without revealing the outcome. Natural and spoken in tone."
     )
     narrator_gender = dspy.OutputField(
         desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
     )
     script = dspy.OutputField(
-        desc="The complete story script: starts with '{title}.' then the full story (setup, climax, resolution), ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
+        desc="The complete story script: begins directly in the story (NO title narrated), the full story (setup, climax, resolution), ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
     )
 
 
@@ -300,13 +300,10 @@ class DSPyLLMProxy(ILLMProxy):
                     if data:
                         for entry in data:
                             post = entry.get("original_post", {})
-                            # Extract viral title from part1 (first sentence)
                             part1_text = entry.get("part1", "")
-                            viral_title = (
-                                part1_text.split(". Parte 1.")[0].strip()
-                                if ". Parte 1." in part1_text
-                                else post.get("title", "")
-                            )
+                            # The cover hook is the explicit `title` field; it is not
+                            # embedded in the narration anymore.
+                            viral_title = entry.get("title") or post.get("title", "")
                             examples.append(
                                 dspy.Example(
                                     target_language="Portuguese",

@@ -13,6 +13,9 @@ class Secrets(BaseSettings):
     legnext_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
+    reddit_client_id: Optional[str] = None
+    reddit_client_secret: Optional[str] = None
+    reddit_user_agent: str = "video-generator/0.1"
 
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"

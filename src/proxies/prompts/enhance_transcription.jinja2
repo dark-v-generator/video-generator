@@ -8,8 +8,7 @@ Rules:
 2. Maintain the timestamp information as accurately as possible.
 3. If merging words, combine their text and use the earliest 'start' and latest 'end'.
 4. If modifying a word, keep its original 'start' and 'end'.
-5. Remove the introduction (the title and localized "Part 1." or "Part 2." marker, such as "Parte 1." or "Parte 2.") from the output. These words are displayed as a cover image so they should not appear in the captions. Start the output from the first word after that marker.
-6. Only return the modified JSON array of objects. Do not wrap it in markdown or add outside commentary.
+5. Only return the modified JSON array of objects. Do not wrap it in markdown or add outside commentary.
 
 {% if examples %}
 {% for example in examples %}

@@ -240,6 +240,8 @@ class StoryFinderService:
         finalists: List[StoryCandidate] = []
         target_language = language or Language.PORTUGUESE
         subreddit_names = subreddits or self._config.subreddits
+        fetched_subreddits = 0
+        fetch_failures: list[str] = []
 
         for sub in subreddit_names:
             logger.info("Fetching posts from r/%s ...", sub)
@@ -252,10 +254,12 @@ class StoryFinderService:
                     min_chars=self._config.min_chars,
                     max_chars=self._config.max_chars,
                 )
-            except Exception:
+            except Exception as exc:
                 logger.exception("Failed to fetch r/%s, skipping", sub)
+                fetch_failures.append(f"r/{sub}: {type(exc).__name__}: {exc}")
                 continue
 
+            fetched_subreddits += 1
             scored = score_candidates(posts)
             scored.sort(key=lambda c: c.deterministic_score, reverse=True)
             picked = scored[:top_per_sub]
@@ -266,6 +270,15 @@ class StoryFinderService:
                 len(posts),
                 len(picked),
                 picked[0].deterministic_score if picked else 0,
+            )
+
+        if subreddit_names and fetched_subreddits == 0:
+            details = "; ".join(fetch_failures[:3])
+            if len(fetch_failures) > 3:
+                details += f"; ... (+{len(fetch_failures) - 3} subreddits)"
+            raise RuntimeError(
+                "Não foi possível buscar posts no Reddit em nenhum subreddit. "
+                f"Detalhes: {details}"
             )
 
         logger.info(

@@ -50,17 +50,7 @@ class VideoService:
     ) -> YouTubeCompilationResult:
         """Create video compilation from YouTube content"""
 
-        channel_url = self._select_youtube_channel_url()
-        logger.info("Creating YouTube compilation from channel %s", channel_url)
-
-        video_ids = await self._youtube_proxy.list_video_ids(
-            channel_url,
-            surface=self._video_config.youtube_surface,
-        )
-
-        pool = self._video_config.youtube_pool_size
-        if pool > 0:
-            video_ids = video_ids[:pool]
+        video_ids = await self._list_youtube_compilation_video_ids()
         random.shuffle(video_ids)
 
         video = video_clip.VideoClip()
@@ -100,7 +90,60 @@ class VideoService:
             )
         return YouTubeCompilationResult(clip=video, downloaded_bytes=downloaded_bytes)
 
-    def _select_youtube_channel_url(self) -> str:
+    async def _list_youtube_compilation_video_ids(self) -> List[str]:
+        channel_urls = self._youtube_channel_urls()
+        strategy = self._video_config.youtube_channel_strategy
+
+        if strategy == "random":
+            channel_url = random.choice(channel_urls)
+            logger.info("Creating YouTube compilation from channel %s", channel_url)
+            return await self._list_channel_video_ids(channel_url)
+
+        if strategy == "all":
+            logger.info(
+                "Creating YouTube compilation from %d configured channels",
+                len(channel_urls),
+            )
+            video_ids: List[str] = []
+            seen: set[str] = set()
+            failures: list[str] = []
+
+            for channel_url in channel_urls:
+                try:
+                    channel_video_ids = await self._list_channel_video_ids(channel_url)
+                except Exception as exc:
+                    logger.exception(
+                        "Skipping YouTube channel %s after list failure", channel_url
+                    )
+                    failures.append(f"{channel_url}: {exc}")
+                    continue
+
+                for video_id in channel_video_ids:
+                    if video_id not in seen:
+                        seen.add(video_id)
+                        video_ids.append(video_id)
+
+            if not video_ids and failures:
+                raise RuntimeError(
+                    "Failed to list usable YouTube backgrounds from any configured "
+                    f"channel. First failure: {failures[0]}"
+                )
+            return video_ids
+
+        raise ValueError(f"Unknown YouTube channel strategy: {strategy}")
+
+    async def _list_channel_video_ids(self, channel_url: str) -> List[str]:
+        video_ids = await self._youtube_proxy.list_video_ids(
+            channel_url,
+            surface=self._video_config.youtube_surface,
+        )
+
+        pool = self._video_config.youtube_pool_size
+        if pool > 0:
+            return video_ids[:pool]
+        return video_ids
+
+    def _youtube_channel_urls(self) -> List[str]:
         channel_urls = [
             url.strip()
             for url in self._video_config.youtube_channel_urls
@@ -110,7 +153,7 @@ class VideoService:
             channel_urls = [self._video_config.youtube_channel_url.strip()]
         if not channel_urls:
             raise ValueError("At least one YouTube channel URL must be configured")
-        return random.choice(channel_urls)
+        return channel_urls
 
     def generate_video(
         self,

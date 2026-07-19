@@ -60,7 +60,14 @@ class VideoConfig(BaseYAMLModel):
     )
     end_silece_seconds: int = Field(3, title="End silence seconds")
     padding: int = Field(60, title="Padding")
-    cover_duration: int = Field(5, title="Cover duration")
+    cover_duration: int = Field(
+        3,
+        title=(
+            "Cover overlay duration in seconds. The cover (title + 'Parte N.') is "
+            "shown over the start of the story while it is already being narrated, "
+            "since the title is no longer narrated. Keep it short."
+        ),
+    )
     width: int = Field(1080, title="Width of the video")
     height: int = Field(1920, title="Height of the video")
     youtube_channel_url: str = Field(
@@ -69,11 +76,18 @@ class VideoConfig(BaseYAMLModel):
     )
     youtube_channel_urls: List[str] = Field(
         default_factory=list,
-        title="YouTube channel urls to randomly choose from",
+        title="YouTube channel urls available for background clips",
+    )
+    youtube_channel_strategy: Literal["random", "all"] = Field(
+        "random",
+        title=(
+            "How to use configured YouTube channels: random selects one channel, "
+            "all merges candidates from every channel."
+        ),
     )
     youtube_pool_size: int = Field(
         50,
-        title="Only consider the N newest videos from the channel. 0 = all.",
+        title="Only consider the N newest videos per selected channel. 0 = all.",
     )
     youtube_surface: Literal["videos", "shorts"] = Field(
         "videos",

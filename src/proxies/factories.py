@@ -132,11 +132,21 @@ class SpeechProxyFactory:
 
 class RedditProxyFactory:
     @staticmethod
-    def create(config: RedditConfigType) -> IRedditProxy:
+    def create(
+        config: RedditConfigType,
+        reddit_client_id: str = None,
+        reddit_client_secret: str = None,
+        reddit_user_agent: str = None,
+    ) -> IRedditProxy:
         if isinstance(config, BS4RedditConfig):
             return BS4RedditProxy(config=config)
         elif isinstance(config, JsonRedditConfig):
-            return JsonRedditProxy(config=config)
+            return JsonRedditProxy(
+                config=config,
+                client_id=reddit_client_id,
+                client_secret=reddit_client_secret,
+                user_agent=reddit_user_agent,
+            )
         else:
             raise ValueError(f"Unknown Reddit Configuration: {type(config)}")
 
@@ -209,5 +219,4 @@ class CoverProxyFactory:
             return PlaywrightCoverProxy(title_font_size=config.title_font_size)
         else:
             raise ValueError(f"Unknown Cover Configuration: {type(config)}")
-
 

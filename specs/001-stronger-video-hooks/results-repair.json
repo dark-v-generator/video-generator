@@ -1,0 +1,39 @@
+{
+  "model": "moonshotai/kimi-k2.6",
+  "avg_gancho": 87.0,
+  "all_checks_pass": true,
+  "results": [
+    {
+      "title": "Meu vizinho novo achou graça em estacionar na minha vaga reservada todo santo dia",
+      "p1_head": "Eu alugo uma vaga no estacionamento do meu prédio e pago a mais por ela. Aí chegou um vizi",
+      "p2_head": "Depois da quarta vez que o guincho levou o carro dele numa semana, o vizinho finalmente en",
+      "checks": {
+        "title_present": true,
+        "p1_not_start_title": true,
+        "p2_not_start_title": true,
+        "p1_no_marker_head": true,
+        "p2_no_marker_head": true
+      },
+      "gancho": 87
+    },
+    {
+      "title": "Meu chefe me excluiu da apresentação pro CEO pra levar o crédito do meu projeto de três meses",
+      "p1_head": "Eu passei três meses construindo um painel de controle pra cliente que a diretoria tava su",
+      "p2_head": "No dia da apresentação, o CEO pediu pro Marcelo clicar justamente naquela funcionalidade. ",
+      "checks": {
+        "title_present": true,
+        "p1_not_start_title": true,
+        "p2_not_start_title": true,
+        "p1_no_marker_head": true,
+        "p2_no_marker_head": true
+      },
+      "gancho": 87
+    }
+  ],
+  "errors": [
+    {
+      "source_title": "My sister tried to ban my kids from her wedding, then demanded I still pay for the open bar",
+      "error": "Could not parse valid JSON from LLM: Unterminated string starting at: line 4 column 12 (char 156)"
+    }
+  ]
+}
