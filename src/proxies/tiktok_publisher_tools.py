@@ -177,6 +177,158 @@ async def _eval_js(browser_session, expression: str) -> dict:
     return {"value": None}
 
 
+# ---------------------------------------------------------------------------
+# Caption typing (DraftJS + hashtag suggestions)
+# ---------------------------------------------------------------------------
+#
+# Written as a JS template rather than an f-string because it is mostly
+# braces. ``__SELECTOR__`` and ``__TEXT__`` are substituted with JSON.
+#
+# Why it looks like this (all of it was measured against the live page):
+#
+# * ``execCommand('insertText')`` — what this tool used to do — is NOT
+#   accepted by DraftJS. It writes to the DOM while ``editorState`` stays
+#   empty, which both loses the text on submit and corrupts Draft badly
+#   enough to trip TikTok's React error boundary.
+# * A synthetic ``paste`` ClipboardEvent goes through Draft's first-class
+#   onPaste path and IS accepted.
+# * Pasting "#tag" alone does not make it a real hashtag. TikTok only
+#   decorates the tag when it is chosen from the suggestion dropdown, so
+#   each hashtag is inserted separately and then clicked in the list.
+#
+# The reliable signal that Draft accepted input is the placeholder
+# disappearing — ``innerText`` can show text Draft never registered.
+_CAPTION_JS = r"""
+(async () => {
+  const SEL = __SELECTOR__;
+  const TEXT = __TEXT__;
+  const PLACEHOLDER = '.public-DraftEditorPlaceholder-root';
+  const MENUS = '[role="option"], [role="listbox"], [role="menu"]';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const editor = () => document.querySelector(SEL);
+  if (!editor()) return { ok: false, reason: 'selector did not match' };
+
+  const placeholderVisible = () => {
+    const ph = document.querySelector(PLACEHOLDER);
+    return !!(ph && ph.offsetParent);
+  };
+
+  // Draft needs a real caret, not just focus, or the paste is dropped.
+  function focusEnd() {
+    const el = editor();
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function hasCaret() {
+    const el = editor();
+    const sel = window.getSelection();
+    return !!(el && document.activeElement === el && sel && sel.rangeCount > 0
+              && el.contains(sel.getRangeAt(0).startContainer));
+  }
+
+  function insertPaste(text) {
+    const el = editor();
+    if (!hasCaret()) focusEnd();
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    el.dispatchEvent(new ClipboardEvent('paste', {
+      clipboardData: dt, bubbles: true, cancelable: true }));
+  }
+
+  // Select-all + paste empty string. Deliberately not execCommand.
+  function clearAll() {
+    const el = editor();
+    el.focus();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    insertPaste('');
+  }
+
+  const menusNow = () =>
+    Array.from(document.querySelectorAll(MENUS)).filter((el) => el.offsetParent);
+
+  function clickIt(item) {
+    item.scrollIntoView({ block: 'nearest' });
+    for (const type of ['mouseover', 'mousedown', 'mouseup', 'click']) {
+      item.dispatchEvent(new MouseEvent(type,
+        { bubbles: true, cancelable: true, view: window }));
+    }
+  }
+
+  // Paste "#tag", wait for the suggestion list, click the matching row.
+  // Polls rather than sleeping a fixed time — the list is a network call.
+  async function addHashtag(tag) {
+    const before = new Set(menusNow());
+    insertPaste('#' + tag);
+    let fresh = [];
+    const start = performance.now();
+    while (performance.now() - start < 4000) {
+      await sleep(250);
+      fresh = menusNow().filter((n) => !before.has(n));
+      if (fresh.length) break;
+    }
+    if (!fresh.length) {
+      // Niche/new tags may have no suggestion at all. The plain text is
+      // already in the caption; TikTok usually linkifies it on publish.
+      return { tag: tag, picked: false, reason: 'no-dropdown' };
+    }
+    const want = tag.toLowerCase();
+    const norm = (e) => (e.innerText || '').trim().toLowerCase()
+      .replace(/^#/, '').split(/\s/)[0];
+    const exact = fresh.find((e) => norm(e) === want);
+    const loose = fresh.find((e) => (e.innerText || '').toLowerCase().includes(want));
+    const item = exact || loose || fresh[0];
+    clickIt(item);
+    await sleep(700);
+    return { tag: tag, picked: true, exact: !!exact };
+  }
+
+  focusEnd();
+  clearAll();
+  await sleep(400);
+
+  const parts = TEXT.split(/(#[\p{L}\p{N}_]+)/u).filter((p) => p !== '');
+  const wanted = parts.filter((p) => p.startsWith('#')).length;
+  const results = [];
+  for (const part of parts) {
+    if (!editor()) return { ok: false, reason: 'editor disappeared mid-typing' };
+    if (part.startsWith('#')) {
+      results.push(await addHashtag(part.slice(1)));
+    } else {
+      insertPaste(part);
+      await sleep(250);
+    }
+  }
+  await sleep(600);
+
+  const el = editor();
+  if (!el) return { ok: false, reason: 'editor disappeared' };
+  const spans = Array.from(el.querySelectorAll('span'))
+    .filter((s) => (s.innerText || '').trim().startsWith('#'))
+    .map((s) => (s.innerText || '').trim());
+  return {
+    ok: true,
+    content: el.innerText,
+    draftAccepted: !placeholderVisible(),
+    hashtagsWanted: wanted,
+    hashtagsHighlighted: spans.length,
+    highlighted: spans,
+    results: results,
+  };
+})()
+"""
+
+
 def _summarize_value(val: Any, limit: int = 600) -> str:
     """Render a JS return value as a short string for the agent."""
     try:
@@ -311,48 +463,26 @@ def build_tools() -> Tools:
 
     @tools.registry.action(
         (
-            "Reliably clear and set the content of a contenteditable "
-            "element. Built for DraftJS / public-DraftEditor-content "
-            "(TikTok's caption field), which silently ignores Ctrl+A + "
-            "Delete and ignores `.value = ''`. We focus the element, "
-            "use document.execCommand('selectAll' + 'delete'), then "
-            "type with execCommand('insertText') so the editor's "
-            "internal state stays in sync. Returns the new innerText "
-            "for verification."
+            "Clear and set the content of a contenteditable element, "
+            "hashtags included. Built for DraftJS (TikTok's caption "
+            "field), which ignores `.value = ''`, Ctrl+A + Delete, and "
+            "execCommand. Plain text is inserted via a synthetic paste "
+            "event; each #hashtag in the text is inserted on its own and "
+            "then chosen from TikTok's suggestion dropdown, which is what "
+            "makes it render as a real (highlighted) hashtag instead of "
+            "inert text. Pass the WHOLE caption including hashtags in one "
+            "call — do not add hashtags in separate steps. Returns the "
+            "resulting text plus how many hashtags were highlighted."
         ),
         param_model=SetContenteditableAction,
     )
     async def set_contenteditable(
         params: SetContenteditableAction, browser_session
     ):
-        sel_json = json.dumps(params.selector)
         clean_text = params.text.replace("\n", " ").replace("\r", " ")
-        text_json = json.dumps(clean_text)
-        expr = f"""
-        (() => {{
-          const el = document.querySelector({sel_json});
-          if (!el) return {{ ok: false, reason: 'selector did not match' }};
-          el.focus();
-          // Move caret to end first (some editors anchor selection there)
-          const sel = window.getSelection();
-          if (sel) {{
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          }}
-          // Ask the browser's editing layer to do it. execCommand is
-          // deprecated in spec but still the only reliable way to
-          // trigger contenteditable mutations DraftJS will accept.
-          document.execCommand('selectAll', false, null);
-          document.execCommand('delete', false, null);
-          document.execCommand('insertText', false, {text_json});
-          // Fire input + change for any listeners that don't see exec
-          el.dispatchEvent(new InputEvent('input', {{ bubbles: true, inputType: 'insertText', data: {text_json} }}));
-          el.dispatchEvent(new Event('change', {{ bubbles: true }}));
-          return {{ ok: true, content: el.innerText }};
-        }})()
-        """
+        expr = _CAPTION_JS.replace(
+            "__SELECTOR__", json.dumps(params.selector)
+        ).replace("__TEXT__", json.dumps(clean_text))
         result = await _eval_js(browser_session, expr)
         if "error" in result:
             return ActionResult(
@@ -362,12 +492,27 @@ def build_tools() -> Tools:
         val = result["value"]
         if isinstance(val, dict) and val.get("ok"):
             content = val.get("content", "")
-            ok = content == params.text
+            wanted = val.get("hashtagsWanted", 0)
+            got = val.get("hashtagsHighlighted", 0)
+            # innerText comes back with the editor's own spacing, so
+            # compare loosely — an exact match fails on whitespace alone.
+            matches = " ".join(content.split()) == " ".join(clean_text.split())
             msg = (
                 f"set_contenteditable -> content={content!r} "
-                f"(matches expected: {ok})"
+                f"(matches expected: {matches}, "
+                f"draftAccepted: {val.get('draftAccepted')}, "
+                f"hashtags highlighted: {got}/{wanted})"
             )
             _logger.info(msg)
+            if got < wanted:
+                missed = [
+                    r.get("tag")
+                    for r in (val.get("results") or [])
+                    if not r.get("picked")
+                ]
+                _logger.warning(
+                    "caption hashtags not highlighted: %s", missed or "unknown"
+                )
             return ActionResult(extracted_content=msg, long_term_memory=msg[:200])
         return ActionResult(
             extracted_content=f"set_contenteditable -> {val}", error="failed"
