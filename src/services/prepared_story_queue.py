@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from pydantic import ValidationError
 
 from src.core.logging_config import get_logger
-from src.entities.prepared_story import PreparedStoryPackage
+from src.entities.prepared_story import StoryPackage, load_package
 
 logger = get_logger(__name__)
 
@@ -29,7 +29,7 @@ class QueuedPackage:
     """A package file in ``inbox/``, with the mtime that orders the queue."""
 
     path: str
-    package: PreparedStoryPackage
+    package: StoryPackage
     mtime: float
 
 
@@ -68,7 +68,7 @@ class PreparedStoryQueue:
             path = os.path.join(inbox, name)
             try:
                 with open(path, encoding="utf-8") as f:
-                    package = PreparedStoryPackage.model_validate_json(f.read())
+                    package = load_package(f.read())
             except (ValidationError, ValueError, OSError) as exc:
                 error = f"{name}: {exc}"
                 logger.warning("Rejecting prepared package %s: %s", path, exc)
@@ -108,7 +108,7 @@ class PreparedStoryQueue:
                 path = os.path.join(self._dir(state), name)
                 try:
                     with open(path, encoding="utf-8") as f:
-                        package = PreparedStoryPackage.model_validate_json(f.read())
+                        package = load_package(f.read())
                 except (ValidationError, ValueError, OSError):
                     # Reporting belongs to list_inbox; here a bad file simply
                     # excludes nothing.

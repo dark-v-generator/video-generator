@@ -22,8 +22,9 @@ em vez de escrever por conta própria.
 ## O que é seu e o que é do operador
 
 Você ranqueia, argumenta, redige e revisa. O operador escolhe qual história vira vídeo,
-aprova o roteiro e autoriza o envio. Essas três decisões são dele porque o custo de
-errar é um vídeo publicado no canal dele; as suas são reversíveis com um comando.
+escolhe entre um vídeo e duas partes, aprova o roteiro e autoriza o envio. Essas quatro
+decisões são dele porque o custo de errar é um vídeo publicado no canal dele; as suas
+são reversíveis com um comando.
 
 ## Passos
 
@@ -56,19 +57,42 @@ convence; uma lista fraca é informação útil.
 
 Pergunte qual delas o operador quer e espere a resposta.
 
-### 3. Escrever o roteiro
+### 3. Escolher o formato e escrever o roteiro
+
+Antes do prompt, decida com o operador se a história vira um vídeo ou duas partes. Duas
+partes valem a pena quando a história tem um gancho natural antes do desfecho — uma
+revelação que dá para segurar — ou quando o roteiro único ficaria longo demais para
+prender até o fim (na prática, quando a prévia passa de uns seis minutos). Sugira o
+formato que você acha melhor e diga por quê, mas quem decide é o operador: duas partes
+dobram o alcance quando o gancho funciona e desperdiçam os dois vídeos quando não.
+
+Um vídeo:
 
 ```bash
 just story-prompt N
 ```
 
+Duas partes:
+
+```bash
+just story-prompt N --two-part
+```
+
 A saída é, byte a byte, o prompt que o servidor enviaria ao modelo de roteiro, já com o
-post embutido. Siga-o como se fosse você o modelo e responda no JSON que ele pede
-(`title`, `narrator_gender`, `script`).
+post embutido. Siga-o como se fosse você o modelo e responda no JSON que ele pede —
+`title`, `narrator_gender` e `script` no formato único; `title`, `narrator_gender`,
+`part1` e `part2` no de duas partes.
 
 Depois monte o pacote completo em `output/prepared/<post_id>.json`, onde `<post_id>` é
-o id que aparece na URL do post depois de `/comments/`. O esquema, com um exemplo
-mínimo válido, está em `specs/003-local-story-prep/contracts/prepared_story_package.md`.
+o id que aparece na URL do post depois de `/comments/`. O esquema das duas formas, com
+um exemplo mínimo válido de cada, está em
+`specs/003-local-story-prep/contracts/prepared_story_package.md`. Um pacote de duas
+partes tem `"version": 2` e troca `script_text` por `part1_text` e `part2_text`; o
+`story_title` é um só, sem sufixo — o servidor acrescenta ` - Parte 1` e ` - Parte 2`
+nas capas. A parte 1 precisa terminar com a chamada que o prompt fixa
+(`Curta e me siga para a parte 2.` em português), e a validação recusa o pacote se ela
+faltar.
+
 Dois campos não vêm do prompt e são seus:
 
 - `summary`: 3 a 5 frases cobrindo os pontos principais da trama. O servidor usa isso no
@@ -100,10 +124,16 @@ just story-preview output/prepared/<post_id>.json
 ```
 
 O mp3 sai em `output/prepared/<post_id>.preview.mp3`, com a voz do `resolved_gender` e
-a velocidade de produção — é literalmente o áudio que o vídeo teria. Peça ao operador
-para ouvir. Um roteiro que lê bem nem sempre soa bem: frase longa demais, nome difícil
-de pronunciar, sequência de números. Se ele pedir ajustes, volte ao passo 5 e gere a
-prévia de novo (o arquivo é substituído).
+a velocidade de produção — é literalmente o áudio que o vídeo teria. Um pacote de duas
+partes gera dois arquivos, `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3`,
+e o comando imprime a duração de cada um e o total.
+
+Peça ao operador para ouvir. Um roteiro que lê bem nem sempre soa bem: frase longa
+demais, nome difícil de pronunciar, sequência de números. Nas duas partes, o que se
+ouve também é se a parte 1 realmente fecha num gancho e se cada metade tem duração que
+se sustenta sozinha — se a parte 1 acabar sem tensão, é sinal de que a história era de
+um vídeo só. Se ele pedir ajustes, volte ao passo 5 e gere a prévia de novo (os
+arquivos são substituídos).
 
 ### 7. Enviar para a fila
 
@@ -125,4 +155,5 @@ just story-queue
 ```
 
 A partir daqui o servidor assume: ele produz o vídeo com o roteiro verbatim e agenda a
-publicação. Nada do que você escreveu é reinterpretado por outro modelo.
+publicação. Um pacote de duas partes vira dois vídeos, agendados em slots consecutivos
+com as mesmas hashtags. Nada do que você escreveu é reinterpretado por outro modelo.

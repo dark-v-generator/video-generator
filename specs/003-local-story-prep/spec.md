@@ -4,6 +4,8 @@
 
 **Created**: 2026-09-21
 
+**Updated**: 2026-09-22 (User Story 6: two-part stories through the prepared flow)
+
 **Status**: Draft
 
 **Input**: User description: "I want ideas to run subscription here with good models, my idea is not use my subscriptions as apis, is to manually run histories and the api will no need to run it. Like a hybrid behaviour, if nothing is done it should leave as it is today, otherwise I can run a prompt in my machine to fetch histories, choose one and prepare the script to be used, ship those informations to server and it will use it directly instead of running his own AI. First, the first steps should be local then the server: first an e2e to find histories, generate the text and the audio, to be easier to see, and a way to send to the server. I want this first because I will access the server only in 3 days."
@@ -110,6 +112,27 @@ As the operator, when the daily run starts and there are prepared stories waitin
 
 ---
 
+---
+
+### User Story 6 - Prepare a two-part story locally (Priority: P3)
+
+As the operator, when a story is too long for one video or has a natural cliffhanger before its payoff, I can ask my assistant to write it as two parts, following the same two-part editorial rules the server already owns, listen to both narrations, and send it to the queue as a single package. The daily run then produces two videos from it and schedules part 2 in the slot right after part 1.
+
+**Why this priority**: The single-script flow already covers most stories, but long posts produce eight-minute narrations that lose viewers. The two-part pipeline exists in the codebase and is used by nothing today; wiring it into the prepared flow gives the operator the choice per story without touching automatic discovery.
+
+**Independent Test**: Take one long candidate, produce a two-part package with the assistant, validate it, listen to both previews, send it, and trigger the daily run in generate-only mode: two videos come out, each with its own cover ("Parte 1" / "Parte 2"), the narration of each part verbatim, and no script model call.
+
+**Acceptance Scenarios**:
+
+1. **Given** a chosen candidate, **When** the operator asks for the two-part prompt, **Then** the assistant receives, byte for byte, the prompt the server's two-part script generation would send, including its examples.
+2. **Given** a two-part draft, **When** the operator saves it, **Then** a single package file holds the cover title, both parts, the narrator gender, the summary, the language and the source link, and is identified by the same source link as a single-script package would be.
+3. **Given** a two-part package, **When** the operator validates it, **Then** an empty part, a forbidden word in either part or in the title, a language mismatch, or a part 1 that does not end with the part-2 call to action is reported naming the part and the offending text.
+4. **Given** a validated two-part package, **When** the operator asks for a preview, **Then** two audio files are produced next to the package, one per part, and the duration of each part and the total are reported.
+5. **Given** a two-part package in the queue, **When** the daily run consumes it, **Then** it produces two videos with the part label on each cover, publishes part 1 in the next free slot and part 2 in the slot immediately after, and records both in the publish history under the same source link.
+6. **Given** a two-part package whose second video fails to produce, **When** the run continues, **Then** neither part is published, the package is moved to "failed" with the error, and the run moves on.
+7. **Given** a two-part package whose part 1 was scheduled but part 2 failed to publish, **When** the run continues, **Then** the package is moved to "failed" with an error that names the slot part 1 was scheduled in, so the operator can finish or undo it by hand.
+8. **Given** the queue is empty, **When** the daily run starts, **Then** automatic discovery still produces single-script videos only, exactly as today.
+
 ### Edge Cases
 
 - A queued package was written for a different language than the server's configured language: the server refuses that package with a clear error and moves it to "failed" rather than producing a mismatched video.
@@ -119,6 +142,9 @@ As the operator, when the daily run starts and there are prepared stories waitin
 - The queue directory does not exist yet on the server: it is created on first use, both by the sending command and by the daily run.
 - Discovery locally finds no candidates above the minimum length: the shortlist is empty and says so; nothing else happens.
 - The operator's machine lacks the Reddit credentials the server uses: discovery fails immediately with a message naming the missing credentials.
+- A two-part package reaches a server deployed before two-part support: the package is refused as an unsupported version and moved to "failed"; nothing is produced from it.
+- A two-part story is the last one of the day and only one publish slot remains today: part 2 takes the first slot of the next day, in the same way any overflow does today.
+- A single-script package written before this change is still version 1 and keeps working unchanged; the operator never has to rewrite queued packages.
 
 ## Requirements *(mandatory)*
 
@@ -140,11 +166,19 @@ As the operator, when the daily run starts and there are prepared stories waitin
 - **FR-014**: Automatic discovery MUST skip stories whose source link is queued, done, or already present in the publish history.
 - **FR-015**: Deploying the application to the server MUST NOT delete or alter queued, done or failed packages.
 - **FR-016**: Every produced video MUST record in its manifest whether its story came from a prepared package or from automatic generation.
+- **FR-017**: The operator MUST be able to choose, per story, between a single-script package and a two-part package; the two-part editorial rules MUST come from the same shared source the server's two-part script generation uses, including its examples.
+- **FR-018**: A two-part package MUST hold the cover title, the narration of part 1, the narration of part 2, the narrator gender, the resolved voice gender, the summary, the language, the source link, the creation time and optional hashtags, and MUST be distinguishable from a single-script package by its version.
+- **FR-019**: Validation of a two-part package MUST fail on an empty part, a forbidden word in the title or in either part, a language mismatch, or a part 1 that does not end with the localized part-2 call to action, and MUST name the part and the offending text.
+- **FR-020**: The audio preview of a two-part package MUST produce one file per part next to the package and report each part's duration and the total.
+- **FR-021**: The daily run MUST produce a two-part package as two videos, each with the part label on its cover and the corresponding narration verbatim, using the same voice, captions, background and call-to-action timing as single-script videos.
+- **FR-022**: The daily run MUST publish part 1 in the next free slot and part 2 in the slot immediately after it, with the same hashtags, and MUST record one publish-history row per video under the package's source link.
+- **FR-023**: A two-part story MUST count as one story toward the daily target; both of its videos MUST be produced before either is published, and a failure in producing either video MUST prevent publishing both.
+- **FR-024**: A server without two-part support MUST refuse a two-part package as an unsupported version and move it to "failed"; automatic discovery MUST keep producing single-script videos only.
 
 ### Key Entities
 
 - **Candidate**: a Reddit post found by discovery, with its engagement signals, length, community and source link; the input to the operator's choice.
-- **Prepared Story Package**: the operator-approved, self-contained result of the local flow; carries everything needed to produce and publish one video with no further AI work. Identified by its source link.
+- **Prepared Story Package**: the operator-approved, self-contained result of the local flow; carries everything needed to produce and publish one story with no further AI work. Identified by its source link. Comes in two shapes: single-script (one video) and two-part (two videos, part 2 scheduled right after part 1).
 - **Queue**: the server-side holding area for packages awaiting the daily run, with sibling "done" and "failed" areas that record the outcome of each consumed package.
 - **Daily Run**: the existing server pipeline; extended to draw from the Queue first and from discovery second.
 
@@ -159,6 +193,8 @@ As the operator, when the daily run starts and there are prepared stories waitin
 - **SC-005**: A video produced from a prepared package carries the package's cover title and narration script verbatim.
 - **SC-006**: The same story is never published twice through the two paths combined.
 - **SC-007**: The local half (User Stories 1 to 4) can be exercised end to end, including the send step against any reachable host, without any change deployed to the server.
+- **SC-008**: A two-part package produced by the daily run yields two videos whose narrations are the package's parts verbatim, scheduled in consecutive slots, with zero script-writing model calls.
+- **SC-009**: A two-part package sent to a server without two-part support ends in "failed" with an unsupported-version error and produces nothing.
 
 ## Assumptions
 
@@ -172,3 +208,5 @@ As the operator, when the daily run starts and there are prepared stories waitin
 - When the queue holds fewer packages than the daily target, filling the remainder by automatic discovery is the default, so the daily publishing volume stays stable; the operator can turn this off.
 - The daily target and publish slots are unchanged; prepared stories simply take the first slots.
 - Prepared stories are produced with the server's current narration and video settings; the package does not carry per-story overrides for speed, voice or background.
+- Two-part stories only enter through the prepared flow; the operator decides the format per story, typically when the single-script preview runs long or the story has a natural cliffhanger. Automatic discovery never produces two-part videos.
+- The daily target counts stories, not videos: a two-part story takes one story slot and two consecutive publish slots, so a day with one two-part story publishes one more video than usual.

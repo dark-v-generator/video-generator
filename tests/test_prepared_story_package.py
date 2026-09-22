@@ -8,9 +8,14 @@ from pydantic import ValidationError
 
 from src.entities.configs.bots import TelegramBotConfig
 from src.entities.language import Language
-from src.entities.prepared_story import PreparedStoryPackage, extract_post_id
+from src.entities.prepared_story import (
+    PreparedStoryPackage,
+    TwoPartStoryPackage,
+    extract_post_id,
+    load_package,
+)
 from src.services.prepared_story_validation import validate_package
-from src.services.reddit_video_service import PreparedStory
+from src.services.reddit_video_service import PreparedStory, StoryScript
 from src.services.text_censor import TextCensor
 
 POST_URL = (
@@ -243,3 +248,199 @@ class TestPreparedStoriesConfig:
 
         assert config.prepared_stories.fill_with_discovery is False
         assert config.prepared_stories.inbox_dir == ".storage/prepared"
+
+
+# ---------------------------------------------------------------------------
+# Two-part packages (version 2)
+# ---------------------------------------------------------------------------
+
+
+PART1_CTA = "Curta e me siga para a parte 2."
+
+
+def two_part_payload(**overrides) -> dict:
+    payload = package_payload()
+    del payload["script_text"]
+    payload.update(
+        {
+            "version": 2,
+            "part1_text": (
+                "Ele olhou bem nos olhos da propria filha e jurou que nao "
+                f"tinha nada. {PART1_CTA}"
+            ),
+            "part2_text": (
+                "As mensagens no celular dele nao deixavam duvida. "
+                "Curta, me siga e deixe nos comentarios."
+            ),
+        }
+    )
+    payload.update(overrides)
+    return payload
+
+
+def build_two_part(**overrides) -> TwoPartStoryPackage:
+    return TwoPartStoryPackage.model_validate(two_part_payload(**overrides))
+
+
+class TestTwoPartStoryPackage:
+    def test_json_round_trip(self):
+        raw = json.dumps(two_part_payload())
+
+        package = TwoPartStoryPackage.model_validate_json(raw)
+        reloaded = TwoPartStoryPackage.model_validate_json(package.model_dump_json())
+
+        assert reloaded == package
+        assert reloaded.version == 2
+        assert reloaded.created_at == datetime(2026, 9, 21, 10, 40, 12)
+
+    def test_shares_the_identity_of_a_single_part_package(self):
+        package = build_two_part()
+        post = package.post
+
+        assert package.post_id == "1vuze4m"
+        assert package.original_post_md == f"# {post.title}\n\n{post.content}\n"
+
+    def test_to_story_script_maps_to_the_existing_dataclass(self):
+        package = build_two_part()
+
+        script = package.to_story_script()
+
+        assert isinstance(script, StoryScript)
+        assert script.title == package.story_title
+        assert script.part1 == package.part1_text
+        assert script.part2 == package.part2_text
+        assert script.narrator_gender == package.narrator_gender
+        assert script.resolved_gender == package.resolved_gender
+
+    def test_to_prepared_stories_suffixes_the_title_of_each_part(self):
+        package = build_two_part()
+
+        part1, part2 = package.to_prepared_stories()
+
+        assert part1.story_title == f"{package.story_title} - Parte 1"
+        assert part2.story_title == f"{package.story_title} - Parte 2"
+        assert part1.script_text == package.part1_text
+        assert part2.script_text == package.part2_text
+        for part in (part1, part2):
+            assert isinstance(part, PreparedStory)
+            assert part.post == package.post
+            assert part.resolved_gender == package.resolved_gender
+            assert part.original_post_md == package.original_post_md
+
+    @pytest.mark.parametrize("field", ["part1_text", "part2_text"])
+    def test_empty_parts_are_rejected(self, field):
+        with pytest.raises(ValidationError):
+            TwoPartStoryPackage.model_validate(two_part_payload(**{field: "   "}))
+
+    def test_version_one_payload_is_not_a_two_part_package(self):
+        with pytest.raises(ValidationError):
+            TwoPartStoryPackage.model_validate(package_payload())
+
+    def test_extra_keys_are_ignored(self):
+        package = TwoPartStoryPackage.model_validate(
+            two_part_payload(notes="cortada na confissao")
+        )
+
+        assert not hasattr(package, "notes")
+
+
+class TestLoadPackage:
+    def test_version_one_loads_as_a_single_part_package(self):
+        package = load_package(json.dumps(package_payload()))
+
+        assert isinstance(package, PreparedStoryPackage)
+        assert package.script_text == package_payload()["script_text"]
+
+    def test_version_two_loads_as_a_two_part_package(self):
+        package = load_package(json.dumps(two_part_payload()))
+
+        assert isinstance(package, TwoPartStoryPackage)
+        assert package.part1_text.endswith(PART1_CTA)
+
+    def test_unknown_version_is_rejected_with_a_stable_message(self):
+        with pytest.raises(ValueError) as exc:
+            load_package(json.dumps(package_payload(version=3)))
+
+        assert "unsupported package version" in str(exc.value)
+
+    def test_missing_version_is_rejected_the_same_way(self):
+        payload = package_payload()
+        del payload["version"]
+
+        with pytest.raises(ValueError) as exc:
+            load_package(json.dumps(payload))
+
+        assert "unsupported package version" in str(exc.value)
+
+    def test_broken_json_raises_a_value_error(self):
+        with pytest.raises(ValueError):
+            load_package("{not json at all")
+
+    def test_a_server_that_only_knows_version_one_rejects_a_two_part_package(self):
+        """SC-009: the guarantee that an old server produces nothing from a v2."""
+        with pytest.raises(ValidationError):
+            PreparedStoryPackage.model_validate(two_part_payload())
+
+
+class TestValidateTwoPartPackage:
+    def test_valid_package_has_no_problems(self):
+        problems = validate_package(build_two_part(), TextCensor(), Language.PORTUGUESE)
+
+        assert problems == []
+
+    def test_language_mismatch_is_reported(self):
+        problems = validate_package(
+            build_two_part(language="en"), TextCensor(), Language.PORTUGUESE
+        )
+
+        assert problems == ["language: package=en server=pt"]
+
+    def test_forbidden_word_in_each_part_is_reported_with_its_field(self):
+        package = build_two_part(
+            story_title="Ele viu sangue na cozinha",
+            part1_text=(
+                "O vizinho quase matou a planta que ela cuidava ha anos. "
+                f"{PART1_CTA}"
+            ),
+            part2_text="No fim ele pegou a arma que guardava na gaveta.",
+        )
+
+        problems = validate_package(package, TextCensor(), Language.PORTUGUESE)
+
+        fields = [problem.split(":", 1)[0] for problem in problems]
+        assert fields == ["story_title", "part1_text", "part2_text"]
+        assert problems[1].startswith("part1_text: 'matou' em \"")
+        assert "quase matou a planta" in problems[1]
+        assert problems[2].startswith("part2_text: 'arma' em \"")
+
+    def test_part1_without_the_cta_is_reported(self):
+        package = build_two_part(part1_text="Ele jurou que nao tinha nada.")
+
+        problems = validate_package(package, TextCensor(), Language.PORTUGUESE)
+
+        assert problems == [f'part1_text: precisa terminar com "{PART1_CTA}"']
+
+    def test_trailing_whitespace_after_the_cta_is_accepted(self):
+        package = build_two_part(
+            part1_text=f"Ele jurou que nao tinha nada. {PART1_CTA}  \n"
+        )
+
+        assert validate_package(package, TextCensor(), Language.PORTUGUESE) == []
+
+    def test_a_language_without_a_fixed_cta_skips_the_rule(self):
+        package = build_two_part(
+            language="en",
+            part1_text="He swore there was nothing going on.",
+            part2_text="The messages said otherwise.",
+        )
+
+        assert validate_package(package, TextCensor(), Language.ENGLISH) == []
+
+    def test_gender_coherence_still_applies(self):
+        package = build_two_part(narrator_gender="female", resolved_gender="male")
+
+        problems = validate_package(package, TextCensor(), Language.PORTUGUESE)
+
+        assert problems == [
+            "resolved_gender: 'male' não confere com narrator_gender 'female'"
+        ]

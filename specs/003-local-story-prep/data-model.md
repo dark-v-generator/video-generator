@@ -37,6 +37,43 @@ Regras de validação (pydantic + `validate_package`):
    '...contexto...'"`.
 5. `resolved_gender` coerente com `narrator_gender` quando este é `male`/`female`.
 
+## TwoPartStoryPackage (`src/entities/prepared_story.py`)
+
+Segunda forma do pacote, para histórias em dois vídeos (US6). Mesmo arquivo
+`<post_id>.json`, mesma identidade. Difere da versão 1 em três campos:
+
+| Campo | Tipo | Obrigatório | Origem | Uso no servidor |
+|-------|------|-------------|--------|-----------------|
+| `version` | `Literal[2]` | sim | CLI | seleciona este modelo; servidor antigo rejeita |
+| `part1_text` | `str` não vazio | sim | assistente | TTS e legendas do vídeo 1; termina com o CTA da parte 2 |
+| `part2_text` | `str` não vazio | sim | assistente | TTS e legendas do vídeo 2; termina com pergunta + CTA final |
+
+Todos os outros campos (`source`, `language`, `created_at`, `post`, `story_title`,
+`narrator_gender`, `resolved_gender`, `summary`, `hashtags`) são os da versão 1, com
+os mesmos usos. Os dois modelos compartilham uma base (`_PackageBase`) com esses
+campos, `post_id` e `original_post_md`.
+
+Derivados:
+
+- `to_story_script() -> StoryScript`: mapeamento para o dataclass existente
+  (`title`, `part1`, `part2`, `narrator_gender`, `resolved_gender`).
+- `to_prepared_stories() -> tuple[PreparedStory, PreparedStory]`: um `PreparedStory`
+  por parte, com `story_title` sufixado (` - Parte 1`, ` - Parte 2`) e `script_text`
+  igual à parte. É o que o servidor produz, com o mesmo método do vídeo único.
+
+`load_package(text: str) -> PreparedStoryPackage | TwoPartStoryPackage` lê `version`
+e valida com o modelo correspondente; `version` fora de `{1, 2}` levanta
+`ValueError("unsupported package version")`. CLI, fila e bot usam só esta função.
+
+Regras de validação adicionais (`validate_package`, versão 2):
+
+1. `part1_text` e `part2_text` não vazios (pydantic).
+2. Palavras proibidas em `story_title`, `part1_text` e `part2_text`, cada uma
+   reportada com o nome do campo.
+3. `part1_text` termina (ignorando espaços finais) com o CTA da parte 2 do idioma:
+   `pt-br` → `Curta e me siga para a parte 2.`; idiomas sem CTA fixado no prompt
+   pulam esta regra.
+
 ## Candidates file (`output/prepared/candidates.json`)
 
 Saída do subcomando `find`; consumida por `show`, `prompt` e pelo skill.
@@ -103,7 +140,8 @@ Estrutura interna (dataclass) que unifica os dois caminhos no laço existente:
 
 | Campo | Preparado (fila) | Automático (descoberta) |
 |-------|------------------|-------------------------|
-| `prepared: PreparedStory \| None` | `pkg.to_prepared_story()` | `None` (preenchido por `_prepare_story_with_retries`) |
+| `prepared: PreparedStory \| None` | `pkg.to_prepared_story()`; versão 2: a parte 1 de `to_prepared_stories()` | `None` (preenchido por `_prepare_story_with_retries`) |
+| `part2: PreparedStory \| None` | versão 2: a parte 2 de `to_prepared_stories()` | `None` |
 | `summary` | `pkg.summary` | `story.resumo[:400]` |
 | `hashtags: list[str] \| None` | `pkg.hashtags` | `None` (gera via LLM) |
 | `source` | `"prepared"` | `"auto"` |
@@ -116,3 +154,25 @@ Ganha um campo, retrocompatível (`load_generated_videos` ignora chaves extras):
 ```json
 { "video_path": "...", "title": "...", "summary": "...", "post_url": "...", "source": "prepared" }
 ```
+
+Um pacote de duas partes grava dois manifestos, `story_NN.json` e `story_NN_p2.json`,
+com `"part": 1` e `"part": 2`, o mesmo `post_url` e o `title` sufixado. `part`
+é opcional no dataclass (`None` para vídeos únicos), então manifestos antigos
+continuam carregando.
+
+## outcome.json de um pacote de duas partes
+
+`done/<post_id>.outcome.json` passa a listar os dois vídeos:
+
+```json
+{
+  "status": "scheduled",
+  "hashtags": ["historia", "reddit"],
+  "videos": [
+    {"part": 1, "scheduled_at": "2026-09-23T12:00", "video_path": "...", "manifest_path": "..."},
+    {"part": 2, "scheduled_at": "2026-09-23T15:00", "video_path": "...", "manifest_path": "..."}
+  ]
+}
+```
+
+Pacotes de versão 1 mantêm o `outcome.json` plano de hoje.

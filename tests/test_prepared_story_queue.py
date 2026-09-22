@@ -6,10 +6,14 @@ import time
 
 import pytest
 
-from src.entities.prepared_story import PreparedStoryPackage
+from src.entities.prepared_story import PreparedStoryPackage, TwoPartStoryPackage
 from src.services.prepared_story_queue import PreparedStoryQueue
 
-from tests.test_prepared_story_package import POST_URL, package_payload
+from tests.test_prepared_story_package import (
+    POST_URL,
+    package_payload,
+    two_part_payload,
+)
 
 
 def other_post_url(post_id: str) -> str:
@@ -18,7 +22,15 @@ def other_post_url(post_id: str) -> str:
 
 def write_inbox(root, post_id: str, **overrides) -> str:
     """Drop a valid package in inbox/ and return its path."""
-    payload = package_payload(**overrides)
+    return _write(root, post_id, package_payload(**overrides))
+
+
+def write_two_part_inbox(root, post_id: str, **overrides) -> str:
+    """Drop a valid two-part package in inbox/ and return its path."""
+    return _write(root, post_id, two_part_payload(**overrides))
+
+
+def _write(root, post_id: str, payload: dict) -> str:
     payload["post"] = {**payload["post"], "url": other_post_url(post_id)}
     path = os.path.join(root, "inbox", f"{post_id}.json")
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -190,3 +202,35 @@ class TestKnownPostUrls:
 
     def test_empty_queue_has_no_known_urls(self, tmp_path):
         assert PreparedStoryQueue(str(tmp_path)).known_post_urls() == set()
+
+
+class TestTwoPartPackages:
+    def test_version_two_is_listed_with_its_own_model(self, tmp_path):
+        write_two_part_inbox(str(tmp_path), "aaa")
+
+        (item,) = PreparedStoryQueue(str(tmp_path)).list_inbox()
+
+        assert isinstance(item.package, TwoPartStoryPackage)
+        assert item.package.post_id == "aaa"
+
+    def test_unsupported_version_goes_to_failed_with_a_stable_message(self, tmp_path):
+        payload = two_part_payload(version=7)
+        payload["post"] = {**payload["post"], "url": other_post_url("aaa")}
+        os.makedirs(tmp_path / "inbox")
+        (tmp_path / "inbox" / "aaa.json").write_text(json.dumps(payload))
+
+        queue = PreparedStoryQueue(str(tmp_path))
+
+        assert queue.list_inbox() == []
+        assert (tmp_path / "failed" / "aaa.json").exists()
+        error = (tmp_path / "failed" / "aaa.error.txt").read_text()
+        assert "unsupported package version" in error
+        assert queue.last_rejections[0][0] == "aaa.json"
+
+    def test_known_post_urls_covers_both_versions(self, tmp_path):
+        write_inbox(str(tmp_path), "aaa")
+        write_two_part_inbox(str(tmp_path), "bbb")
+
+        urls = PreparedStoryQueue(str(tmp_path)).known_post_urls()
+
+        assert urls == {other_post_url("aaa"), other_post_url("bbb")}

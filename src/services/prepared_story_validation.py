@@ -6,14 +6,21 @@ agree by construction. The censor never rewrites anything here.
 """
 
 import re
-from typing import List
+from typing import List, Tuple
 
 from src.entities.language import Language
-from src.entities.prepared_story import PreparedStoryPackage
+from src.entities.prepared_story import StoryPackage, TwoPartStoryPackage
 from src.services.text_censor import TextCensor
 
 _WORD_PATTERN = re.compile(r"\w+", re.UNICODE)
 _CONTEXT_CHARS = 40
+
+# The closing line the two-part prompt fixes for each language. A language the
+# prompt does not pin down is not checked: the rule belongs to the prompt, and
+# inventing one here would fail packages the server would happily produce.
+PART2_CTA = {
+    Language.PORTUGUESE: "Curta e me siga para a parte 2.",
+}
 
 
 def _context(text: str, start: int, end: int) -> str:
@@ -38,8 +45,14 @@ def _forbidden_words(field: str, text: str, censor: TextCensor) -> List[str]:
     return problems
 
 
+def _script_fields(package: StoryPackage) -> List[Tuple[str, str]]:
+    if isinstance(package, TwoPartStoryPackage):
+        return [("part1_text", package.part1_text), ("part2_text", package.part2_text)]
+    return [("script_text", package.script_text)]
+
+
 def validate_package(
-    package: PreparedStoryPackage,
+    package: StoryPackage,
     censor: TextCensor,
     expected_language: Language,
 ) -> List[str]:
@@ -53,7 +66,14 @@ def validate_package(
         )
 
     problems.extend(_forbidden_words("story_title", package.story_title, censor))
-    problems.extend(_forbidden_words("script_text", package.script_text, censor))
+
+    for field, text in _script_fields(package):
+        problems.extend(_forbidden_words(field, text, censor))
+
+        if field == "part1_text":
+            cta = PART2_CTA.get(package.language)
+            if cta and not text.rstrip().endswith(cta):
+                problems.append(f'part1_text: precisa terminar com "{cta}"')
 
     if (
         package.narrator_gender in ("male", "female")

@@ -58,6 +58,11 @@ post e idioma — ele é renderizado do mesmo `src/proxies/prompts/story.jinja2`
 que garante que um roteiro escrito aqui siga as mesmas regras do roteiro automático:
 existe uma fonte só de regras editoriais, e ela não foi copiada para lugar nenhum.
 
+Para uma história em dois vídeos, `just story-prompt 1 --two-part` renderiza
+`two_part_story.jinja2` com os exemplos de `src/proxies/examples/two_part_story.yaml`,
+que é o que o servidor enviaria no formato de duas partes. Veja
+[Histórias em duas partes](#histórias-em-duas-partes).
+
 ### 4. Escrever o pacote
 
 O assistente escreve `output/prepared/<post_id>.json` seguindo
@@ -84,8 +89,10 @@ just story-preview output/prepared/<post_id>.json
 ```
 
 Gera `<post_id>.preview.mp3` ao lado do pacote com a voz de `resolved_gender`, o
-idioma do pacote e a velocidade de produção, e imprime a duração. Se você editar o
-roteiro e rodar de novo, o mp3 é substituído. Ouvir antes de enviar é mais barato do
+idioma do pacote e a velocidade de produção, e imprime a duração. Um pacote de duas
+partes gera `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3`, com a
+duração de cada parte e o total. Se você editar o roteiro e rodar de novo, os mp3 são
+substituídos. Ouvir antes de enviar é mais barato do
 que descobrir o problema num vídeo já renderizado.
 
 ### 7. Enviar
@@ -136,6 +143,40 @@ bots:
 
 Com a fila vazia e essa opção ligada (o default), a run é idêntica à de antes desta
 feature.
+
+## Histórias em duas partes
+
+Uma história pode virar dois vídeos publicados em slots consecutivos: a parte 1
+constrói até o gancho e convida para a parte 2, a parte 2 entrega o clímax e o
+desfecho. Vale a pena quando a história tem uma virada que dá para segurar, ou quando
+o roteiro único ficaria longo demais para prender até o fim — na prática, quando a
+prévia passa de uns seis minutos. A decisão é sua, história a história; o assistente
+sugere, mas não escolhe.
+
+O pacote é o mesmo arquivo `<post_id>.json`, com `"version": 2` e `part1_text` /
+`part2_text` no lugar de `script_text`. O `story_title` continua sendo um só, sem
+sufixo. A validação local acrescenta duas regras: cada parte é checada separadamente
+(a mensagem nomeia `part1_text` ou `part2_text`) e a parte 1 precisa terminar com a
+chamada que o prompt fixa — em português, `Curta e me siga para a parte 2.`
+
+No servidor, o pacote conta como **uma** história na meta do dia e produz dois vídeos
+com o mesmo caminho do vídeo único: `story_NN.mp4` e `story_NN_p2.mp4`, cada um com
+seu manifesto (`"part": 1` e `"part": 2`, mesmo `post_url`) e a capa com
+` - Parte 1` / ` - Parte 2` acrescentado ao título. A parte 2 é agendada no slot
+seguinte ao da parte 1 e leva as mesmas hashtags. O pacote só vai para `done/` depois
+que as duas partes são agendadas, e o `outcome.json` lista os dois vídeos em vez do
+formato plano de um vídeo só.
+
+Se qualquer coisa falhar, o pacote inteiro vai para `failed/` e a run segue para a
+próxima história:
+
+- uma das partes falha na produção → nada é publicado;
+- a parte 2 falha ao publicar → o `error.txt` diz para quando a parte 1 ficou
+  agendada, que é o que você precisa para colocar a segunda metade na mão.
+
+Um servidor que ainda não tem esta versão do código não conhece `version: 2` e move o
+pacote para `failed/` com `unsupported package version`, sem produzir nada — então um
+pacote de duas partes enviado cedo demais não vira meio vídeo publicado.
 
 ## Quando um pacote vai para `failed/`
 

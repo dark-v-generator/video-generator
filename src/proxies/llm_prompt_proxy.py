@@ -9,7 +9,10 @@ from src.entities.configs.proxies.llm import PromptLLMConfig
 from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
-from src.proxies.prompts.render import render_story_prompt
+from src.proxies.prompts.render import (
+    render_story_prompt,
+    render_two_part_story_prompt,
+)
 from src.services.tiktok_caption import normalize_hashtags
 import os
 import json
@@ -228,28 +231,7 @@ class PromptLLMProxy(ILLMProxy):
         model_str = self._get_model_string()
         self._logger.info(f"Generating 2-part story via LiteLLM {model_str}")
 
-        # 1. Load Examples
-        examples = []
-        yaml_path = os.path.join(
-            os.path.dirname(__file__), "examples", "two_part_story.yaml"
-        )
-        if os.path.exists(yaml_path):
-            with open(yaml_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-                if data:
-                    examples = data
-
-        # 2. Render Template
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("two_part_story.jinja2")
-
-        prompt = template.render(
-            target_language=get_language_name(target_language),
-            examples=examples,
-            reddit_title=title,
-            reddit_text=content,
-        )
+        prompt = render_two_part_story_prompt(title, content, target_language)
 
         messages = [
             {"role": "user", "content": prompt},

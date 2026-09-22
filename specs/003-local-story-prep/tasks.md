@@ -8,10 +8,12 @@
 o projeto tem suíte pytest estabelecida (`asyncio_mode = auto`). Escrever os testes de
 cada story primeiro e vê-los falhar antes de implementar.
 
-**Organization**: 3 milestones = 3 PRs (ver Delivery Plan). M1 cobre US1+US2 (um PR,
+**Organization**: 4 milestones = 4 PRs (ver Delivery Plan). M1 cobre US1+US2 (um PR,
 porque o skill que fecha US2 depende do `find` de US1 e ambos são a metade local que o
-usuário quer primeiro); M2 cobre US3+US4; M3 cobre US5 e só é verificável no servidor.
-Tarefas dentro de um milestone são commits do mesmo PR, nunca PRs separados.
+usuário quer primeiro); M2 cobre US3+US4; M3 cobre US5 e só é verificável no servidor;
+M4 cobre US6 (duas partes), acrescentado em 2026-09-22 depois de M3 fechar, e sua
+metade de servidor só é verificável lá, como M3. Tarefas dentro de um milestone são
+commits do mesmo PR, nunca PRs separados.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -22,8 +24,9 @@ Tarefas dentro de um milestone são commits do mesmo PR, nunca PRs separados.
 | 1 | M1 — Descobrir, roteirizar e validar localmente | US1, US2 | `find_candidates`, `render_story_prompt`, `PreparedStoryPackage`, `validate_package`, CLI `find/show/prompt/validate/list`, receitas `just`, skill `/prepare-story`, testes |
 | 2 | M2 — Ouvir e enviar | US3, US4 | `PreparedStoriesConfig`, CLI `preview/ship/queue`, receitas `just`, skill fechando o loop, testes |
 | 3 | M3 — O servidor consome a fila | US5 | `PreparedStoryQueue`, `_collect_candidates` no bot, dedup com publish log, `/prepared`, manifesto com `source`, doc do operador, testes |
+| 4 | M4 — Histórias em duas partes pelo fluxo preparado | US6 | `TwoPartStoryPackage` + `load_package`, `render_two_part_story_prompt`, validação por parte, CLI `prompt --two-part`/`preview` por parte, bot produzindo dois vídeos e agendando em slots consecutivos, skill com a escolha do formato, doc, testes |
 
-Projeção: **3 PRs** (≤ 8, ok).
+Projeção: **4 PRs** (≤ 8, ok).
 
 ---
 
@@ -339,13 +342,95 @@ com a fila vazia se comporta exatamente como hoje.
     descoberta ligada o denominador continua sendo o de hoje (o número de histórias
     disponíveis), como a tabela de invariantes exige.
 
+- [ ] T039b [US5] **Pendente do servidor** — quando `192.168.1.100` voltar: `just deploy`, depois o quickstart.md §5 lá: pacote na inbox → `just prod-daily-generate 1` com `"source": "prepared"` no manifesto e o pacote em `done/`; inbox vazia → `"source": "auto"`; `/prepared` pelo Telegram de verdade; e um `just prod-daily-publish 1` para exercitar `mark_done` com `status: "scheduled"` (o publisher é server-only). Também repetir aqui o `just story-ship`/`just story-queue` sem `--remote` que ficou pendente no T027. Nada disso se verifica no laptop: gerar vídeo localmente não é o fluxo — o laptop só produz áudio e texto para revisão
+
 **Checkpoint**: [X] Milestone 3 DONE (2026-09-22) — o loop está fechado; fila vazia = comportamento de hoje. O gate no servidor (`just deploy` + `just prod-daily-generate 1`) fica pendente de o host voltar; tudo o que não depende dele foi verificado em runs reais no laptop.
 
 ---
 
-## Phase 6: Polish
+## Phase 6: Milestone 4 — Histórias em duas partes pelo fluxo preparado (US6 / P3)
 
-- [ ] T040 [P] Rodar `uv run black src scripts tests bots` e revisar os diffs dos três PRs contra a constituição (fail fast fora dos pontos justificados; nada de I/O em `src/entities`/`src/services` além do diretório da fila)
+**Goal**: o operador escolhe, por história, entre um vídeo e duas partes; o assistente
+recebe o prompt de duas partes exato do servidor, o pacote `version: 2` é validado e
+ouvido parte a parte, e o job diário produz os dois vídeos com o mesmo método do vídeo
+único e agenda a parte 2 no slot seguinte ao da parte 1. A descoberta automática não
+muda.
+
+**Independent test criteria** (antes de implementar):
+
+- `just story-prompt N --two-part` imprime byte a byte o que `generate_two_part_story`
+  enviaria, exemplos inclusos.
+- Um pacote `version: 2` passa em `validate`, gera dois mp3 em `preview` e aparece em
+  `list` como `2 partes`; sem o CTA no fim da parte 1, `validate` falha nomeando
+  `part1_text`.
+- No servidor, um pacote `version: 2` na inbox produz `story_01.mp4` e
+  `story_01_p2.mp4` com covers ` - Parte 1` / ` - Parte 2`, sem chamada de roteiro, e
+  publica os dois em slots consecutivos; um servidor sem o M4 move o mesmo pacote para
+  `failed/` com `unsupported package version`.
+
+### Tests for Milestone 4
+
+- [X] T042 [P] [US6] Testes de `TwoPartStoryPackage` e `load_package` em tests/test_prepared_story_package.py: round-trip JSON; `to_story_script()` mapeia para `StoryScript`; `to_prepared_stories()` devolve dois `PreparedStory` com `story_title` sufixado ` - Parte 1`/` - Parte 2` e `script_text` igual à parte; `load_package` devolve o modelo certo para `version` 1 e 2 e levanta `ValueError("unsupported package version")` para 3; **`PreparedStoryPackage.model_validate` rejeita `version: 2`** (é a garantia de SC-009 num servidor antigo); `part1_text`/`part2_text` vazios rejeitados
+- [X] T043 [P] [US6] Teste de regressão em tests/test_render_two_part_prompt.py, no padrão de `test_render_story_prompt.py`: `render_two_part_story_prompt(title, content, language)` é byte a byte o `messages[0]["content"]` que `PromptLLMProxy.generate_two_part_story` envia (com `litellm.acompletion` falso); o texto começa com `You are an expert TikTok scriptwriter.` e contém os três exemplos de `src/proxies/examples/two_part_story.yaml`
+- [X] T044 [P] [US6] Testes de `validate_package` para a versão 2 em tests/test_prepared_story_package.py: palavra proibida em `story_title`, `part1_text` e `part2_text` reportada com o nome do campo e o contexto; idioma diferente; `part1_text` sem `Curta e me siga para a parte 2.` no fim (com e sem espaços finais) → `part1_text: precisa terminar com ...`; idioma sem CTA fixado pula a regra; pacote válido → lista vazia
+- [X] T045 [P] [US6] Testes do CLI em tests/test_prepare_story_cli.py: `prompt N --two-part` imprime o prompt de duas partes; `validate` aceita versão 1 e 2 e imprime problemas por campo; `list` marca `2 partes`; `preview` de versão 2 chama `generate_speech` duas vezes com o gênero do pacote, grava `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3` e imprime duas durações e o total; `queue` lista um pacote versão 2 pelo título
+- [X] T046 [P] [US6] Testes do bot em tests/test_daily_prepared_flow.py (sem rede, padrão de `test_publish_slots.py`): pacote versão 2 na inbox com meta 1 → uma história, zero chamadas a `find_best_stories`/`prepare_satisfying_story`, `generate_satisfying_video_from_story` chamado duas vezes com os títulos sufixados, `story_01.mp4` + `story_01_p2.mp4` e manifestos com `part` 1 e 2 e o mesmo `post_url`; publicação → `publish_video` duas vezes, o segundo `schedule_at` = `next_publish_slot(after=<slot da parte 1>)`, mesmas hashtags (geradas uma vez quando o pacote não as traz), duas linhas no publish log, `done/` com `outcome.json` listando os dois vídeos; parte 2 falha na produção → `publish_video` nunca chamado, `failed/` com o erro; parte 2 falha na publicação → `failed/` com mensagem contendo o slot da parte 1; `--generate-only` → `done/` com `status: generated` e os dois vídeos; fila vazia → comportamento de M3 intacto (nenhum item com `part2`); `run_daily_publish` a partir de um diretório com `story_01.json` e `story_01_p2.json` agenda em ordem e em slots consecutivos
+
+### Implementation for Milestone 4
+
+- [X] T047 [P] [US6] `TwoPartStoryPackage`, `_PackageBase` e `load_package` em src/entities/prepared_story.py conforme data-model.md; `PreparedStoryPackage` passa a herdar da base sem mudar de forma (T002 continua verde)
+- [X] T048 [P] [US6] `render_two_part_story_prompt` em src/proxies/prompts/render.py (carrega `examples/two_part_story.yaml` como o proxy faz hoje) e `PromptLLMProxy.generate_two_part_story` em src/proxies/llm_prompt_proxy.py passando a chamá-lo (T043 verde)
+- [X] T049 [US6] `validate_package` em src/services/prepared_story_validation.py aceitando as duas formas: campos de texto por versão, CTA da parte 1 por idioma (mapa `PART2_CTA`, só `pt-br` por ora), mensagens por campo (T044 verde; depende de T047)
+- [X] T050 [US6] src/services/prepared_story_queue.py: `QueuedPackage.package` lido com `load_package`; um arquivo com `version` desconhecida continua indo para `failed/` no `list_inbox` com a mensagem `unsupported package version` (testes de M3 intactos; depende de T047)
+- [X] T051 [US6] scripts/prepare_story.py: `prompt --two-part`; `_load_package` via `load_package`; `list` com `2 partes`; `preview` por parte com nomes `<post_id>.partN.preview.mp3`, durações e total; `queue` imprimindo o título das duas formas; receita `story-prompt n *args` no Justfile (T045 verde; depende de T047–T049)
+- [X] T052 [US6] bots/satisfying_bot.py: `_WorkItem.part2`; `_collect_candidates` monta parte 1 e parte 2 de um pacote versão 2 (uma história na meta, `#i Usando roteiro preparado em duas partes`); `_generate_video_for_story` produz as duas partes em sequência com `generate_satisfying_video_from_story`, nomes `story_NN.mp4`/`story_NN_p2.mp4`, `GeneratedVideo.part`, dois manifestos, falha do item inteiro se qualquer parte falhar; `_publish_one_video` reutilizado para a parte 2 com `last_slot` = slot da parte 1 e as hashtags da parte 1; `mark_done` só depois das duas, `outcome.json` com `videos`; parte 2 falhando ao publicar → `mark_failed` com o slot da parte 1; `run_daily_generate`, `run_daily_auto_publish` e `run_daily_publish` cobrindo os dois vídeos (T046 verde; depende de T047 e T050)
+- [X] T053 [P] [US6] .claude/skills/prepare-story/SKILL.md: passo 3 apresenta a escolha do formato e quando sugerir duas partes (prévia única longa ou gancho natural antes do desfecho), com o comando `just story-prompt N --two-part` e o esquema `version: 2`; passo 6 com as duas prévias; a decisão do formato listada entre as que são do operador
+- [X] T054 [P] [US6] docs/prepared-stories.md: seção "Histórias em duas partes" (quando usar, formato do pacote, o que o servidor faz, o que acontece se uma parte falhar)
+- [X] T055 [US6] Rodar o quickstart.md §6 na parte local (prompt, validação, prévia, `list`) e registrar aqui; a parte de servidor (`just prod-daily-generate 1` com pacote versão 2, covers com sufixo, slots consecutivos, e o `failed/` num servidor sem o M4) fica pendente junto com T039b até o host voltar
+
+  **Evidência (2026-09-22, laptop)**
+
+  Testes: `uv run pytest tests/test_prepared_story_package.py
+  tests/test_render_two_part_prompt.py tests/test_prepare_story_cli.py
+  tests/test_prepared_story_queue.py tests/test_daily_prepared_flow.py
+  tests/test_publish_slots.py tests/test_render_story_prompt.py -q` → **177 passed**.
+  Suíte inteira: `1 failed, 357 passed` — a única falha é a pré-existente
+  `tests/test_translation_pipeline.py::test_pipeline`, conhecida desde a feature 002.
+
+  Quickstart §6, parte local, rodado de verdade com as candidatas reais do dia em
+  `output/prepared/candidates.json` (38 candidatas) e o pacote escrito em
+  `output/prepared-m4/` para não tocar nos pacotes versão 1 do operador:
+
+  - `just story-prompt 1 --two-part` → 133 linhas começando com
+    `You are an expert TikTok scriptwriter.` seguido de `Take the provided original
+    Reddit post and turn it into a 2-part story...`, com `Expected Output JSON:`
+    aparecendo 3 vezes (os três exemplos de `examples/two_part_story.yaml`).
+  - Pacote `version: 2` escrito para `1wn08nz` (a história do sogro, cujo roteiro
+    único tinha 6393 chars ≈ 5 min — exatamente o caso que pede o corte):
+    `part1_text` 3716 chars terminando no celular apitando na sala, `part2_text`
+    2730 chars abrindo na notificação. `just story-validate` → `✓`, exit 0.
+  - Apagando o `Curta e me siga para a parte 2.` do fim da parte 1:
+    `✗ 1wn08nz.json` / `- part1_text: precisa terminar com "Curta e me siga para a
+    parte 2."`, exit 1. Restaurado → `✓` de novo.
+  - `just story-preview` → `1wn08nz.part1.preview.mp3` **02:50**,
+    `1wn08nz.part2.preview.mp3` **02:09**, `Total 04:59`, com a voz `male` do pacote.
+    Os dois mp3 foram entregues ao operador para ouvir.
+  - `story-list` no diretório: `1wn08nz  2026-09-22T13:39:53  [mp3 ok]  [2 partes]
+    Meu sogro de 60 anos...` — e `[sem mp3]` antes das prévias, com as duas exigidas
+    para o `mp3 ok`.
+
+  Não verificado aqui (fica com T039b, pendente do host): `just prod-daily-generate 1`
+  com um pacote versão 2 na inbox, os covers com sufixo, os slots consecutivos de
+  verdade e o `failed/` com `unsupported package version` num servidor sem o M4.
+  Gerar vídeo no laptop não é o fluxo — daqui só saem áudio e texto para revisão.
+
+**Checkpoint**: [X] Milestone 4 DONE (2026-09-22) — a metade local verificada no laptop (prompt, validação por parte, duas prévias, `list`); o gate no servidor pendente do host, como em M3 (ver T039b).
+
+---
+
+## Phase 7: Polish
+
+- [ ] T040 [P] Rodar `uv run black src scripts tests bots` e revisar os diffs dos quatro PRs contra a constituição (fail fast fora dos pontos justificados; nada de I/O em `src/entities`/`src/services` além do diretório da fila)
 
   **Parcial (2026-09-22, PR de polish)**: `black==26.5.1` adicionado ao extra `dev` do
   pyproject (não estava instalado) e `uv run black src scripts tests bots` rodado —
@@ -360,18 +445,20 @@ com a fila vazia se comporta exatamente como hoje.
   falha na hora é o `validate`, que captura `ValidationError` porque relatar problemas
   de pacote é exatamente o contrato do subcomando. Falta revisar os diffs de M2 e M3,
   que ainda não existem — por isso a tarefa continua aberta.
-- [ ] T041 Rodar o quickstart.md §6 completo e a suíte inteira `uv run pytest -q`; registrar o resultado no plan.md (seção "Verificação pós-implementação", como na feature 002)
+- [ ] T041 Rodar o quickstart.md §7 completo e a suíte inteira `uv run pytest -q`; registrar o resultado no plan.md (seção "Verificação pós-implementação", como na feature 002)
 
 ---
 
 ## Dependencies & Execution Order
 
-- **Phase 1 → Phase 2 → M1 → M2 → M3 → Polish**. Milestone N+1 não começa antes do gate de N.
+- **Phase 1 → Phase 2 → M1 → M2 → M3 → M4 → Polish**. Milestone N+1 não começa antes do gate de N (M4 aceita o gate de servidor de M3 pendente, porque a parte local não depende dele).
 - **Dentro de M1**: T004–T007 (testes) em paralelo; T008 e T009/T010 em paralelo (arquivos diferentes); T011 depende de T008; T012 depende de T009, T010 e T011; T013 pode andar junto com T011; T014 depende de T012 e T013; T015 depende de T011; T016 fecha.
 - **Dentro de M2**: T017–T019 em paralelo; T020 antes de T021, T023 e T024; T022 independe de T020; T025 junto com T022; T026 depois de T023/T024; T027 fecha.
 - **Dentro de M3**: T028–T030 em paralelo; T031 → T032 → T033 → T034 → T035 em sequência (mesmo arquivo para T033–T035); T036 e T037 em paralelo com T035; T038 depois de T035; T039 fecha.
 - **US3 e US4** são independentes entre si (arquivos distintos no CLI), mas compartilham o PR 2.
 - **US5** depende de M1 (entidade + validação) e de M2 (config `prepared_stories`, pacotes reais na inbox para o gate).
+- **Dentro de M4**: T042–T046 (testes) em paralelo; T047 e T048 em paralelo (arquivos diferentes); T049 e T050 depois de T047, em paralelo; T051 depois de T047–T049; T052 depois de T047 e T050; T053 e T054 a qualquer momento; T055 fecha.
+- **US6** depende de M1 (entidade, validação, CLI), M2 (prévia) e M3 (fila e `_collect_candidates`); não toca `story.jinja2` nem a descoberta automática.
 
 ## Parallel Example: Milestone 1
 
@@ -397,13 +484,16 @@ Task: "T010 validate_package em src/services/prepared_story_validation.py"
    `localhost`; repetir contra o servidor quando ele estiver acessível.
 3. **M3** (T028–T039) só quando o servidor estiver acessível para o gate; o código pode
    ser escrito antes, com os testes cobrindo tudo sem rede.
-4. Commit por tarefa ou grupo lógico; cada milestone é um PR.
+4. **M4** (T042–T055) só depois de M3 fechado; a metade local roda no laptop, a de
+   servidor junta-se ao gate pendente de M3.
+5. Commit por tarefa ou grupo lógico; cada milestone é um PR.
 
 ## Notes
 
 - Nenhuma tarefa de M1/M2 toca `bots/satisfying_bot.py`; o comportamento do servidor
   só muda no PR 3.
 - `RedditVideoService`, `ILLMProxy` e `IRedditProxy` não mudam de contrato em nenhum
-  milestone.
+  milestone. Em M4 as duas partes são produzidas com `generate_satisfying_video_from_story`
+  chamado duas vezes; `compose_two_part_video` continua sem consumidor.
 - Nunca aplicar `TextCensor.censor` ao texto que vai para o TTS; na validação ele é só
   detector.

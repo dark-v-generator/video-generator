@@ -202,3 +202,96 @@ ele evoluir junto com o CLI e as templates.
 
 **Rationale**: a fila pertence ao bot que a consome; o `remote` mora ao lado porque o
 CLI local lê o mesmo `config.yaml`.
+
+## 13. Pacote de duas partes (US6)
+
+**Decision**: um segundo modelo pydantic, `TwoPartStoryPackage`, com `version:
+Literal[2]`, `part1_text` e `part2_text` no lugar de `script_text`, e todo o resto
+igual ao pacote de versão 1 (`post`, `story_title`, `narrator_gender`,
+`resolved_gender`, `summary`, `hashtags`, `language`, `created_at`, `source`). O
+arquivo continua sendo `<post_id>.json`. Uma função `load_package(text)` em
+`src/entities/prepared_story.py` lê `version` e devolve o modelo certo; é ela que o
+CLI, a fila e o bot passam a usar. `TwoPartStoryPackage.to_story_script()` mapeia
+para o `StoryScript` existente, e `to_prepared_stories()` devolve dois
+`PreparedStory`, um por parte, com o título do cover já sufixado (` - Parte 1` /
+` - Parte 2`, a convenção que `generate_cover_pair` e o fluxo de imagem já usam).
+
+**Rationale**: FR-018 pede que o formato seja distinguível pela versão, e FR-024/SC-009
+pedem que um servidor antigo recuse o pacote novo. Com `version: Literal[1]` no modelo
+antigo, um servidor sem a mudança já falha o parse de um arquivo `version: 2` no
+`list_inbox` e o move para `failed/` com o erro do pydantic, sem nenhuma linha de
+código a mais: a compatibilidade para trás é consequência do desenho do M3. Dois
+modelos em vez de campos opcionais num só evitam que o servidor tenha que checar
+"tem `script_text` ou tem partes?" em cada uso.
+
+**Alternatives considered**:
+- `version: 1` com `script_text` opcional e `parts: list[str]`: um servidor antigo
+  aceitaria o arquivo e quebraria só na hora de gerar, com um erro pior e depois de
+  gastar tempo; também quebra a garantia de "campo obrigatório presente" do pydantic.
+- Um pacote por parte (`<post_id>.part1.json`, `<post_id>.part2.json`): a fila teria
+  que casar os dois arquivos, e a regra "os dois vídeos existem antes de publicar
+  qualquer um" (FR-023) ficaria espalhada. Um pacote é a unidade de decisão do
+  operador; ele continua sendo uma história.
+
+## 14. Produção e publicação de duas partes no servidor
+
+**Decision**: nenhum método novo de produção. O bot transforma o pacote em dois
+`PreparedStory` e chama `generate_satisfying_video_from_story` duas vezes, na ordem.
+Assim cada parte recebe exatamente o que um vídeo único recebe hoje: a voz e a
+velocidade da config, as legendas censuradas, o fundo satisfatório e o
+`cta_start` detectado pela palavra "curta" nas últimas vinte palavras, que funciona
+para as duas partes porque ambas terminam com "Curta ...". Os arquivos saem como
+`story_NN.mp4` e `story_NN_p2.mp4`, cada um com seu manifesto (`part: 1|2`, mesmo
+`post_url`, `source: prepared`). Publicação: `_publish_one_video` é chamado para a
+parte 1 e depois para a parte 2 com `last_slot` igual ao slot da parte 1, o que faz
+`next_publish_slot` cair no slot imediatamente seguinte por construção (inclusive
+virando o dia, como qualquer transbordo hoje). As hashtags são geradas ou lidas uma
+vez e reutilizadas na parte 2. `mark_done` só depois das duas publicações; se a
+segunda falhar, `mark_failed` com uma mensagem que nomeia o slot da parte 1.
+
+**Rationale**: FR-021 pede paridade com o vídeo único, e reusar o mesmo método é a
+única forma de garantir isso sem manter dois pipelines em sincronia. O pipeline de
+duas partes que já existe no serviço (`compose_two_part_video`) não censura legendas
+nem calcula o `cta_start`, e hoje não é chamado por nenhum bot; ele fica como está,
+sem ganhar um terceiro consumidor. O acoplamento dos slots por `last_slot` reaproveita
+a mesma função que já encadeia os vídeos do dia, então "o slot seguinte" significa a
+mesma coisa que significa hoje.
+
+**Alternatives considered**:
+- Um método `generate_two_part_satisfying_video` no serviço: seria uma cópia do
+  método de vídeo único com um laço; a versão com dois `PreparedStory` obtém o
+  mesmo resultado sem duplicar a etapa.
+- Publicar a parte 1 mesmo se a parte 2 falhar na produção: contraria FR-023; um
+  vídeo com "parte 2" prometida e sem parte 2 é pior que nenhum vídeo.
+- Desfazer a publicação da parte 1 quando a parte 2 falha ao publicar: o publisher
+  não expõe cancelamento de agendamento; por isso o erro nomeia o slot e deixa a
+  decisão com o operador (cenário 7 da US6).
+
+## 15. Prompt, prévia e validação de duas partes no laptop
+
+**Decision**: `render_two_part_story_prompt(title, content, language)` em
+`src/proxies/prompts/render.py`, extraído de `PromptLLMProxy.generate_two_part_story`
+(que passa a chamá-lo) e carregando os mesmos exemplos de
+`src/proxies/examples/two_part_story.yaml`; o CLI ganha `prompt N --two-part`. A
+validação despacha pela versão: para a versão 2, palavras proibidas em
+`story_title`, `part1_text` e `part2_text` (cada problema nomeando o campo), parte
+vazia, idioma, e a parte 1 tem que terminar com o CTA localizado da parte 2 — para
+`pt-br`, exatamente `Curta e me siga para a parte 2.`; para outros idiomas a checagem
+do CTA é pulada, porque o prompt só fixa o texto em português. A prévia gera
+`<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3` e imprime as duas
+durações e o total. `ship` e `queue` não mudam: transportam o arquivo sem
+interpretá-lo, e `queue` só passa a usar `load_package` para imprimir o título.
+
+**Rationale**: FR-017 estende FR-003 ao prompt de duas partes: o assistente tem que
+receber byte a byte o que o servidor enviaria, exemplos inclusos, e o único jeito de
+testar isso é a mesma extração feita para o prompt único (teste de regressão contra
+o proxy com `litellm.acompletion` falso). A checagem do CTA da parte 1 é a garantia
+mais barata de que o corte foi feito onde o prompt manda; o servidor depende dela
+para o `cta_start` e para a promessa de continuação no vídeo.
+
+**Alternatives considered**:
+- Um subcomando `split` que corte um roteiro único em dois: o corte é decisão
+  editorial (antes do clímax), não mecânica; o prompt de duas partes já diz onde
+  cortar e o assistente é quem julga.
+- Um único mp3 concatenado na prévia: esconde exatamente o que o operador quer
+  ouvir, que é se a parte 1 fecha num gancho e se cada parte tem duração razoável.

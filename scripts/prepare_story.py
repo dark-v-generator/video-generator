@@ -20,9 +20,16 @@ from pydantic import ValidationError
 
 from src.core.container import container
 from src.entities.language import Language
-from src.entities.prepared_story import PreparedStoryPackage
+from src.entities.prepared_story import (
+    StoryPackage,
+    TwoPartStoryPackage,
+    load_package,
+)
 from src.entities.story_candidate import StoryCandidate
-from src.proxies.prompts.render import render_story_prompt
+from src.proxies.prompts.render import (
+    render_story_prompt,
+    render_two_part_story_prompt,
+)
 from src.services.prepared_story_validation import validate_package
 from src.services.story_finder_service import score_candidates
 
@@ -60,8 +67,20 @@ def _package_paths(out_dir: Path) -> List[Path]:
     ]
 
 
-def _load_package(path: Path) -> PreparedStoryPackage:
-    return PreparedStoryPackage.model_validate_json(path.read_text(encoding="utf-8"))
+def _load_package(path: Path) -> StoryPackage:
+    return load_package(path.read_text(encoding="utf-8"))
+
+
+def _script_parts(package: StoryPackage) -> List[Tuple[Optional[int], str]]:
+    """The narration of a package, one entry per video it becomes."""
+    if isinstance(package, TwoPartStoryPackage):
+        return [(1, package.part1_text), (2, package.part2_text)]
+    return [(None, package.script_text)]
+
+
+def _preview_path(path: Path, part: Optional[int]) -> Path:
+    suffix = ".preview.mp3" if part is None else f".part{part}.preview.mp3"
+    return path.with_suffix(suffix)
 
 
 def _prepared_post_urls(out_dir: Path) -> set:
@@ -234,9 +253,8 @@ def cmd_prompt(args) -> int:
         return EXIT_INVALID
 
     language = Language(args.language) if args.language else config.language
-    print(
-        render_story_prompt(entry["post"]["title"], entry["post"]["content"], language)
-    )
+    render = render_two_part_story_prompt if args.two_part else render_story_prompt
+    print(render(entry["post"]["title"], entry["post"]["content"], language))
     return EXIT_OK
 
 
@@ -277,11 +295,13 @@ def cmd_list(args) -> int:
 
     for path in paths:
         package = _load_package(path)
-        preview = path.with_suffix(".preview.mp3")
-        preview_note = "mp3 ok" if preview.exists() else "sem mp3"
+        parts = _script_parts(package)
+        previews = [_preview_path(path, part) for part, _ in parts]
+        preview_note = "mp3 ok" if all(p.exists() for p in previews) else "sem mp3"
+        format_note = "  [2 partes]" if len(parts) > 1 else ""
         print(
             f"{package.post_id}  {package.created_at.isoformat(timespec='seconds')}  "
-            f"[{preview_note}]  {package.story_title}"
+            f"[{preview_note}]{format_note}  {package.story_title}"
         )
 
     return EXIT_OK
@@ -296,24 +316,35 @@ def cmd_preview(args) -> int:
     path = Path(args.file)
     package = _load_package(path)
     speech_service = container.speech_service()
+    parts = _script_parts(package)
 
-    print(
-        f"Narrando {len(package.script_text)} chars "
-        f"(voz {package.resolved_gender}, {package.language.value}, rate={args.rate})..."
-    )
-    result = asyncio.run(
-        speech_service.generate_speech(
-            text=package.script_text,
-            gender=package.resolved_gender,
-            rate=args.rate,
-            language=package.language,
+    total = 0.0
+    for part, text in parts:
+        label = "" if part is None else f"parte {part}: "
+        print(
+            f"Narrando {label}{len(text)} chars "
+            f"(voz {package.resolved_gender}, {package.language.value}, "
+            f"rate={args.rate})..."
         )
-    )
+        result = asyncio.run(
+            speech_service.generate_speech(
+                text=text,
+                gender=package.resolved_gender,
+                rate=args.rate,
+                language=package.language,
+            )
+        )
 
-    mp3_path = path.with_suffix(".preview.mp3")
-    mp3_path.write_bytes(result.bytes)
+        mp3_path = _preview_path(path, part)
+        mp3_path.write_bytes(result.bytes)
 
-    print(f"{mp3_path}  {_format_duration(result.clip.clip.duration)}")
+        duration = result.clip.clip.duration
+        total += duration
+        print(f"{mp3_path}  {_format_duration(duration)}")
+
+    if len(parts) > 1:
+        print(f"Total  {_format_duration(total)}")
+
     return EXIT_OK
 
 
@@ -403,7 +434,7 @@ _QUEUE_LISTING = (
 )
 
 
-def _parse_queue_listing(output: str) -> List[Tuple[int, PreparedStoryPackage]]:
+def _parse_queue_listing(output: str) -> List[Tuple[int, StoryPackage]]:
     entries = []
     for block in re.split(r"\n\s*\n", output.strip()):
         block = block.strip()
@@ -412,9 +443,7 @@ def _parse_queue_listing(output: str) -> List[Tuple[int, PreparedStoryPackage]]:
         mtime_line, _, raw = block.partition("\n")
         if not raw.strip():
             continue
-        entries.append(
-            (int(mtime_line.strip()), PreparedStoryPackage.model_validate_json(raw))
-        )
+        entries.append((int(mtime_line.strip()), load_package(raw)))
     return entries
 
 
@@ -433,8 +462,9 @@ def cmd_queue(args) -> int:
 
     for mtime, package in entries:
         enqueued = datetime.fromtimestamp(mtime).isoformat(timespec="seconds")
+        format_note = "  [2 partes]" if isinstance(package, TwoPartStoryPackage) else ""
         print(
-            f"{package.post_id}  {package.story_title[:60]}\n"
+            f"{package.post_id}  {package.story_title[:60]}{format_note}\n"
             f"    {package.post.url}\n"
             f"    criado {package.created_at.isoformat(timespec='seconds')}  "
             f"enfileirado {enqueued}"
@@ -478,6 +508,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prompt.add_argument("rank", type=int)
     prompt.add_argument("--language", help="Idioma alvo (default: config.language)")
+    prompt.add_argument(
+        "--two-part",
+        action="store_true",
+        help="Prompt da história em duas partes (dois vídeos)",
+    )
     add_out(prompt)
 
     validate = subparsers.add_parser("validate", help="Valida pacotes prontos")

@@ -124,11 +124,63 @@ Idioma errado: envie um pacote com `"language": "en"` e rode de novo. Esperado:
 `⚠️ #1 Pacote inválido: language mismatch ...`, pacote em `failed/` com
 `<post_id>.error.txt`, e a run completa o vídeo por descoberta.
 
-## 6. Testes automatizados
+## 6. História em duas partes (M4, US6)
+
+Prompt de duas partes, byte a byte o do servidor:
+
+```bash
+just story-prompt 3 --two-part | head -3
+```
+
+Esperado: o texto começa com `You are an expert TikTok scriptwriter.` seguido de `Take
+the provided original Reddit post and turn it into a 2-part story`, e contém os três
+exemplos de `src/proxies/examples/two_part_story.yaml`.
+
+No Claude Code, `/prepare-story` com um post longo: o assistente oferece o formato de
+duas partes e, se o operador escolher, escreve `output/prepared/<post_id>.json` com
+`"version": 2`, `part1_text` e `part2_text`.
+
+Validação por parte: apague o `Curta e me siga para a parte 2.` do fim de
+`part1_text` e rode
+
+```bash
+just story-validate output/prepared/<post_id>.json
+```
+
+Esperado: `✗` com `part1_text: precisa terminar com "Curta e me siga para a parte 2."`,
+exit 1. Restaure e rode de novo: `✓`.
+
+Prévia por parte:
+
+```bash
+just story-preview output/prepared/<post_id>.json
+```
+
+Esperado: `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3`, com a duração de
+cada parte e o total impressos. `just story-list` mostra o pacote com `2 partes`.
+
+Envio e fila (seção 4) funcionam sem mudança. No servidor, com o pacote na inbox:
+
+```bash
+just prod-daily-generate 1
+```
+
+Esperado: `#1 Usando roteiro preparado em duas partes: "<título>"`, `#1 Parte 1
+gerada`, `#1 Parte 2 gerada`; `output/daily/story_01.mp4` e `story_01_p2.mp4`, cada um
+com seu manifesto (`"part": 1` / `"part": 2`, mesmo `post_url`, `"source": "prepared"`)
+e o cover com ` - Parte 1` / ` - Parte 2`; nenhuma chamada de roteiro no log; pacote em
+`done/` com `outcome.json` listando os dois vídeos. Com `just prod-daily-publish 1`, os
+dois `Agendamento concluído` caem em slots consecutivos.
+
+Servidor sem suporte (antes do deploy do M4): o mesmo pacote na inbox termina em
+`failed/` com `unsupported package version` e nada é gerado.
+
+## 7. Testes automatizados
 
 ```bash
 uv run pytest tests/test_prepared_story_package.py tests/test_prepare_story_cli.py \
   tests/test_prepared_story_queue.py tests/test_daily_prepared_flow.py \
+  tests/test_render_story_prompt.py tests/test_render_two_part_prompt.py \
   tests/services/test_story_finder_service.py
 ```
 
