@@ -27,6 +27,7 @@ import litellm
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
+from src.entities.prepared_story import TwoPartStoryPackage
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
 from src.services.prepared_story_queue import QueuedPackage
@@ -530,6 +531,8 @@ class GeneratedVideo:
     # the bot discovered and wrote it. Defaults to "auto" so manifests written
     # before the queue existed still load.
     source: str = "auto"
+    # 1 or 2 for the halves of a two-part story, None for a single video.
+    part: Optional[int] = None
 
 
 def _manifest_path(video_path: str, output_dir: str) -> str:
@@ -545,6 +548,10 @@ def _save_manifest(video: GeneratedVideo, output_dir: str) -> str:
         "post_url": video.post_url,
         "source": video.source,
     }
+    # A manifest without `part` is a single video, which is every manifest
+    # written before two-part packages existed.
+    if video.part is not None:
+        manifest["part"] = video.part
     path = _manifest_path(video.video_path, output_dir)
     with open(path, "w") as f:
         _json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -625,6 +632,7 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
                 summary=data.get("summary", ""),
                 post_url=data.get("post_url", ""),
                 source=data.get("source", "auto"),
+                part=data.get("part"),
             )
         )
     return videos
@@ -679,14 +687,25 @@ class _WorkItem:
     A prepared item already carries the script the operator wrote, so the
     story-generation stage is skipped entirely for it; an automatic item
     arrives as a candidate and gets its script from the model, as before.
+    One item is one story even when it becomes two videos, so a two-part
+    package fills a single slot of the day's target.
     """
 
     summary: str
     source: str
     prepared: PreparedStory | None = None
+    part2: PreparedStory | None = None
     story: EvaluatedStory | None = None
     hashtags: list[str] | None = None
     queued: QueuedPackage | None = None
+    # The package title without the ` - Parte N` suffix, for the messages.
+    story_title: str | None = None
+
+    def parts(self) -> list[tuple[Optional[int], PreparedStory]]:
+        """The videos this item stands for, numbered only when there are two."""
+        if self.part2 is None:
+            return [(None, self.prepared)]
+        return [(1, self.prepared), (2, self.part2)]
 
 
 def _publish_log_path() -> str:
@@ -757,13 +776,20 @@ async def _collect_candidates(send_message, count: int) -> list[_WorkItem]:
             continue
 
         package = queued.package
+        if isinstance(package, TwoPartStoryPackage):
+            first, second = package.to_prepared_stories()
+        else:
+            first, second = package.to_prepared_story(), None
+
         work.append(
             _WorkItem(
                 summary=package.summary,
                 source="prepared",
-                prepared=package.to_prepared_story(),
+                prepared=first,
+                part2=second,
                 hashtags=package.hashtags,
                 queued=queued,
+                story_title=package.story_title,
             )
         )
 
@@ -879,9 +905,10 @@ async def _ensure_script(
 ) -> bool:
     """Make sure the item has a script, writing one only when the queue didn't."""
     if item.prepared is not None:
+        title = item.story_title or item.prepared.story_title
+        format_note = " em duas partes" if item.part2 is not None else ""
         await send_message(
-            f"#{candidate_number} Usando roteiro preparado: "
-            f'"{item.prepared.story_title}"'
+            f"#{candidate_number} Usando roteiro preparado{format_note}: " f'"{title}"'
         )
         return True
 
@@ -902,18 +929,35 @@ async def _generate_video_for_story(
     *,
     output_dir: str,
     candidate_number: int,
-) -> GeneratedVideo | None:
+) -> list[GeneratedVideo]:
+    """Produce every video this story becomes: one, or the two parts.
+
+    A two-part story is all or nothing: half of it on the account is worse
+    than none of it, so a failure in either part drops the whole item.
+    """
     label = f"#{candidate_number}"
-    prepared = item.prepared
+    videos: list[GeneratedVideo] = []
 
-    try:
-        result = await service.generate_satisfying_video_from_story(
-            prepared,
-            language=config.language,
-            low_quality=bot_config.low_quality,
+    for part, prepared in item.parts():
+        try:
+            result = await service.generate_satisfying_video_from_story(
+                prepared,
+                language=config.language,
+                low_quality=bot_config.low_quality,
+            )
+        except Exception as e:
+            logger.exception("Failed to generate video for %s", prepared.post.url)
+            _mark_failed(item, f"Erro na geração de vídeo: {_truncate_error(e)}")
+            await send_message(
+                f"❌ {label} Erro na geração de vídeo: {_truncate_error(e)}. "
+                "Pulando para a próxima história."
+            )
+            return []
+
+        suffix = "_p2" if part == 2 else ""
+        video_path = os.path.join(
+            output_dir, f"story_{candidate_number:02d}{suffix}.mp4"
         )
-
-        video_path = os.path.join(output_dir, f"story_{candidate_number:02d}.mp4")
         with open(video_path, "wb") as f:
             f.write(result.video)
 
@@ -923,19 +967,63 @@ async def _generate_video_for_story(
             summary=item.summary,
             post_url=prepared.post.url,
             source=item.source,
+            part=part,
         )
         _save_manifest(video, output_dir)
+        videos.append(video)
 
-        return video
+        if part is not None:
+            await send_message(f"{label} Parte {part} gerada")
 
-    except Exception as e:
-        logger.exception("Failed to generate video for %s", prepared.post.url)
-        _mark_failed(item, f"Erro na geração de vídeo: {_truncate_error(e)}")
-        await send_message(
-            f"❌ {label} Erro na geração de vídeo: {_truncate_error(e)}. "
-            "Pulando para a próxima história."
-        )
-        return None
+    return videos
+
+
+@dataclass
+class _PublishResult:
+    slot: datetime.datetime
+    hashtags: list[str]
+
+
+class _PublishError(Exception):
+    """One video failed to schedule; its publish-log row is already written."""
+
+
+def _outcome(
+    videos: list[GeneratedVideo],
+    *,
+    status: str,
+    slots: list[datetime.datetime | None],
+    hashtags: list[str] | None,
+    output_dir: str,
+) -> dict:
+    """What lands in ``done/<post_id>.outcome.json``.
+
+    A single video keeps the flat shape the server has always written; a
+    two-part package lists one entry per video instead.
+    """
+    if len(videos) == 1:
+        slot = slots[0]
+        return {
+            "status": status,
+            "scheduled_at": slot.isoformat(timespec="minutes") if slot else None,
+            "hashtags": hashtags,
+            "video_path": videos[0].video_path,
+            "manifest_path": _manifest_path(videos[0].video_path, output_dir),
+        }
+
+    return {
+        "status": status,
+        "hashtags": hashtags,
+        "videos": [
+            {
+                "part": video.part,
+                "scheduled_at": slot.isoformat(timespec="minutes") if slot else None,
+                "video_path": video.video_path,
+                "manifest_path": _manifest_path(video.video_path, output_dir),
+            }
+            for video, slot in zip(videos, slots)
+        ],
+    }
 
 
 async def _publish_one_video(
@@ -945,13 +1033,18 @@ async def _publish_one_video(
     video: GeneratedVideo,
     item: _WorkItem,
     *,
-    output_dir: str,
     last_slot: datetime.datetime,
     candidate_number: int,
-) -> datetime.datetime | None:
+    hashtags: list[str] | None = None,
+) -> _PublishResult:
+    """Schedule one video, and say which slot and hashtags it got.
+
+    Closing the package is the caller's job: a two-part story is only done
+    once both of its videos are scheduled.
+    """
     label = f"#{candidate_number}"
     slot: datetime.datetime | None = None
-    hashtags: list[str] = []
+    prepared_hashtags: list[str] = list(hashtags or [])
 
     try:
         slot = next_publish_slot(
@@ -960,21 +1053,22 @@ async def _publish_one_video(
             min_lead_minutes=bot_config.publish_min_lead_minutes,
         )
 
-        # Hashtags chosen by the operator replace the model's: the package
-        # already went through their review.
-        raw_hashtags = item.hashtags
-        if raw_hashtags is None:
-            raw_hashtags = await llm_proxy.generate_hashtags(
-                title=video.title,
-                summary=video.summary,
-                target_language=config.language,
-            )
-        hashtags = _prepare_publish_hashtags(raw_hashtags)
+        if hashtags is None:
+            # Hashtags chosen by the operator replace the model's: the package
+            # already went through their review.
+            raw_hashtags = item.hashtags
+            if raw_hashtags is None:
+                raw_hashtags = await llm_proxy.generate_hashtags(
+                    title=video.title,
+                    summary=video.summary,
+                    target_language=config.language,
+                )
+            prepared_hashtags = _prepare_publish_hashtags(raw_hashtags)
 
         publish_result = await publisher.publish_video(
             video_path=video.video_path,
             description=video.title,
-            hashtags=hashtags,
+            hashtags=prepared_hashtags,
             schedule_at=slot,
         )
 
@@ -982,23 +1076,13 @@ async def _publish_one_video(
             video,
             status="scheduled",
             schedule_at=slot,
-            hashtags=hashtags,
+            hashtags=prepared_hashtags,
             publish_result=publish_result,
-        )
-        _mark_done(
-            item,
-            {
-                "status": "scheduled",
-                "scheduled_at": slot.isoformat(timespec="minutes"),
-                "hashtags": hashtags,
-                "video_path": video.video_path,
-                "manifest_path": _manifest_path(video.video_path, output_dir),
-            },
         )
         await send_message(
             f"{label} Agendamento concluído para {slot.strftime('%d/%m %H:%M')}"
         )
-        return slot
+        return _PublishResult(slot=slot, hashtags=prepared_hashtags)
 
     except Exception as e:
         logger.exception("Failed to publish %s", video.video_path)
@@ -1006,15 +1090,73 @@ async def _publish_one_video(
             video,
             status="failed",
             schedule_at=slot,
-            hashtags=hashtags,
+            hashtags=prepared_hashtags,
             error=_truncate_error(e),
         )
-        _mark_failed(item, f"Erro ao publicar: {_truncate_error(e)}")
-        await send_message(
-            f"❌ {label} Erro ao publicar: {_truncate_error(e)}. "
-            "Pulando para uma nova história."
-        )
-        return None
+        raise _PublishError(_truncate_error(e)) from e
+
+
+async def _publish_item(
+    send_message,
+    llm_proxy,
+    publisher,
+    videos: list[GeneratedVideo],
+    item: _WorkItem,
+    *,
+    output_dir: str,
+    last_slot: datetime.datetime,
+    candidate_number: int,
+) -> datetime.datetime | None:
+    """Schedule every video of one story, then close its package."""
+    label = f"#{candidate_number}"
+    slots: list[datetime.datetime] = []
+    hashtags: list[str] | None = None
+    cursor = last_slot
+
+    for video in videos:
+        try:
+            result = await _publish_one_video(
+                send_message,
+                llm_proxy,
+                publisher,
+                video,
+                item,
+                last_slot=cursor,
+                candidate_number=candidate_number,
+                hashtags=hashtags,
+            )
+        except _PublishError as exc:
+            if slots:
+                # Part 1 is already on the calendar; naming its slot is what
+                # lets the operator place the second half by hand.
+                error = (
+                    f"Erro ao publicar a parte 2: {exc}. Parte 1 agendada para "
+                    f"{slots[0].strftime('%d/%m %H:%M')}"
+                )
+            else:
+                error = f"Erro ao publicar: {exc}"
+
+            _mark_failed(item, error)
+            await send_message(f"❌ {label} {error}. Pulando para uma nova história.")
+            return None
+
+        # The second part goes out with the hashtags the first one used, so
+        # the two halves read as one story on the account.
+        hashtags = result.hashtags
+        cursor = result.slot
+        slots.append(result.slot)
+
+    _mark_done(
+        item,
+        _outcome(
+            videos,
+            status="scheduled",
+            slots=list(slots),
+            hashtags=hashtags,
+            output_dir=output_dir,
+        ),
+    )
+    return cursor
 
 
 async def run_daily_generate(
@@ -1053,9 +1195,10 @@ async def run_daily_generate(
     service = container.reddit_video_service()
 
     generated: list[GeneratedVideo] = []
+    produced = 0
 
     for candidate_idx, item in enumerate(work, start=1):
-        if len(generated) >= count:
+        if produced >= count:
             break
 
         if not await _ensure_script(
@@ -1067,29 +1210,32 @@ async def run_daily_generate(
         ):
             continue
 
-        video = await _generate_video_for_story(
+        videos = await _generate_video_for_story(
             send_message,
             service,
             item,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
-        if video is not None:
+        if videos:
             _mark_done(
                 item,
-                {
-                    "status": "generated",
-                    "scheduled_at": None,
-                    "hashtags": item.hashtags,
-                    "video_path": video.video_path,
-                    "manifest_path": _manifest_path(video.video_path, output_dir),
-                },
+                _outcome(
+                    videos,
+                    status="generated",
+                    slots=[None] * len(videos),
+                    hashtags=item.hashtags,
+                    output_dir=output_dir,
+                ),
             )
             await send_message(f"#{candidate_idx} Vídeo finalizado.")
-            generated.append(video)
+            generated.extend(videos)
+            # The target counts stories, not files: a two-part package fills
+            # one slot of the day and leaves two videos behind.
+            produced += 1
 
     await send_message(
-        f"✅ Geração finalizada: {len(generated)}/{count} vídeos prontos.",
+        f"✅ Geração finalizada: {produced}/{count} vídeos prontos.",
     )
     return generated
 
@@ -1221,22 +1367,22 @@ async def run_daily_auto_publish(
         ):
             continue
 
-        video = await _generate_video_for_story(
+        videos = await _generate_video_for_story(
             send_message,
             service,
             item,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
-        if video is None:
+        if not videos:
             continue
 
         await send_message(f"#{candidate_idx} Vídeo finalizado. Agendando história...")
-        slot = await _publish_one_video(
+        slot = await _publish_item(
             send_message,
             llm_proxy,
             publisher,
-            video,
+            videos,
             item,
             output_dir=output_dir,
             last_slot=last_slot,

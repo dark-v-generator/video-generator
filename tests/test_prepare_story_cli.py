@@ -20,8 +20,9 @@ from src.entities.editor.audio_clip import AudioClip
 from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import StoryCandidate
+from src.proxies.prompts.render import render_two_part_story_prompt
 from src.services.speech_service import SpeechResult
-from tests.test_prepared_story_package import package_payload
+from tests.test_prepared_story_package import package_payload, two_part_payload
 
 
 def make_post(post_id: str, title: str, score: int = 2500) -> RedditPost:
@@ -613,3 +614,204 @@ class TestQueue:
 
         assert code == 2
         assert "Connection refused" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Two-part packages (version 2)
+# ---------------------------------------------------------------------------
+
+
+def write_two_part_package(directory, **overrides) -> str:
+    payload = two_part_payload(**overrides)
+    directory.mkdir(parents=True, exist_ok=True)
+    path = (
+        directory
+        / f"{payload['post']['url'].split('/comments/')[1].split('/')[0]}.json"
+    )
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
+class TestTwoPartPrompt:
+    def test_two_part_flag_prints_the_two_part_prompt(
+        self, tmp_path, config, finder, capsys
+    ):
+        prepare_story.main(["find", "--out", str(tmp_path)])
+        capsys.readouterr()
+
+        code = prepare_story.main(["prompt", "1", "--two-part", "--out", str(tmp_path)])
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert out.startswith(
+            render_two_part_story_prompt(
+                "Primeira historia",
+                make_post("aaa111", "Primeira historia").content,
+                Language.PORTUGUESE,
+            )
+        )
+
+    def test_without_the_flag_the_single_prompt_is_unchanged(
+        self, tmp_path, config, finder, capsys
+    ):
+        prepare_story.main(["find", "--out", str(tmp_path)])
+        capsys.readouterr()
+
+        prepare_story.main(["prompt", "1", "--out", str(tmp_path)])
+
+        out = capsys.readouterr().out
+        assert "2-part story" not in out
+
+
+class TestTwoPartValidate:
+    def test_valid_two_part_package_passes(self, tmp_path, config, capsys):
+        path = write_two_part_package(tmp_path)
+
+        code = prepare_story.main(["validate", path])
+
+        assert code == 0
+        assert capsys.readouterr().out.startswith("✓")
+
+    def test_missing_cta_names_the_field(self, tmp_path, config, capsys):
+        path = write_two_part_package(
+            tmp_path, part1_text="Ele jurou que nao tinha nada."
+        )
+
+        code = prepare_story.main(["validate", path])
+
+        out = capsys.readouterr().out
+        assert code == 1
+        assert "✗" in out
+        assert (
+            'part1_text: precisa terminar com "Curta e me siga para a parte 2."' in out
+        )
+
+    def test_forbidden_word_in_part_two_names_the_field(self, tmp_path, config, capsys):
+        path = write_two_part_package(
+            tmp_path, part2_text="No fim ele pegou a arma da gaveta."
+        )
+
+        code = prepare_story.main(["validate", path])
+
+        out = capsys.readouterr().out
+        assert code == 1
+        assert "part2_text: 'arma'" in out
+
+    def test_unknown_version_is_reported_not_crashed(self, tmp_path, config, capsys):
+        path = tmp_path / "1vuze4m.json"
+        path.write_text(json.dumps(two_part_payload(version=3)), encoding="utf-8")
+
+        code = prepare_story.main(["validate", str(path)])
+
+        out = capsys.readouterr().out
+        assert code == 1
+        assert "unsupported package version" in out
+
+    def test_both_versions_validate_in_the_same_run(self, tmp_path, config, capsys):
+        single = write_package(tmp_path)
+        two_part = write_two_part_package(tmp_path / "other")
+
+        code = prepare_story.main(["validate", single, two_part])
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert out.count("✓") == 2
+
+
+class TestTwoPartList:
+    def test_two_part_package_is_marked(self, tmp_path, config, capsys):
+        write_two_part_package(tmp_path)
+
+        prepare_story.main(["list", "--out", str(tmp_path)])
+
+        out = capsys.readouterr().out
+        assert "2 partes" in out
+        assert "sem mp3" in out
+
+    def test_both_previews_are_needed_for_the_mp3_mark(self, tmp_path, config, capsys):
+        write_two_part_package(tmp_path)
+        (tmp_path / "1vuze4m.part1.preview.mp3").write_bytes(b"x")
+
+        prepare_story.main(["list", "--out", str(tmp_path)])
+        assert "sem mp3" in capsys.readouterr().out
+
+        (tmp_path / "1vuze4m.part2.preview.mp3").write_bytes(b"x")
+
+        prepare_story.main(["list", "--out", str(tmp_path)])
+        assert "mp3 ok" in capsys.readouterr().out
+
+    def test_single_part_package_is_not_marked(self, tmp_path, config, capsys):
+        write_package(tmp_path)
+
+        prepare_story.main(["list", "--out", str(tmp_path)])
+
+        assert "2 partes" not in capsys.readouterr().out
+
+
+class TestTwoPartPreview:
+    def test_writes_one_mp3_per_part(self, tmp_path, config, speech, capsys):
+        path = write_two_part_package(tmp_path)
+
+        code = prepare_story.main(["preview", path])
+
+        assert code == 0
+        assert (tmp_path / "1vuze4m.part1.preview.mp3").exists()
+        assert (tmp_path / "1vuze4m.part2.preview.mp3").exists()
+        assert not (tmp_path / "1vuze4m.preview.mp3").exists()
+
+    def test_each_part_is_narrated_with_the_package_voice(
+        self, tmp_path, config, speech, capsys
+    ):
+        payload = two_part_payload(narrator_gender="female", resolved_gender="female")
+        path = write_two_part_package(
+            tmp_path, narrator_gender="female", resolved_gender="female"
+        )
+
+        prepare_story.main(["preview", path])
+
+        assert speech.calls == [
+            {
+                "text": payload["part1_text"],
+                "gender": "female",
+                "rate": 1.0,
+                "language": Language.PORTUGUESE,
+            },
+            {
+                "text": payload["part2_text"],
+                "gender": "female",
+                "rate": 1.0,
+                "language": Language.PORTUGUESE,
+            },
+        ]
+
+    def test_prints_each_duration_and_the_total(self, tmp_path, config, speech, capsys):
+        path = write_two_part_package(tmp_path)
+
+        prepare_story.main(["preview", path])
+
+        out = capsys.readouterr().out
+        assert "part1.preview.mp3" in out
+        assert "part2.preview.mp3" in out
+        assert "total" in out.lower()
+        assert len(re.findall(r"\b\d{2}:\d{2}\b", out)) == 3
+
+
+class TestTwoPartQueue:
+    def test_remote_listing_shows_a_two_part_package(
+        self, tmp_path, config, monkeypatch, capsys
+    ):
+        listing = f"1789900500\n{json.dumps(two_part_payload(), indent=2)}\n\n"
+
+        monkeypatch.setattr(
+            prepare_story.subprocess,
+            "run",
+            lambda cmd, **kwargs: subprocess.CompletedProcess(cmd, 0, listing, ""),
+        )
+
+        code = prepare_story.main(["queue", "--remote", REMOTE])
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "1vuze4m" in out
+        assert "Ele pediu pra eu ignorar o encontro dele" in out
+        assert "2 partes" in out

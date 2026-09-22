@@ -7,10 +7,10 @@ existente. Nenhum subcomando chama modelo de LLM.
 |------------|------------|--------|-------|-----------|
 | `find` | `--sort top\|new\|hot` (top), `--time day\|week\|...` (day), `--per-sub N` (25), `--top-per-sub N` (5), `--sub r/x` (repetível), `--out DIR` (`output/prepared`) | `StoryFinderService.find_candidates`, excluindo URLs de pacotes já em `--out` | Tabela: `rank`, score, comunidade, pontos, comentários, chars, título, URL. Grava `candidates.json` | M1 |
 | `show N` | rank | Imprime título, metadados e o texto original completo do candidato N | texto | M1 |
-| `prompt N` | rank, `--language` (config) | `render_story_prompt(post.title, post.content, language)` | o prompt exato do servidor, em stdout | M1 |
-| `validate FILE...` | caminhos | `PreparedStoryPackage` + `validate_package` | `✓ file` ou lista de problemas; exit 1 se algum falhar | M1 |
-| `list` | `--out DIR` | Lista pacotes locais | título, `post_id`, criado em, se há `.preview.mp3` | M1 |
-| `preview FILE` | caminho, `--rate` (1.0) | `speech_service.generate_speech` com gênero/idioma do pacote; grava `<post_id>.preview.mp3` ao lado (sobrescreve) | caminho do mp3 e duração `mm:ss` | M2 |
+| `prompt N` | rank, `--language` (config), `--two-part` | `render_story_prompt(...)`; com `--two-part`, `render_two_part_story_prompt(...)` (inclui os exemplos de `examples/two_part_story.yaml`) | o prompt exato do servidor, em stdout | M1 / M4 |
+| `validate FILE...` | caminhos | `load_package` (despacha por `version`) + `validate_package`; na versão 2 checa cada parte e o CTA final da parte 1 | `✓ file` ou lista de problemas nomeando o campo (`part1_text`, `part2_text`); exit 1 se algum falhar | M1 / M4 |
+| `list` | `--out DIR` | Lista pacotes locais | título, `post_id`, criado em, `2 partes` quando `version: 2`, se há prévia(s) | M1 / M4 |
+| `preview FILE` | caminho, `--rate` (1.0) | `speech_service.generate_speech` com gênero/idioma do pacote; grava `<post_id>.preview.mp3` ao lado (sobrescreve). Versão 2: uma chamada por parte, `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3` | caminho do mp3 e duração `mm:ss`; versão 2: duração de cada parte e o total | M2 / M4 |
 | `ship FILE...` | caminhos, `--remote user@host:dir` (config), `--force` | valida; `ssh mkdir -p dir/inbox`; se `dir/inbox/<post_id>.json` existe e não `--force`, pergunta `y/N`; `scp` | `→ enviado <post_id>.json para <remote>/inbox` ou erro; arquivo local intacto em qualquer falha | M2 |
 | `queue` | `--remote` | `ssh` lista e lê `dir/inbox/*.json` | tabela: `post_id`, título, URL, `created_at`, mtime remoto | M2 |
 
@@ -22,7 +22,7 @@ Códigos de saída: 0 sucesso; 1 validação falhou / recusa; 2 erro de rede ou 
 ```text
 story-find *args        → uv run python scripts/prepare_story.py find {{args}}
 story-show n            → ... show {{n}}
-story-prompt n          → ... prompt {{n}}
+story-prompt n *args    → ... prompt {{n}} {{args}}   (ex.: just story-prompt 3 --two-part)
 story-validate file     → ... validate {{file}}
 story-preview file      → CONFIG_PATH=config.prod.yaml ... preview {{file}}
 story-ship file         → ... ship {{file}}
@@ -42,11 +42,17 @@ a descoberta). Passos que o skill conduz:
 2. Propõe 3 a 5 candidatas com uma linha de justificativa cada, usando os critérios
    de `src/proxies/prompts/evaluate_story.jinja2` como lente. Pergunta qual.
 3. Roda `just story-prompt N`, segue o prompt renderizado e escreve o JSON do pacote em
-   `output/prepared/<post_id>.json` (com `summary` e `hashtags`).
+   `output/prepared/<post_id>.json` (com `summary` e `hashtags`). Quando o operador
+   pede duas partes, ou quando a prévia do roteiro único passa de uns seis minutos e o
+   assistente sugere o corte, roda `just story-prompt N --two-part` e escreve um pacote
+   `version: 2` com `part1_text` e `part2_text`; a escolha do formato é do operador.
 4. Roda `just story-validate`; corrige e repete até passar.
 5. Mostra o roteiro ao operador e aceita revisões (mantém o arquivo anterior até o
    operador aprovar).
 6. Roda `just story-preview` e pede para o operador ouvir; volta ao passo 5 se pedir.
+   Num pacote de duas partes são dois mp3, e o que se ouve é se a parte 1 fecha num
+   gancho e se cada parte tem duração razoável.
 7. Só envia (`just story-ship`) com confirmação explícita do operador.
 
-O que o assistente nunca faz sozinho: escolher a história, aprovar o roteiro, enviar.
+O que o assistente nunca faz sozinho: escolher a história, escolher entre um vídeo e
+duas partes, aprovar o roteiro, enviar.

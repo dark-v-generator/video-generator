@@ -22,7 +22,11 @@ from src.services.reddit_video_service import PreparedStory
 from src.services.text_censor import TextCensor
 
 from tests.test_prepared_story_package import package_payload
-from tests.test_prepared_story_queue import other_post_url, write_inbox
+from tests.test_prepared_story_queue import (
+    other_post_url,
+    write_inbox,
+    write_two_part_inbox,
+)
 
 # --------------------------------------------------------------------------
 # Fakes
@@ -647,3 +651,297 @@ class TestLoadGeneratedVideos:
         (video,) = satisfying_bot.load_generated_videos(str(tmp_path))
 
         assert video.source == "prepared"
+
+
+# --------------------------------------------------------------------------
+# Milestone 4 — two-part packages
+# --------------------------------------------------------------------------
+
+
+TITLE = package_payload()["story_title"]
+PART1_TITLE = f"{TITLE} - Parte 1"
+PART2_TITLE = f"{TITLE} - Parte 2"
+
+
+def outcome_of(queue_root, post_id: str) -> dict:
+    return json.loads((queue_root / "done" / f"{post_id}.outcome.json").read_text())
+
+
+class TestTwoPartGeneration:
+    @pytest.mark.asyncio
+    async def test_one_package_counts_as_one_story_and_makes_two_videos(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert env.discovery.calls == []
+        assert env.service.prepared_urls == []
+        assert env.service.generated_titles == [PART1_TITLE, PART2_TITLE]
+        assert sorted(os.listdir(env.output_dir)) == [
+            "story_01.json",
+            "story_01.mp4",
+            "story_01_p2.json",
+            "story_01_p2.mp4",
+        ]
+
+    @pytest.mark.asyncio
+    async def test_each_manifest_names_its_part_and_shares_the_post(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        part1, part2 = manifests(env.output_dir)
+        assert part1["part"] == 1
+        assert part2["part"] == 2
+        assert part1["title"] == PART1_TITLE
+        assert part2["title"] == PART2_TITLE
+        assert part1["post_url"] == part2["post_url"] == other_post_url("aaa")
+        assert part1["source"] == part2["source"] == "prepared"
+
+    @pytest.mark.asyncio
+    async def test_the_messages_announce_the_format_and_each_part(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert f'#1 Usando roteiro preparado em duas partes: "{TITLE}"' in env.messages
+        assert "#1 Parte 1 gerada" in env.messages
+        assert "#1 Parte 2 gerada" in env.messages
+        assert not any("Gerando roteiro" in message for message in env.messages)
+
+    @pytest.mark.asyncio
+    async def test_a_single_part_package_still_makes_one_video(self, env):
+        write_inbox(str(env.queue_root), "aaa", story_title="Pacote A")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        (manifest,) = manifests(env.output_dir)
+        assert "part" not in manifest
+        assert env.service.generated_titles == ["Pacote A"]
+
+
+class TestTwoPartPublishing:
+    @pytest.mark.asyncio
+    async def test_both_parts_are_scheduled_in_consecutive_slots(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        first, second = env.publisher.calls
+        assert first.description == PART1_TITLE
+        assert second.description == PART2_TITLE
+        assert second.schedule_at == satisfying_bot.next_publish_slot(
+            after=first.schedule_at,
+            slot_times=satisfying_bot.bot_config.publish_slots_local,
+            min_lead_minutes=satisfying_bot.bot_config.publish_min_lead_minutes,
+        )
+        assert second.schedule_at > first.schedule_at
+
+    @pytest.mark.asyncio
+    async def test_both_parts_carry_the_packages_hashtags(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert env.llm.hashtag_calls == []
+        first, second = env.publisher.calls
+        assert first.hashtags == second.hashtags == ["reddit", "historia", "fyp"]
+
+    @pytest.mark.asyncio
+    async def test_hashtags_are_generated_once_and_reused(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa", hashtags=None)
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert env.llm.hashtag_calls == [PART1_TITLE]
+        first, second = env.publisher.calls
+        assert first.hashtags == second.hashtags
+
+    @pytest.mark.asyncio
+    async def test_publish_log_gets_one_row_per_part(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        with open(env.publish_log, newline="", encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+
+        assert [row["title"] for row in rows] == [PART1_TITLE, PART2_TITLE]
+        assert {row["post_url"] for row in rows} == {other_post_url("aaa")}
+        assert {row["status"] for row in rows} == {"scheduled"}
+
+    @pytest.mark.asyncio
+    async def test_done_only_after_both_parts_with_an_outcome_per_video(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert (env.queue_root / "done" / "aaa.json").exists()
+        outcome = outcome_of(env.queue_root, "aaa")
+        assert outcome["status"] == "scheduled"
+        assert outcome["hashtags"] == ["reddit", "historia", "fyp"]
+        assert [video["part"] for video in outcome["videos"]] == [1, 2]
+        assert outcome["videos"][0]["video_path"].endswith("story_01.mp4")
+        assert outcome["videos"][1]["video_path"].endswith("story_01_p2.mp4")
+        assert outcome["videos"][1]["manifest_path"].endswith("story_01_p2.json")
+        assert (
+            outcome["videos"][0]["scheduled_at"] < outcome["videos"][1]["scheduled_at"]
+        )
+
+
+class TestTwoPartFailures:
+    @pytest.mark.asyncio
+    async def test_a_failed_second_video_publishes_nothing(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+        env.service.fail_titles = {PART2_TITLE}
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert env.publisher.calls == []
+        assert (env.queue_root / "failed" / "aaa.json").exists()
+        assert (
+            "render exploded"
+            in (env.queue_root / "failed" / "aaa.error.txt").read_text()
+        )
+
+    @pytest.mark.asyncio
+    async def test_a_failed_second_publish_names_the_slot_of_the_first(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+        env.publisher.fail_descriptions = {PART2_TITLE}
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert (env.queue_root / "failed" / "aaa.json").exists()
+        error = (env.queue_root / "failed" / "aaa.error.txt").read_text()
+        first_slot = env.publisher.calls[0].schedule_at
+        assert first_slot.strftime("%d/%m %H:%M") in error
+        assert "parte 2" in error
+        assert "browser exploded" in error
+
+    @pytest.mark.asyncio
+    async def test_a_failed_first_publish_fails_the_package_as_before(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+        env.publisher.fail_descriptions = {PART1_TITLE}
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert [call.description for call in env.publisher.calls] == [PART1_TITLE]
+        assert (env.queue_root / "failed" / "aaa.json").exists()
+        assert (
+            "browser exploded"
+            in (env.queue_root / "failed" / "aaa.error.txt").read_text()
+        )
+
+    @pytest.mark.asyncio
+    async def test_an_invalid_two_part_package_never_reaches_production(self, env):
+        write_two_part_inbox(
+            str(env.queue_root), "aaa", part1_text="Sem o convite da parte 2."
+        )
+
+        await satisfying_bot.run_daily_auto_publish(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert (env.queue_root / "failed" / "aaa.json").exists()
+        assert "part1_text" in (env.queue_root / "failed" / "aaa.error.txt").read_text()
+        assert env.service.generated_titles == ["auto auto-url-1"]
+
+
+class TestTwoPartGenerateOnly:
+    @pytest.mark.asyncio
+    async def test_both_videos_are_generated_and_the_package_is_done(self, env):
+        videos = await satisfying_bot.run_daily_generate(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+        assert [video.source for video in videos] == ["auto"]
+
+    @pytest.mark.asyncio
+    async def test_generate_only_marks_the_package_generated(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        videos = await satisfying_bot.run_daily_generate(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert [video.title for video in videos] == [PART1_TITLE, PART2_TITLE]
+        assert [video.part for video in videos] == [1, 2]
+        assert env.publisher.calls == []
+
+        outcome = outcome_of(env.queue_root, "aaa")
+        assert outcome["status"] == "generated"
+        assert [video["part"] for video in outcome["videos"]] == [1, 2]
+        assert all(video["scheduled_at"] is None for video in outcome["videos"])
+
+    @pytest.mark.asyncio
+    async def test_one_package_still_satisfies_a_target_of_one(self, env):
+        write_two_part_inbox(str(env.queue_root), "aaa")
+
+        await satisfying_bot.run_daily_generate(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert env.discovery.calls == []
+        assert "✅ Geração finalizada: 1/1 vídeos prontos." in env.messages
+
+
+class TestPublishFromDirectory:
+    @pytest.mark.asyncio
+    async def test_a_two_part_pair_is_scheduled_in_order_and_consecutively(self, env):
+        os.makedirs(env.output_dir, exist_ok=True)
+        for name, part, title in (
+            ("story_01", 1, PART1_TITLE),
+            ("story_01_p2", 2, PART2_TITLE),
+        ):
+            mp4 = os.path.join(env.output_dir, f"{name}.mp4")
+            with open(mp4, "wb") as f:
+                f.write(b"video")
+            with open(os.path.join(env.output_dir, f"{name}.json"), "w") as f:
+                json.dump(
+                    {
+                        "video_path": mp4,
+                        "title": title,
+                        "summary": "s",
+                        "post_url": other_post_url("aaa"),
+                        "source": "prepared",
+                        "part": part,
+                    },
+                    f,
+                )
+
+        videos = satisfying_bot.load_generated_videos(env.output_dir)
+        assert [video.part for video in videos] == [1, 2]
+
+        await satisfying_bot.run_daily_publish(env.send_message, videos)
+
+        first, second = env.publisher.calls
+        assert first.description == PART1_TITLE
+        assert second.description == PART2_TITLE
+        assert second.schedule_at == satisfying_bot.next_publish_slot(
+            after=first.schedule_at,
+            slot_times=satisfying_bot.bot_config.publish_slots_local,
+            min_lead_minutes=satisfying_bot.bot_config.publish_min_lead_minutes,
+        )

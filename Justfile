@@ -76,8 +76,9 @@ story-show *args:
     uv run python scripts/prepare_story.py show {{args}}
 
 # Print the exact editorial prompt the server sends for candidate N.
-story-prompt n:
-    uv run python scripts/prepare_story.py prompt {{n}}
+# Add --two-part for the two-video format.
+story-prompt n *args:
+    uv run python scripts/prepare_story.py prompt {{n}} {{args}}
 
 # Validate prepared packages (missing fields, wrong language, forbidden words).
 story-validate file:

@@ -1,6 +1,6 @@
 # Implementation Plan: Preparação local de histórias e hand-off para o servidor
 
-**Branch**: `main` (sem branch dedicada criada; diretório da feature: `003-local-story-prep`) | **Date**: 2026-09-21 | **Spec**: [spec.md](./spec.md)
+**Branch**: `main` (sem branch dedicada criada; diretório da feature: `003-local-story-prep`) | **Date**: 2026-09-21 (M4 acrescentado em 2026-09-22) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/003-local-story-prep/spec.md`
 
@@ -23,6 +23,15 @@ e, no servidor, uma `PreparedStoryQueue` que o job diário consulta antes da des
 Entrega em três milestones, na ordem pedida pelo usuário: local primeiro (descoberta,
 roteiro, validação, skill), depois prévia de áudio e envio, e por último o consumo no
 servidor, que só será verificável em três dias.
+
+Um quarto milestone, acrescentado depois que os três primeiros fecharam, dá ao operador
+a escolha de preparar uma história em **duas partes** (US6): posts longos viravam
+narrações de oito minutos, e o pipeline de duas partes que já existe no serviço não
+era usado por nenhum bot. O pacote ganha uma segunda forma (`version: 2`, com
+`part1_text` e `part2_text`), o CLI renderiza o prompt de duas partes do servidor e
+gera uma prévia por parte, e o job diário produz os dois vídeos com o mesmo método do
+vídeo único e agenda a parte 2 no slot seguinte ao da parte 1. A descoberta
+automática continua produzindo só vídeos únicos.
 
 ## Technical Context
 
@@ -55,9 +64,11 @@ consumo da fila). Ambos compartilham o mesmo repositório e o mesmo `config.yaml
 chamadas de avaliação/roteiro no servidor quando a fila cobre a meta diária (SC-004)
 
 **Constraints**: fila vazia = comportamento e logs idênticos aos atuais (FR-011,
-SC-003); título e roteiro do pacote usados verbatim (SC-005); a mesma história nunca é
+SC-003); título e roteiro do pacote usados verbatim (SC-005, SC-008); a mesma história nunca é
 publicada duas vezes pelos dois caminhos (FR-014, SC-006); as regras editoriais vêm de
-uma única fonte (FR-003); a metade local funciona sem deploy no servidor (SC-007)
+uma única fonte, para um vídeo e para duas partes (FR-003, FR-017); a metade local funciona sem deploy no servidor (SC-007);
+um pacote de duas partes nunca publica uma parte só (FR-023) e é recusado inteiro por um
+servidor sem suporte (FR-024, SC-009)
 
 **Scale/Scope**: 1 operador, 3 vídeos/dia, fila de poucos pacotes por vez; pacotes de
 até ~15 mil caracteres de post e ~10 mil de roteiro
@@ -79,9 +90,11 @@ interna passa a conhecer camada externa; nenhum novo desvio. PASS.
 
 ## Delivery Plan
 
-3 milestones, ~1 PR cada (≤ 8). A ordem espelha o pedido do usuário: as duas primeiras
+4 milestones, ~1 PR cada (≤ 8). A ordem espelha o pedido do usuário: as duas primeiras
 são inteiramente locais e verificáveis sem o servidor; a terceira só é verificável
-quando o operador voltar a ter acesso.
+quando o operador voltar a ter acesso. A quarta veio depois e depende das três: a
+metade local (prompt, validação, prévia) é verificável no laptop, e a produção dos
+dois vídeos exige o servidor, como no M3.
 
 ### M1 — Descobrir, roteirizar e validar localmente (US1 + US2 / P1) — PR 1
 
@@ -169,7 +182,61 @@ quando o operador voltar a ter acesso.
   inbox produz `story_01.mp4` cujo `story_01.json` tem o título do pacote e
   `source: prepared`, e o log não mostra chamadas de avaliação nem de roteiro.
 
-**Projeção**: 3 PRs.
+### M4 — Histórias em duas partes pelo fluxo preparado (US6 / P3) — PR 4
+
+- `src/entities/prepared_story.py`: base comum `_PackageBase`; `TwoPartStoryPackage`
+  (`version: Literal[2]`, `part1_text`, `part2_text`, `to_story_script()`,
+  `to_prepared_stories()`); `load_package(text)` despachando por `version` e
+  falhando com `unsupported package version` fora de `{1, 2}`.
+- `src/proxies/prompts/render.py`: `render_two_part_story_prompt(title, content,
+  language)` extraído de `PromptLLMProxy.generate_two_part_story` (que passa a
+  chamá-lo), carregando os mesmos exemplos de `examples/two_part_story.yaml`.
+- `src/services/prepared_story_validation.py`: `validate_package` aceita as duas
+  formas; na versão 2 checa `story_title`, `part1_text`, `part2_text` (cada problema
+  nomeia o campo) e o CTA final da parte 1 por idioma (`pt-br`: `Curta e me siga para
+  a parte 2.`).
+- `src/services/prepared_story_queue.py`: `QueuedPackage.package` passa a ser a união
+  das duas formas, lida com `load_package`; `known_post_urls` inalterado.
+- `scripts/prepare_story.py`: `prompt N --two-part`; `validate`, `list`, `preview` e
+  `queue` usando `load_package`; `preview` de versão 2 gera
+  `<post_id>.part1.preview.mp3` e `<post_id>.part2.preview.mp3` e imprime cada duração
+  e o total. Receita `story-prompt n *args`.
+- `bots/satisfying_bot.py`: `_WorkItem.part2`; `_collect_candidates` monta a parte 1 e
+  a parte 2 de um pacote de versão 2 (uma história na meta); `_generate_video_for_story`
+  produz as duas partes com `generate_satisfying_video_from_story`, arquivos
+  `story_NN.mp4` e `story_NN_p2.mp4`, manifestos com `part`, e falha o item inteiro se
+  qualquer parte falhar; `_publish_one_video` é chamado para a parte 1 e depois para a
+  parte 2 com `last_slot` = slot da parte 1 e as mesmas hashtags; `mark_done` só
+  depois das duas, com `outcome.json` listando os dois vídeos; parte 2 falhando ao
+  publicar → `mark_failed` nomeando o slot da parte 1. `GeneratedVideo.part` opcional;
+  `run_daily_publish` respeita a ordem de nome dos manifestos. Mensagens do Telegram
+  em `contracts/queue.md`.
+- `.claude/skills/prepare-story/SKILL.md`: passo 3 apresenta a escolha do formato
+  (sugerindo duas partes quando a prévia única passa de uns seis minutos ou a história
+  tem um gancho natural antes do desfecho) e passo 6 ouve as duas prévias.
+- `docs/prepared-stories.md`: seção sobre pacotes de duas partes.
+
+**Gate de verificação M4**:
+- Testes: `TwoPartStoryPackage` round-trip, `to_story_script()`, `to_prepared_stories()`
+  com os sufixos, `load_package` despachando e recusando `version: 3`; o modelo de
+  versão 1 rejeita `version: 2` (é o que garante SC-009 num servidor antigo);
+  `render_two_part_story_prompt` byte a byte igual ao que `generate_two_part_story`
+  envia (regressão com `litellm.acompletion` falso), exemplos inclusos;
+  `validate_package` versão 2 acusa parte vazia, palavra proibida em cada parte
+  nomeando o campo, idioma e CTA ausente na parte 1; CLI `prompt --two-part`,
+  `validate`, `list` (`2 partes`) e `preview` (dois mp3, duas durações e total); bot:
+  pacote versão 2 conta uma história na meta, gera dois vídeos e dois manifestos com
+  `part`, publica em dois slots consecutivos com as mesmas hashtags e duas linhas no
+  publish log, `done/` com os dois vídeos; falha na parte 2 (produção) → nenhum
+  publicado e `failed/`; falha na parte 2 (publicação) → `failed/` com o slot da
+  parte 1; fila vazia → nada de duas partes na descoberta (SC-003 continua).
+- Manual (quickstart §6): `just story-prompt N --two-part` começa com o mesmo texto
+  do template de duas partes e traz os três exemplos; pacote versão 2 validado; duas
+  prévias com durações; no servidor, `just prod-daily-generate 1` com o pacote na
+  inbox produz `story_01.mp4` e `story_01_p2.mp4`, covers `... - Parte 1` e `... -
+  Parte 2`, sem chamada de roteiro.
+
+**Projeção**: 4 PRs.
 
 ## Project Structure
 
@@ -193,41 +260,43 @@ specs/003-local-story-prep/
 ```text
 src/
 ├── entities/
-│   ├── prepared_story.py           # M1: NOVO — PreparedStoryPackage (+ to_prepared_story)
+│   ├── prepared_story.py           # M1: NOVO — PreparedStoryPackage (+ to_prepared_story); M4: TwoPartStoryPackage, load_package
 │   └── configs/bots.py             # M2: PreparedStoriesConfig em TelegramBotConfig
 ├── proxies/
-│   ├── prompts/render.py           # M1: NOVO — render_story_prompt (função pura)
+│   ├── prompts/render.py           # M1: NOVO — render_story_prompt (função pura); M4: render_two_part_story_prompt
 │   ├── prompts/story.jinja2        # INALTERADO (fonte única das regras editoriais)
-│   ├── llm_prompt_proxy.py         # M1: generate_story usa render_story_prompt
+│   ├── prompts/two_part_story.jinja2 # INALTERADO (fonte única das regras de duas partes)
+│   ├── llm_prompt_proxy.py         # M1: generate_story usa render_story_prompt; M4: generate_two_part_story usa render_two_part_story_prompt
 │   └── interfaces.py               # INALTERADO
 ├── services/
 │   ├── story_finder_service.py     # M1: find_candidates(exclude_urls) sem LLM
-│   ├── prepared_story_validation.py# M1: NOVO — validate_package
-│   ├── prepared_story_queue.py     # M3: NOVO — PreparedStoryQueue (inbox/done/failed)
+│   ├── prepared_story_validation.py# M1: NOVO — validate_package; M4: versão 2 (partes + CTA)
+│   ├── prepared_story_queue.py     # M3: NOVO — PreparedStoryQueue (inbox/done/failed); M4: load_package
 │   ├── reddit_video_service.py     # INALTERADO (PreparedStory é o contrato)
 │   └── text_censor.py              # INALTERADO (usado como detector)
 └── core/container.py               # M3: provider prepared_story_queue
 
 scripts/
-└── prepare_story.py                # M1: find/show/prompt/validate/list; M2: preview/ship/queue
+└── prepare_story.py                # M1: find/show/prompt/validate/list; M2: preview/ship/queue; M4: --two-part, prévia por parte
 
 bots/
-└── satisfying_bot.py               # M3: _collect_candidates, /prepared, manifesto com source
+└── satisfying_bot.py               # M3: _collect_candidates, /prepared, manifesto com source; M4: duas partes (part2, slots consecutivos)
 
 .claude/skills/prepare-story/
-└── SKILL.md                        # M1: NOVO — fluxo guiado no Claude Code; M2: fecha o loop
+└── SKILL.md                        # M1: NOVO — fluxo guiado no Claude Code; M2: fecha o loop; M4: escolha do formato
 
 docs/
-└── prepared-stories.md             # M3: NOVO — doc do operador (português)
+└── prepared-stories.md             # M3: NOVO — doc do operador (português); M4: seção de duas partes
 
 tests/
 ├── test_prepared_story_package.py  # M1: NOVO
 ├── test_prepare_story_cli.py       # M1/M2: NOVO
 ├── test_prepared_story_queue.py    # M3: NOVO
-├── test_daily_prepared_flow.py     # M3: NOVO (padrão de test_publish_slots.py)
+├── test_daily_prepared_flow.py     # M3: NOVO (padrão de test_publish_slots.py); M4: casos de duas partes
+├── test_render_two_part_prompt.py  # M4: NOVO (regressão contra generate_two_part_story)
 └── services/test_story_finder_service.py  # M1: casos de find_candidates; existentes intactos
 
-Justfile                            # M1/M2: story-find, story-validate, story-preview, story-ship, story-queue
+Justfile                            # M1/M2: story-find, story-validate, story-preview, story-ship, story-queue; M4: story-prompt aceita args
 config.yaml / config.prod.yaml      # M2: bloco prepared_stories comentado com defaults
 ```
 
@@ -244,3 +313,5 @@ externo (terminal, `ssh`/`scp`, Telegram) fica em `scripts/` e `bots/`.
 | `find_best_stories` decomposto em `find_candidates` + avaliação | FR-001/SC-002 exigem a shortlist local sem LLM; sem a decomposição o CLI duplicaria o ranking | Uma flag `skip_llm` no método existente mistura dois modos no mesmo fluxo e deixa o tipo de retorno ambíguo (`EvaluatedStory` sem avaliação) |
 | `render_story_prompt` extraído do proxy | FR-003: o prompt que o assistente segue tem que ser o mesmo que o servidor envia; a extração é o que permite testar isso byte a byte | Mandar o skill "ler o `.jinja2`" deixaria o assistente interpretar a sintaxe do template e as variáveis, abrindo espaço para drift |
 | `spec.md` em inglês | Pedido do usuário em inglês; rastreabilidade termo a termo | Traduzir agora só re-escreveria um artefato já validado |
+| Segundo modelo de pacote (`version: 2`) em vez de campos opcionais no primeiro | FR-018/FR-024: o formato tem que ser distinguível pela versão e um servidor antigo tem que recusar o pacote inteiro antes de produzir; `Literal[1]` no modelo antigo faz isso sem código | Campos opcionais num só modelo fariam o servidor antigo aceitar o arquivo e falhar só na geração, depois de gastar tempo e com um erro pior |
+| Duas partes produzidas com dois `PreparedStory` e o método de vídeo único, não com `compose_two_part_video` | FR-021 exige paridade com o vídeo único (censura de legendas, `cta_start`, fundo); o método existente de duas partes não faz nada disso e não tem consumidor | Um método novo de duas partes no serviço duplicaria a etapa de produção e teria que ser mantido em sincronia com a de vídeo único |
