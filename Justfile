@@ -58,6 +58,35 @@ prod-daily-publish-only dir="output/daily":
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
+# ============================================================
+# Prepared stories (local flow)
+# ============================================================
+# The creative half of the daily pipeline, run on the laptop with the
+# Claude Code assistant instead of the paid evaluation/scriptwriting
+# models. No recipe below calls an LLM: `find` only ranks posts with the
+# deterministic score, and `prompt` just renders the template the server
+# would have sent. See docs in specs/003-local-story-prep/.
+
+# Rank today's candidates without any model call. Writes output/prepared/candidates.json.
+story-find *args:
+    uv run python scripts/prepare_story.py find {{args}}
+
+# Print the full original text of candidate N (or `--url <reddit-url>`).
+story-show *args:
+    uv run python scripts/prepare_story.py show {{args}}
+
+# Print the exact editorial prompt the server sends for candidate N.
+story-prompt n:
+    uv run python scripts/prepare_story.py prompt {{n}}
+
+# Validate prepared packages (missing fields, wrong language, forbidden words).
+story-validate file:
+    uv run python scripts/prepare_story.py validate {{file}}
+
+# List the packages prepared locally.
+story-list:
+    uv run python scripts/prepare_story.py list
+
 # Format code
 fmt:
     .venv/bin/black src scripts tests

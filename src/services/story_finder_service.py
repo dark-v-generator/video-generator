@@ -11,7 +11,7 @@ Pipeline:
 import math
 import re
 import time
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Set
 import statistics
 
 from src.core.logging_config import get_logger
@@ -228,18 +228,23 @@ class StoryFinderService:
         self._llm = llm_proxy
         self._config = evaluation_config
 
-    async def find_best_stories(
+    async def find_candidates(
         self,
         sort: Literal["top", "new", "hot"] = "top",
         time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
         posts_per_sub: int = 25,
         top_per_sub: int = 5,
-        language: Language | None = None,
         subreddits: Optional[List[str]] = None,
-    ) -> List[EvaluatedStory]:
+        exclude_urls: Optional[Set[str]] = None,
+    ) -> List[StoryCandidate]:
+        """Rank posts with the deterministic score only — no LLM call at all.
+
+        This is the shortlist the operator picks from on the laptop, and the
+        first half of ``find_best_stories`` on the server.
+        """
         finalists: List[StoryCandidate] = []
-        target_language = language or Language.PORTUGUESE
         subreddit_names = subreddits or self._config.subreddits
+        excluded = exclude_urls or set()
         fetched_subreddits = 0
         fetch_failures: list[str] = []
 
@@ -260,6 +265,9 @@ class StoryFinderService:
                 continue
 
             fetched_subreddits += 1
+            # Dropping the excluded posts before the cut keeps the per-sub
+            # quota full: an already-used story does not consume a slot.
+            posts = [post for post in posts if post.url not in excluded]
             scored = score_candidates(posts)
             scored.sort(key=lambda c: c.deterministic_score, reverse=True)
             picked = scored[:top_per_sub]
@@ -280,6 +288,31 @@ class StoryFinderService:
                 "Não foi possível buscar posts no Reddit em nenhum subreddit. "
                 f"Detalhes: {details}"
             )
+
+        finalists.sort(key=lambda c: c.deterministic_score, reverse=True)
+        return finalists
+
+    async def find_best_stories(
+        self,
+        sort: Literal["top", "new", "hot"] = "top",
+        time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
+        posts_per_sub: int = 25,
+        top_per_sub: int = 5,
+        language: Language | None = None,
+        subreddits: Optional[List[str]] = None,
+        exclude_urls: Optional[Set[str]] = None,
+    ) -> List[EvaluatedStory]:
+        target_language = language or Language.PORTUGUESE
+        subreddit_names = subreddits or self._config.subreddits
+
+        finalists = await self.find_candidates(
+            sort=sort,
+            time_filter=time_filter,
+            posts_per_sub=posts_per_sub,
+            top_per_sub=top_per_sub,
+            subreddits=subreddit_names,
+            exclude_urls=exclude_urls,
+        )
 
         logger.info(
             "%d finalists from %d subs. Running LLM evaluation...",

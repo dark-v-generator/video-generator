@@ -67,7 +67,7 @@ class VideoClip:
         video_duration = self.clip.duration
         if duration > video_duration:
             repeats = int(-(-duration // video_duration))
-            self.clip = self.clip * repeats
+            self.clip = (self.clip * repeats).subclipped(0, duration)
         elif duration < video_duration:
             self.clip = self.clip.subclipped(0, duration)
 
