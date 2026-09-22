@@ -254,26 +254,92 @@ com a fila vazia se comporta exatamente como hoje.
 
 ### Testes (escrever primeiro, ver falhar)
 
-- [ ] T028 [P] [US5] Testes de `PreparedStoryQueue` em tests/test_prepared_story_queue.py com `tmp_path`: cria `inbox/done/failed` sob demanda; `list_inbox` em ordem de mtime e depois nome; JSON inválido é movido para `failed/` com `error.txt` e não entra na lista; `mark_done` move e grava `outcome.json` com os campos do data-model.md; `mark_failed` move e grava `error.txt`; `known_post_urls` = inbox ∪ done
-- [ ] T029 [P] [US5] Testes do fluxo diário em tests/test_daily_prepared_flow.py (padrão de tests/test_publish_slots.py: `SimpleNamespace` para service/publisher/llm, monkeypatch de `_discover_stories`, `container`, `bot_config`, `_build_tiktok_publisher`, `TIKTOK_PUBLISH_LOG_PATH` em `tmp_path`): os sete invariantes da tabela de contracts/queue.md, cobrindo `run_daily_auto_publish` e `run_daily_generate`; `load_generated_videos` aceita manifesto sem `source`
-- [ ] T030 [P] [US5] Teste de dedup com o publish log em tests/test_daily_prepared_flow.py: CSV com linhas `scheduled` e `failed` → só as `scheduled` entram em `exclude_urls`; arquivo ausente → conjunto vazio
+- [X] T028 [P] [US5] Testes de `PreparedStoryQueue` em tests/test_prepared_story_queue.py com `tmp_path`: cria `inbox/done/failed` sob demanda; `list_inbox` em ordem de mtime e depois nome; JSON inválido é movido para `failed/` com `error.txt` e não entra na lista; `mark_done` move e grava `outcome.json` com os campos do data-model.md; `mark_failed` move e grava `error.txt`; `known_post_urls` = inbox ∪ done
+- [X] T029 [P] [US5] Testes do fluxo diário em tests/test_daily_prepared_flow.py (padrão de tests/test_publish_slots.py: `SimpleNamespace` para service/publisher/llm, monkeypatch de `_discover_stories`, `container`, `bot_config`, `_build_tiktok_publisher`, `TIKTOK_PUBLISH_LOG_PATH` em `tmp_path`): os sete invariantes da tabela de contracts/queue.md, cobrindo `run_daily_auto_publish` e `run_daily_generate`; `load_generated_videos` aceita manifesto sem `source`
+- [X] T030 [P] [US5] Teste de dedup com o publish log em tests/test_daily_prepared_flow.py: CSV com linhas `scheduled` e `failed` → só as `scheduled` entram em `exclude_urls`; arquivo ausente → conjunto vazio
 
 ### Implementação
 
-- [ ] T031 [US5] Criar `PreparedStoryQueue(root)` e `QueuedPackage` (path, package, mtime) em src/services/prepared_story_queue.py conforme data-model.md; mover com `os.replace`; `outcome.json` e `error.txt` ao lado do pacote movido
-- [ ] T032 [US5] Registrar `prepared_story_queue = providers.Singleton(PreparedStoryQueue, root=main_config.provided.bots.satisfying_bot.prepared_stories.inbox_dir)` em src/core/container.py
-- [ ] T033 [US5] Em bots/satisfying_bot.py: dataclass `_WorkItem` (`prepared`, `summary`, `hashtags`, `source`, `queued`, `story`) e `_scheduled_post_urls(path)` que lê `post_url` das linhas `status == "scheduled"` do publish log (arquivo ausente → set vazio)
-- [ ] T034 [US5] Em bots/satisfying_bot.py: `_collect_candidates(count) -> list[_WorkItem]` que carrega `queue.list_inbox()`, valida cada pacote com `validate_package(pkg, text_censor, config.language)` mais versão (inválido → `mark_failed` + mensagem `⚠️ #i Pacote inválido: ...`), converte em `_WorkItem(prepared=pkg.to_prepared_story(), source="prepared")`, envia `📦 N história(s) preparada(s) na fila.` quando N > 0, e, se `len < count` e `fill_with_discovery`, chama `_discover_stories(exclude_urls=known ∪ scheduled)` e anexa itens `source="auto"`; passar `exclude_urls` por `_discover_stories` até `find_best_stories`
-- [ ] T035 [US5] Em bots/satisfying_bot.py: reescrever o laço de `run_daily_auto_publish` e `run_daily_generate` sobre `_collect_candidates`: item preparado pula `_prepare_story_with_retries` e envia `#i Usando roteiro preparado: "<título>"`; `_generate_video_for_story` recebe `summary` e `source` do item e grava `source` no manifesto (`_save_manifest`); `_publish_one_video` recebe `hashtags` do item e só chama `generate_hashtags` quando `None`; após sucesso `queue.mark_done` (em `--generate-only`, `status: generated`), após falha em qualquer etapa `queue.mark_failed`; preservar textos das mensagens existentes para o caminho automático
-- [ ] T036 [P] [US5] Comando `/prepared` em bots/satisfying_bot.py (`CommandHandler("prepared", cmd_prepared)` com `is_user_allowed`): lista `post_id`, título e `created_at` de `queue.list_inbox()` ou `Fila vazia.`
-- [ ] T037 [P] [US5] Criar docs/prepared-stories.md em português: por que o fluxo existe, os sete passos com as receitas `just`, formato do pacote (link para o contrato), o que acontece em `inbox/done/failed`, `fill_with_discovery`, como reenviar um pacote de `failed/`; adicionar link na seção de scripts do README.md
-- [ ] T038 [US5] Atualizar `AGENTS.md`/`CLAUDE.md` se necessário e `docs/architecture.md` com o desvio do job diário (fila antes da descoberta) no diagrama de pipeline
+- [X] T031 [US5] Criar `PreparedStoryQueue(root)` e `QueuedPackage` (path, package, mtime) em src/services/prepared_story_queue.py conforme data-model.md; mover com `os.replace`; `outcome.json` e `error.txt` ao lado do pacote movido
+- [X] T032 [US5] Registrar `prepared_story_queue = providers.Singleton(PreparedStoryQueue, root=main_config.provided.bots.satisfying_bot.prepared_stories.inbox_dir)` em src/core/container.py
+- [X] T033 [US5] Em bots/satisfying_bot.py: dataclass `_WorkItem` (`prepared`, `summary`, `hashtags`, `source`, `queued`, `story`) e `_scheduled_post_urls(path)` que lê `post_url` das linhas `status == "scheduled"` do publish log (arquivo ausente → set vazio)
+- [X] T034 [US5] Em bots/satisfying_bot.py: `_collect_candidates(count) -> list[_WorkItem]` que carrega `queue.list_inbox()`, valida cada pacote com `validate_package(pkg, text_censor, config.language)` mais versão (inválido → `mark_failed` + mensagem `⚠️ #i Pacote inválido: ...`), converte em `_WorkItem(prepared=pkg.to_prepared_story(), source="prepared")`, envia `📦 N história(s) preparada(s) na fila.` quando N > 0, e, se `len < count` e `fill_with_discovery`, chama `_discover_stories(exclude_urls=known ∪ scheduled)` e anexa itens `source="auto"`; passar `exclude_urls` por `_discover_stories` até `find_best_stories`
+- [X] T035 [US5] Em bots/satisfying_bot.py: reescrever o laço de `run_daily_auto_publish` e `run_daily_generate` sobre `_collect_candidates`: item preparado pula `_prepare_story_with_retries` e envia `#i Usando roteiro preparado: "<título>"`; `_generate_video_for_story` recebe `summary` e `source` do item e grava `source` no manifesto (`_save_manifest`); `_publish_one_video` recebe `hashtags` do item e só chama `generate_hashtags` quando `None`; após sucesso `queue.mark_done` (em `--generate-only`, `status: generated`), após falha em qualquer etapa `queue.mark_failed`; preservar textos das mensagens existentes para o caminho automático
+- [X] T036 [P] [US5] Comando `/prepared` em bots/satisfying_bot.py (`CommandHandler("prepared", cmd_prepared)` com `is_user_allowed`): lista `post_id`, título e `created_at` de `queue.list_inbox()` ou `Fila vazia.`
+- [X] T037 [P] [US5] Criar docs/prepared-stories.md em português: por que o fluxo existe, os sete passos com as receitas `just`, formato do pacote (link para o contrato), o que acontece em `inbox/done/failed`, `fill_with_discovery`, como reenviar um pacote de `failed/`; adicionar link na seção de scripts do README.md
+- [X] T038 [US5] Atualizar `AGENTS.md`/`CLAUDE.md` se necessário e `docs/architecture.md` com o desvio do job diário (fila antes da descoberta) no diagrama de pipeline
 
 ### Live verification (milestone gate)
 
-- [ ] T039 [US5] Rodar `uv run pytest tests/test_prepared_story_queue.py tests/test_daily_prepared_flow.py tests/test_publish_slots.py -q` (verde, existentes intactos), `just deploy`, e o quickstart.md §5 no servidor: pacote na inbox → `just prod-daily-generate 1` gera `story_01.json` com o título do pacote e `"source": "prepared"`, pacote em `done/` com `outcome.json`, log sem `Evaluating`/`Gerando roteiro`; inbox vazia → fluxo idêntico ao anterior com `"source": "auto"`; pacote com `"language": "en"` → `failed/` + `error.txt` e a run completa por descoberta; `/prepared` no Telegram; registrar a evidência aqui
+- [X] T039 [US5] Rodar `uv run pytest tests/test_prepared_story_queue.py tests/test_daily_prepared_flow.py tests/test_publish_slots.py -q` (verde, existentes intactos), `just deploy`, e o quickstart.md §5 no servidor: pacote na inbox → `just prod-daily-generate 1` gera `story_01.json` com o título do pacote e `"source": "prepared"`, pacote em `done/` com `outcome.json`, log sem `Evaluating`/`Gerando roteiro`; inbox vazia → fluxo idêntico ao anterior com `"source": "auto"`; pacote com `"language": "en"` → `failed/` + `error.txt` e a run completa por descoberta; `/prepared` no Telegram; registrar a evidência aqui
 
-**Checkpoint**: Milestone 3 DONE — o loop está fechado; fila vazia = comportamento de hoje.
+  **Evidência (2026-09-22)**
+
+  - `uv run pytest tests/test_prepared_story_queue.py tests/test_daily_prepared_flow.py
+    tests/test_publish_slots.py -q` → **57 passed** (41 novos: 13 da fila, 28 do fluxo
+    diário). Suíte inteira: `1 failed, 298 passed` — a única falha continua sendo a
+    conhecida `tests/test_translation_pipeline.py::test_pipeline`, herdada da 002.
+  - Caminho feliz, real e local (`CONFIG_PATH` com `low_quality: true`, pacote
+    `1wmh90e` do M1 em `.storage/prepared/inbox/`):
+    `uv run python scripts/daily_auto_publish.py --generate-only --count 1` →
+    `🔄 Busca diária iniciada...`, `📦 1 história(s) preparada(s) na fila.`,
+    `✅ Busca finalizada: 1 histórias disponíveis...`,
+    `#1 Usando roteiro preparado: "Lavei a louça que não era minha..."`,
+    `#1 Vídeo finalizado.`, `✅ Geração finalizada: 1/1 vídeos prontos.`
+    `grep -cE "Evaluating|Gerando roteiro"` no log → **0**: nenhuma chamada de
+    avaliação nem de roteiro (SC-004 no fluxo real).
+    Manifesto `story_01.json` com `"source": "prepared"`, o título, o resumo e o
+    `post_url` do pacote. Pacote em `done/` com
+    `outcome.json` = `{status: "generated", scheduled_at: null, hashtags:
+    ["reddit","historias","amizade"], video_path, manifest_path}` — as hashtags saíram
+    do pacote, sem passar pelo LLM.
+  - Fila vazia, real e local: mesma receita sem pacote na inbox → **nenhuma** mensagem
+    `📦`, 35 candidatas avaliadas, `🎬 Gerando história #1: "..."`,
+    `#1 Gerando roteiro...`, `#1 Roteiro finalizado. Gerando vídeo...` — exatamente as
+    mensagens de antes da feature — e manifesto com `"source": "auto"`. `done/` e
+    `failed/` não ganharam nada: com a fila vazia o job não a toca além do `list_inbox`
+    (SC-003).
+  - Pacote inválido, real e local: cópia do `1wmh90e` com `"language": "en"` na inbox e
+    `fill_with_discovery: false` → `⚠️ #1 Pacote inválido: language: package=en
+    server=pt. Movido para failed/.` e `Nenhuma história boa encontrada hoje.`; o pacote
+    foi para `failed/` com `1wmh90e.error.txt` contendo a mesma mensagem, e **nenhum**
+    vídeo chegou a ser gerado.
+  - Fiação do container com a config real: `container.prepared_story_queue().root` →
+    `.storage/prepared`, vindo de `bots.satisfying_bot.prepared_stories.inbox_dir`.
+  - Dedup com o publish log, contra o arquivo real:
+    `_scheduled_post_urls(_publish_log_path())` lê `.storage/tiktok_publish_log.csv` e
+    devolve só as linhas `scheduled`.
+  - `/prepared` exercitado contra a fila real (chamando `cmd_prepared` com um `update`
+    de mentira, sem o transporte do Telegram): com um pacote na inbox →
+    `📦 1 história(s) na fila:` + `1wmh90e  22/09 09:29  <título>`; inbox vazia →
+    `Fila vazia.`; usuário fora de `allowed_user_ids` → a recusa padrão do bot.
+  - **Não verificado**: `just deploy` e a run no servidor (`just prod-daily-generate 1`),
+    porque `192.168.1.100` continua fora do ar (`ssh` → `Operation timed out`), o mesmo
+    bloqueio registrado em T027. Também ficam sem verificação real o `/prepared` pelo
+    transporte do Telegram e o `mark_done` com `status: "scheduled"`, que depende de uma
+    publicação de verdade no TikTok — o publisher é server-only. Os três estão cobertos
+    por teste. O que as runs locais cobrem é todo o resto do caminho: a fila lida da
+    config, a validação, os dois manifestos, os movimentos entre `inbox/`, `done/` e
+    `failed/`, e as mensagens dos dois fluxos.
+  - Achado fora do escopo, corrigido aqui porque o M3 passou a depender do arquivo:
+    `tests/test_publish_slots.py` não isolava `TIKTOK_PUBLISH_LOG_PATH` e vinha
+    escrevendo suas linhas de fixture no `.storage/tiktok_publish_log.csv` de verdade
+    desde 2026-05 — as 145 linhas do log deste laptop são todas `url-1/2/3` de teste.
+    Como `_collect_candidates` agora lê esse log para excluir posts já agendados, o teste
+    passou a isolar o caminho com `monkeypatch.setenv`. O log local não foi apagado (é do
+    operador); ele só não recebe mais linhas de teste.
+  - Desvio de contrato registrado: o contrato prevê `⚠️ #i Pacote inválido: <erro>` para
+    todo pacote recusado, mas um arquivo que nem chega a parsear (JSON quebrado, `version`
+    desconhecida) não tem um `#i` no run — ele é recusado no `list_inbox`, antes de virar
+    candidato. Esses saem como `⚠️ Pacote inválido (<arquivo>): <erro>. Movido para
+    failed/.`, que diz ao operador qual arquivo olhar. Os recusados pela validação, que
+    têm posição no run, seguem o formato do contrato.
+  - Segundo desvio: com `fill_with_discovery: false` e a fila curta, a mensagem final
+    conta contra o que foi pedido (`1/2`), não contra o que era alcançável. Com a
+    descoberta ligada o denominador continua sendo o de hoje (o número de histórias
+    disponíveis), como a tabela de invariantes exige.
+
+**Checkpoint**: [X] Milestone 3 DONE (2026-09-22) — o loop está fechado; fila vazia = comportamento de hoje. O gate no servidor (`just deploy` + `just prod-daily-generate 1`) fica pendente de o host voltar; tudo o que não depende dele foi verificado em runs reais no laptop.
 
 ---
 

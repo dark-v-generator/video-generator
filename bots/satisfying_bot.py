@@ -29,6 +29,8 @@ from src.core.secrets import secrets
 from src.entities.config import MainConfig
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
+from src.services.prepared_story_queue import QueuedPackage
+from src.services.prepared_story_validation import validate_package
 from src.services.reddit_video_service import PreparedStory
 from src.services.tiktok_caption import normalize_hashtags
 
@@ -286,6 +288,7 @@ def _format_find_message(
 
 async def _discover_stories(
     subreddits: list[str] | None = None,
+    exclude_urls: set[str] | None = None,
 ) -> list[EvaluatedStory]:
     """Run the story-finder pipeline and return ranked results."""
     container.wire(modules=[__name__])
@@ -296,6 +299,7 @@ async def _discover_stories(
         top_per_sub=5,
         language=config.language,
         subreddits=subreddits,
+        exclude_urls=exclude_urls,
     )
 
 
@@ -522,19 +526,29 @@ class GeneratedVideo:
     title: str
     summary: str
     post_url: str
+    # "prepared" when the script came from the operator's queue, "auto" when
+    # the bot discovered and wrote it. Defaults to "auto" so manifests written
+    # before the queue existed still load.
+    source: str = "auto"
 
 
-def _save_manifest(video: GeneratedVideo, output_dir: str) -> None:
+def _manifest_path(video_path: str, output_dir: str) -> str:
+    base = os.path.splitext(os.path.basename(video_path))[0]
+    return os.path.join(output_dir, f"{base}.json")
+
+
+def _save_manifest(video: GeneratedVideo, output_dir: str) -> str:
     manifest = {
         "video_path": video.video_path,
         "title": video.title,
         "summary": video.summary,
         "post_url": video.post_url,
+        "source": video.source,
     }
-    base = os.path.splitext(os.path.basename(video.video_path))[0]
-    path = os.path.join(output_dir, f"{base}.json")
+    path = _manifest_path(video.video_path, output_dir)
     with open(path, "w") as f:
         _json.dump(manifest, f, ensure_ascii=False, indent=2)
+    return path
 
 
 def _prepare_publish_hashtags(raw_hashtags: list[str] | None) -> list[str]:
@@ -610,6 +624,7 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
                 title=data["title"],
                 summary=data.get("summary", ""),
                 post_url=data.get("post_url", ""),
+                source=data.get("source", "auto"),
             )
         )
     return videos
@@ -657,15 +672,135 @@ def _truncate_error(exc: Exception, limit: int = 300) -> str:
     return error_text
 
 
-def _target_count(results: list[EvaluatedStory], publish_count: int | None) -> int:
-    return min(
-        (
-            publish_count
-            if publish_count is not None
-            else bot_config.daily_auto_publish_count
-        ),
-        len(results),
-    )
+@dataclass
+class _WorkItem:
+    """One slot of the daily run, whichever half of the flow produced it.
+
+    A prepared item already carries the script the operator wrote, so the
+    story-generation stage is skipped entirely for it; an automatic item
+    arrives as a candidate and gets its script from the model, as before.
+    """
+
+    summary: str
+    source: str
+    prepared: PreparedStory | None = None
+    story: EvaluatedStory | None = None
+    hashtags: list[str] | None = None
+    queued: QueuedPackage | None = None
+
+
+def _publish_log_path() -> str:
+    return os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
+
+
+def _scheduled_post_urls(path: str) -> set[str]:
+    """Posts already scheduled on TikTok, so discovery does not offer them again.
+
+    Only ``scheduled`` rows count: a failed attempt left the story unpublished
+    and it deserves another shot.
+    """
+    if not os.path.exists(path):
+        return set()
+
+    with open(path, newline="", encoding="utf-8") as f:
+        return {
+            row["post_url"]
+            for row in csv.DictReader(f)
+            if row.get("status") == "scheduled" and row.get("post_url")
+        }
+
+
+def _queue():
+    container.wire(modules=[__name__])
+    return container.prepared_story_queue()
+
+
+def _mark_done(item: _WorkItem, outcome: dict) -> None:
+    if item.queued is not None:
+        _queue().mark_done(item.queued, outcome)
+
+
+def _mark_failed(item: _WorkItem, error: str) -> None:
+    if item.queued is not None:
+        _queue().mark_failed(item.queued, error)
+
+
+async def _collect_candidates(send_message, count: int) -> list[_WorkItem]:
+    """Build the run's work list: the operator's queue first, discovery after.
+
+    Discovery contributes every candidate it ranked, not just the missing
+    slots, because the loop still drops candidates whose script or video
+    fails and needs spares to reach ``count``.
+    """
+    queue = _queue()
+    censor = container.text_censor()
+
+    work: list[_WorkItem] = []
+
+    items = queue.list_inbox()
+    for name, error in queue.last_rejections:
+        await send_message(
+            f"⚠️ Pacote inválido ({name}): {error}. Movido para failed/."
+        )
+
+    for queued in items:
+        if len(work) >= count:
+            break
+
+        problems = validate_package(queued.package, censor, config.language)
+        if problems:
+            error = "; ".join(problems)
+            queue.mark_failed(queued, error)
+            await send_message(
+                f"⚠️ #{len(work) + 1} Pacote inválido: {error}. Movido para failed/."
+            )
+            continue
+
+        package = queued.package
+        work.append(
+            _WorkItem(
+                summary=package.summary,
+                source="prepared",
+                prepared=package.to_prepared_story(),
+                hashtags=package.hashtags,
+                queued=queued,
+            )
+        )
+
+    if work:
+        await send_message(f"📦 {len(work)} história(s) preparada(s) na fila.")
+
+    if len(work) >= count or not bot_config.prepared_stories.fill_with_discovery:
+        return work
+
+    exclude = queue.known_post_urls() | _scheduled_post_urls(_publish_log_path())
+    for story in await _discover_stories(exclude_urls=exclude):
+        work.append(
+            _WorkItem(
+                summary=story.resumo[:400],
+                source="auto",
+                story=story,
+            )
+        )
+
+    return work
+
+
+def _requested_count(publish_count: int | None) -> int:
+    if publish_count is not None:
+        return publish_count
+    return bot_config.daily_auto_publish_count
+
+
+def _target_count(work: list[_WorkItem], requested: int) -> int:
+    if bot_config.prepared_stories.fill_with_discovery:
+        # Discovery had its say, so the stories on the table are the honest
+        # ceiling for the run.
+        return min(requested, len(work))
+
+    # With discovery off the run is capped by the queue on purpose; reporting
+    # against what was asked for is what tells the operator it was short.
+    return requested
 
 
 async def _prepare_story_with_retries(
@@ -734,16 +869,42 @@ async def _prepare_story_with_retries(
     return None
 
 
+async def _ensure_script(
+    send_message,
+    service,
+    item: _WorkItem,
+    *,
+    candidate_number: int,
+    target_count: int,
+) -> bool:
+    """Make sure the item has a script, writing one only when the queue didn't."""
+    if item.prepared is not None:
+        await send_message(
+            f"#{candidate_number} Usando roteiro preparado: "
+            f'"{item.prepared.story_title}"'
+        )
+        return True
+
+    item.prepared = await _prepare_story_with_retries(
+        send_message,
+        service,
+        item.story,
+        candidate_number=candidate_number,
+        target_count=target_count,
+    )
+    return item.prepared is not None
+
+
 async def _generate_video_for_story(
     send_message,
     service,
-    prepared: PreparedStory,
-    story: EvaluatedStory,
+    item: _WorkItem,
     *,
     output_dir: str,
     candidate_number: int,
 ) -> GeneratedVideo | None:
     label = f"#{candidate_number}"
+    prepared = item.prepared
 
     try:
         result = await service.generate_satisfying_video_from_story(
@@ -759,8 +920,9 @@ async def _generate_video_for_story(
         video = GeneratedVideo(
             video_path=video_path,
             title=result.localized_title,
-            summary=story.resumo[:400],
+            summary=item.summary,
             post_url=prepared.post.url,
+            source=item.source,
         )
         _save_manifest(video, output_dir)
 
@@ -768,6 +930,7 @@ async def _generate_video_for_story(
 
     except Exception as e:
         logger.exception("Failed to generate video for %s", prepared.post.url)
+        _mark_failed(item, f"Erro na geração de vídeo: {_truncate_error(e)}")
         await send_message(
             f"❌ {label} Erro na geração de vídeo: {_truncate_error(e)}. "
             "Pulando para a próxima história."
@@ -780,7 +943,9 @@ async def _publish_one_video(
     llm_proxy,
     publisher,
     video: GeneratedVideo,
+    item: _WorkItem,
     *,
+    output_dir: str,
     last_slot: datetime.datetime,
     candidate_number: int,
 ) -> datetime.datetime | None:
@@ -795,11 +960,15 @@ async def _publish_one_video(
             min_lead_minutes=bot_config.publish_min_lead_minutes,
         )
 
-        raw_hashtags = await llm_proxy.generate_hashtags(
-            title=video.title,
-            summary=video.summary,
-            target_language=config.language,
-        )
+        # Hashtags chosen by the operator replace the model's: the package
+        # already went through their review.
+        raw_hashtags = item.hashtags
+        if raw_hashtags is None:
+            raw_hashtags = await llm_proxy.generate_hashtags(
+                title=video.title,
+                summary=video.summary,
+                target_language=config.language,
+            )
         hashtags = _prepare_publish_hashtags(raw_hashtags)
 
         publish_result = await publisher.publish_video(
@@ -816,6 +985,16 @@ async def _publish_one_video(
             hashtags=hashtags,
             publish_result=publish_result,
         )
+        _mark_done(
+            item,
+            {
+                "status": "scheduled",
+                "scheduled_at": slot.isoformat(timespec="minutes"),
+                "hashtags": hashtags,
+                "video_path": video.video_path,
+                "manifest_path": _manifest_path(video.video_path, output_dir),
+            },
+        )
         await send_message(
             f"{label} Agendamento concluído para {slot.strftime('%d/%m %H:%M')}"
         )
@@ -830,6 +1009,7 @@ async def _publish_one_video(
             hashtags=hashtags,
             error=_truncate_error(e),
         )
+        _mark_failed(item, f"Erro ao publicar: {_truncate_error(e)}")
         await send_message(
             f"❌ {label} Erro ao publicar: {_truncate_error(e)}. "
             "Pulando para uma nova história."
@@ -843,26 +1023,27 @@ async def run_daily_generate(
     publish_count: int | None = None,
     output_dir: str = _DEFAULT_OUTPUT_DIR,
 ) -> list[GeneratedVideo]:
-    """Discover stories and generate videos one candidate at a time."""
+    """Produce the queue's stories and, when short, discovered ones."""
     await send_message("🔄 Busca diária iniciada...")
 
+    requested = _requested_count(publish_count)
     try:
-        results = await _discover_stories()
+        work = await _collect_candidates(send_message, requested)
     except Exception as e:
         logger.exception("Failed to find stories")
         await send_message(f"Erro ao buscar histórias: {e}")
         return []
 
-    if not results:
+    if not work:
         await send_message("Nenhuma história boa encontrada hoje.")
         return []
 
-    count = _target_count(results, publish_count)
+    count = _target_count(work, requested)
     if count == 0:
         return []
 
     await send_message(
-        f"✅ Busca finalizada: {len(results)} histórias disponíveis. "
+        f"✅ Busca finalizada: {len(work)} histórias disponíveis. "
         f"Iniciando geração de {count} vídeo{'s' if count != 1 else ''}."
     )
 
@@ -873,29 +1054,37 @@ async def run_daily_generate(
 
     generated: list[GeneratedVideo] = []
 
-    for candidate_idx, story in enumerate(results, start=1):
+    for candidate_idx, item in enumerate(work, start=1):
         if len(generated) >= count:
             break
 
-        prepared = await _prepare_story_with_retries(
+        if not await _ensure_script(
             send_message,
             service,
-            story,
+            item,
             candidate_number=candidate_idx,
             target_count=count,
-        )
-        if prepared is None:
+        ):
             continue
 
         video = await _generate_video_for_story(
             send_message,
             service,
-            prepared,
-            story,
+            item,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
         if video is not None:
+            _mark_done(
+                item,
+                {
+                    "status": "generated",
+                    "scheduled_at": None,
+                    "hashtags": item.hashtags,
+                    "video_path": video.video_path,
+                    "manifest_path": _manifest_path(video.video_path, output_dir),
+                },
+            )
             await send_message(f"#{candidate_idx} Vídeo finalizado.")
             generated.append(video)
 
@@ -988,23 +1177,24 @@ async def run_daily_auto_publish(
     """Full pipeline: for each candidate, run story -> video -> publish."""
     await send_message("🔄 Busca diária iniciada...")
 
+    requested = _requested_count(publish_count)
     try:
-        results = await _discover_stories()
+        work = await _collect_candidates(send_message, requested)
     except Exception as e:
         logger.exception("Failed to find stories")
         await send_message(f"Erro ao buscar histórias: {e}")
         return
 
-    if not results:
+    if not work:
         await send_message("Nenhuma história boa encontrada hoje.")
         return
 
-    count = _target_count(results, publish_count)
+    count = _target_count(work, requested)
     if count == 0:
         return
 
     await send_message(
-        f"✅ Busca finalizada: {len(results)} histórias disponíveis. "
+        f"✅ Busca finalizada: {len(work)} histórias disponíveis. "
         "Iniciando geração de vídeo e agendamento."
     )
 
@@ -1018,25 +1208,23 @@ async def run_daily_auto_publish(
     last_slot = datetime.datetime.now()
     published = 0
 
-    for candidate_idx, story in enumerate(results, start=1):
+    for candidate_idx, item in enumerate(work, start=1):
         if published >= count:
             break
 
-        prepared = await _prepare_story_with_retries(
+        if not await _ensure_script(
             send_message,
             service,
-            story,
+            item,
             candidate_number=candidate_idx,
             target_count=count,
-        )
-        if prepared is None:
+        ):
             continue
 
         video = await _generate_video_for_story(
             send_message,
             service,
-            prepared,
-            story,
+            item,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
@@ -1049,6 +1237,8 @@ async def run_daily_auto_publish(
             llm_proxy,
             publisher,
             video,
+            item,
+            output_dir=output_dir,
             last_slot=last_slot,
             candidate_number=candidate_idx,
         )
@@ -1118,6 +1308,10 @@ async def _handle_text_command(
         await cmd_find(update, context)
         return True
 
+    if command == "/prepared":
+        await cmd_prepared(update, context)
+        return True
+
     return False
 
 
@@ -1143,6 +1337,29 @@ async def cmd_autopost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         send_message,
         publish_count=publish_count,
     )
+
+
+async def cmd_prepared(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show what the operator left in the queue for the next daily run."""
+    user_id = update.effective_user.id
+    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
+        await reject_unauthorized(update)
+        return
+
+    items = _queue().list_inbox()
+    if not items:
+        await update.message.reply_text("Fila vazia.")
+        return
+
+    lines = [f"📦 {len(items)} história(s) na fila:"]
+    for item in items:
+        package = item.package
+        lines.append(
+            f"{package.post_id}  {package.created_at:%d/%m %H:%M}  "
+            f"{package.story_title[:60]}"
+        )
+
+    await update.message.reply_text("\n".join(lines))
 
 
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1185,6 +1402,7 @@ def main() -> None:
 
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("find", cmd_find))
+    app.add_handler(CommandHandler("prepared", cmd_prepared))
     app.add_handler(CommandHandler(["autopost", "auto_publish"], cmd_autopost))
     app.add_handler(
         CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}")

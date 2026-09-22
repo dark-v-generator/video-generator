@@ -137,6 +137,25 @@ uv run python scripts/reddit_two_part_history.py <URL_DO_POST_REDDIT> \
     --low-quality
 ```
 
+### Preparar histórias no laptop (sem LLM pago)
+
+Descobre candidatas, rende o prompt editorial do servidor, valida o pacote, gera
+a prévia da narração e envia para a fila do servidor. Nenhuma receita chama um
+modelo pago — quem escreve o roteiro é o assistente do Claude Code, pelo skill
+`/prepare-story`.
+
+```bash
+just story-find                                  # shortlist determinística
+just story-show 1                                # texto original do candidato
+just story-prompt 1                              # prompt editorial exato
+just story-validate output/prepared/<id>.json    # valida o pacote
+just story-preview output/prepared/<id>.json     # ouve a narração
+just story-ship output/prepared/<id>.json        # envia para o servidor
+just story-queue                                 # o que está na fila
+```
+
+Fluxo completo em [docs/prepared-stories.md](./docs/prepared-stories.md).
+
 ### Gerar imagem de Call to Action
 
 ```bash

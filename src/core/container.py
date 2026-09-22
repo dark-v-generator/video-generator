@@ -10,6 +10,7 @@ from ..services.video_service import VideoService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.speech_service import SpeechService
+from ..services.prepared_story_queue import PreparedStoryQueue
 from ..services.story_finder_service import StoryFinderService
 from ..proxies import factories as proxies_factories
 
@@ -123,6 +124,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         cover_service=cover_service,
         video_service=video_service,
         text_censor=text_censor,
+    )
+
+    prepared_story_queue = providers.Singleton(
+        PreparedStoryQueue,
+        root=main_config.provided.bots.satisfying_bot.prepared_stories.inbox_dir,
     )
 
     story_finder_service = providers.Singleton(
