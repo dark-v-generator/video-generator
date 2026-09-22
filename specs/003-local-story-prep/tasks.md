@@ -155,25 +155,77 @@ host SSH, para testar sem o servidor).
 
 ### Testes (escrever primeiro, ver falhar)
 
-- [ ] T017 [P] [US3] Testes de `preview` em tests/test_prepare_story_cli.py: com `SpeechService` fake que devolve bytes de um mp3 de fixture curto, o arquivo `<post_id>.preview.mp3` é gravado ao lado do pacote, a chamada recebe `gender=resolved_gender`, `rate=1.0`, `language=pkg.language`, e a saída contém a duração; segunda chamada sobrescreve
-- [ ] T018 [P] [US4] Testes de `ship` e `queue` em tests/test_prepare_story_cli.py com `subprocess.run` monkeypatched: pacote inválido → exit 1 e nenhuma chamada a subprocess; sequência `ssh mkdir -p`, `ssh test -e`, `scp` com os argumentos do contracts/cli.md; `test -e` retornando 0 sem `--force` → pergunta e aborta em `N`; `--force` pula a pergunta; `scp` falhando → exit 2, mensagem com stderr, arquivo local intacto; `queue` parseia a saída concatenada dos JSONs remotos numa tabela
-- [ ] T019 [P] [US4] Teste de config em tests/test_prepared_story_package.py: `TelegramBotConfig` sem bloco `prepared_stories` carrega com defaults (`remote` = `gustavo@192.168.1.100:~/video-generator/.storage/prepared`, `inbox_dir` = `.storage/prepared`, `fill_with_discovery` = `True`)
+- [X] T017 [P] [US3] Testes de `preview` em tests/test_prepare_story_cli.py: com `SpeechService` fake que devolve bytes de um mp3 de fixture curto, o arquivo `<post_id>.preview.mp3` é gravado ao lado do pacote, a chamada recebe `gender=resolved_gender`, `rate=1.0`, `language=pkg.language`, e a saída contém a duração; segunda chamada sobrescreve
+- [X] T018 [P] [US4] Testes de `ship` e `queue` em tests/test_prepare_story_cli.py com `subprocess.run` monkeypatched: pacote inválido → exit 1 e nenhuma chamada a subprocess; sequência `ssh mkdir -p`, `ssh test -e`, `scp` com os argumentos do contracts/cli.md; `test -e` retornando 0 sem `--force` → pergunta e aborta em `N`; `--force` pula a pergunta; `scp` falhando → exit 2, mensagem com stderr, arquivo local intacto; `queue` parseia a saída concatenada dos JSONs remotos numa tabela
+- [X] T019 [P] [US4] Teste de config em tests/test_prepared_story_package.py: `TelegramBotConfig` sem bloco `prepared_stories` carrega com defaults (`remote` = `gustavo@192.168.1.100:~/video-generator/.storage/prepared`, `inbox_dir` = `.storage/prepared`, `fill_with_discovery` = `True`)
 
 ### Implementação
 
-- [ ] T020 [US4] Adicionar `PreparedStoriesConfig` (`remote`, `inbox_dir`, `fill_with_discovery`) e o campo `prepared_stories` em `TelegramBotConfig`, em src/entities/configs/bots.py
-- [ ] T021 [P] [US4] Adicionar o bloco `prepared_stories` comentado (defaults e propósito de cada campo) sob `bots.satisfying_bot` em config.yaml e config.prod.yaml, e uma tabela dos campos em docs/configuration.md
-- [ ] T022 [US3] Implementar `preview FILE [--rate]` em scripts/prepare_story.py: `container.speech_service().generate_speech(text=pkg.script_text, gender=pkg.resolved_gender, rate=args.rate, language=pkg.language)`, grava `<post_id>.preview.mp3`, duração via `AudioClip(bytes=...).clip.duration` formatada `mm:ss`
-- [ ] T023 [US4] Implementar `ship FILE... [--remote] [--force]` em scripts/prepare_story.py: valida como `validate`; parse de `user@host:dir`; `subprocess.run(["ssh", host, f"mkdir -p {dir}/inbox"])`, `["ssh", host, f"test -e {dir}/inbox/{post_id}.json"]` (0 → duplicata → `input("já existe na fila, substituir? [y/N] ")` salvo `--force`), `["scp", file, f"{host}:{dir}/inbox/"]`; exit 2 com o comando e o stderr em qualquer falha; nunca move nem altera o arquivo local
-- [ ] T024 [US4] Implementar `queue [--remote]` em scripts/prepare_story.py: `ssh host 'for f in dir/inbox/*.json; do stat -c "%Y" "$f" 2>/dev/null || stat -f "%m" "$f"; cat "$f"; echo; done'` (aceitar as duas variantes de `stat`, Linux e macOS), parsear cada bloco como `PreparedStoryPackage`, imprimir tabela `post_id`, título (60 chars), URL, `created_at`, mtime; `Fila vazia.` quando não há arquivos
-- [ ] T025 [P] [US3] Adicionar receitas `story-preview file` (com `CONFIG_PATH=config.prod.yaml`), `story-ship file`, `story-queue` no Justfile
-- [ ] T026 [US4] Atualizar .claude/skills/prepare-story/SKILL.md com os passos 6 e 7 do contracts/cli.md (ouvir com `just story-preview`, voltar à revisão se o operador pedir, enviar com `just story-ship` só com confirmação explícita, mostrar `just story-queue` ao final) e remover a nota "chega no M2"
+- [X] T020 [US4] Adicionar `PreparedStoriesConfig` (`remote`, `inbox_dir`, `fill_with_discovery`) e o campo `prepared_stories` em `TelegramBotConfig`, em src/entities/configs/bots.py
+- [X] T021 [P] [US4] Adicionar o bloco `prepared_stories` comentado (defaults e propósito de cada campo) sob `bots.satisfying_bot` em config.yaml e config.prod.yaml, e uma tabela dos campos em docs/configuration.md
+- [X] T022 [US3] Implementar `preview FILE [--rate]` em scripts/prepare_story.py: `container.speech_service().generate_speech(text=pkg.script_text, gender=pkg.resolved_gender, rate=args.rate, language=pkg.language)`, grava `<post_id>.preview.mp3`, duração via `AudioClip(bytes=...).clip.duration` formatada `mm:ss`
+- [X] T023 [US4] Implementar `ship FILE... [--remote] [--force]` em scripts/prepare_story.py: valida como `validate`; parse de `user@host:dir`; `subprocess.run(["ssh", host, f"mkdir -p {dir}/inbox"])`, `["ssh", host, f"test -e {dir}/inbox/{post_id}.json"]` (0 → duplicata → `input("já existe na fila, substituir? [y/N] ")` salvo `--force`), `["scp", file, f"{host}:{dir}/inbox/"]`; exit 2 com o comando e o stderr em qualquer falha; nunca move nem altera o arquivo local
+- [X] T024 [US4] Implementar `queue [--remote]` em scripts/prepare_story.py: `ssh host 'for f in dir/inbox/*.json; do stat -c "%Y" "$f" 2>/dev/null || stat -f "%m" "$f"; cat "$f"; echo; done'` (aceitar as duas variantes de `stat`, Linux e macOS), parsear cada bloco como `PreparedStoryPackage`, imprimir tabela `post_id`, título (60 chars), URL, `created_at`, mtime; `Fila vazia.` quando não há arquivos
+- [X] T025 [P] [US3] Adicionar receitas `story-preview file` (com `CONFIG_PATH=config.prod.yaml`), `story-ship file`, `story-queue` no Justfile
+- [X] T026 [US4] Atualizar .claude/skills/prepare-story/SKILL.md com os passos 6 e 7 do contracts/cli.md (ouvir com `just story-preview`, voltar à revisão se o operador pedir, enviar com `just story-ship` só com confirmação explícita, mostrar `just story-queue` ao final) e remover a nota "chega no M2"
 
 ### Live verification (milestone gate)
 
-- [ ] T027 [US3] Rodar `uv run pytest tests/test_prepare_story_cli.py tests/test_prepared_story_package.py -q` (verde) e o quickstart.md §3 e §4: ouvir a prévia de um pacote real com `config.prod.yaml` (voz do gênero certo, 1.5x), editar e re-gerar; `ship` contra `localhost` cria `.storage/prepared/inbox/<post_id>.json`, reenvio pergunta, `--force` substitui, `queue` lista; `ship` de um JSON inválido é recusado sem rede; registrar a evidência aqui. Quando o servidor voltar a estar acessível, repetir `just story-ship` e `just story-queue` sem `--remote` (SC-007)
+- [X] T027 [US3] Rodar `uv run pytest tests/test_prepare_story_cli.py tests/test_prepared_story_package.py -q` (verde) e o quickstart.md §3 e §4: ouvir a prévia de um pacote real com `config.prod.yaml` (voz do gênero certo, 1.5x), editar e re-gerar; `ship` contra `localhost` cria `.storage/prepared/inbox/<post_id>.json`, reenvio pergunta, `--force` substitui, `queue` lista; `ship` de um JSON inválido é recusado sem rede; registrar a evidência aqui. Quando o servidor voltar a estar acessível, repetir `just story-ship` e `just story-queue` sem `--remote` (SC-007)
 
-**Checkpoint**: Milestone 2 DONE — o operador consegue preparar, ouvir e enfileirar histórias sem precisar do servidor.
+  **Evidência (2026-09-22)**
+
+  - `uv run pytest tests/test_prepare_story_cli.py tests/test_prepared_story_package.py -q`
+    → **58 passed** (18 novos). Suíte inteira: `1 failed, 257 passed` — a única falha
+    continua sendo a conhecida `tests/test_translation_pipeline.py::test_pipeline`,
+    herdada da feature 002.
+  - §3, prévia real com `config.prod.yaml` sobre o pacote `1wmh90e` do M1:
+    `just story-preview output/prepared/1wmh90e.json` →
+    `Narrando 3334 chars (voz male, pt, rate=1.0)` e
+    `output/prepared/1wmh90e.preview.mp3  02:33` (153,0 s medidos com `AudioClip`).
+    O `rate=1.0` impresso é o do chamador; o `default_rate: 1.5` da config é que dá a
+    velocidade final, como o comentário em `config.prod.yaml` avisa.
+  - Override de velocidade e sobrescrita: `--rate 1.5` (efetivo 2.25x) → `01:55`, e o
+    md5 do mp3 mudou (`e73b28f…` → `50c54c4…`), ou seja o arquivo é substituído e não
+    acumulado. Rodado de novo sem `--rate`, volta a `02:33`.
+  - Gênero e edição do roteiro: cópia do pacote com `resolved_gender: female` e o
+    roteiro cortado para 314 chars → `Narrando 314 chars (voz female, pt, ...)` e
+    `00:13`. O gênero e o idioma do pacote chegam ao TTS.
+  - §4, recusa sem rede: `ship` de um pacote com `language: en` e `matou` no roteiro →
+    lista os dois problemas, exit 1, **nenhum** processo `ssh`/`scp` disparado.
+  - §4, host inacessível: `ship … --remote "$USER@localhost:$PWD/.storage/prepared"` →
+    `Falhou: ssh … mkdir -p …` + `ssh: connect to host localhost port 22: Connection
+    refused`, exit 2, md5 do arquivo local inalterado e `.storage/prepared` nem criado.
+  - §4, caminho feliz, duplicata e `--force`: exercidos de ponta a ponta com shims de
+    `ssh`/`scp` no PATH (o shim de `ssh` executa o comando remoto no shell local, o de
+    `scp` copia o arquivo), porque nenhum host SSH estava acessível — ver o desvio
+    abaixo. `queue` numa raiz inexistente → `Fila vazia.`, exit 0; `ship` → cria
+    `inbox/` e grava `inbox/1wmh90e.json`; `queue` → `post_id`, título cortado em 60
+    chars, URL, `criado` e `enfileirado` (o fallback `stat -f "%m"` do macOS foi o que
+    respondeu, já que `stat -c` não existe aqui); reenvio →
+    `1wmh90e.json já existe na fila, substituir? [y/N]`, `n` aborta com exit 1 e sem
+    `scp`, `y` copia; `--force` com stdin fechado copia sem perguntar. Com dois pacotes
+    na inbox, `queue` lista os dois.
+  - Remote default vindo da config: `just story-queue` (sem `--remote`, `ssh` real) →
+    `Falhou: ssh gustavo@192.168.1.100 …` + `Operation timed out`, exit 2. O host e o
+    diretório saem de `bots.satisfying_bot.prepared_stories.remote`.
+  - **Não verificado** (desvio registrado): o `ship`/`queue` sobre um SSH de verdade.
+    O servidor de produção está fora do ar (`192.168.1.100` dá timeout) e o Remote
+    Login deste Mac está desligado, então o destino `$USER@localhost` do quickstart §4
+    também não responde; ligar o Remote Login é uma configuração de segurança da
+    máquina do operador, não algo a mudar por conta própria. O que os shims não cobrem
+    é a interoperabilidade com o `ssh`/`scp` reais: quoting dos argumentos remotos e
+    autenticação. Tudo o mais — sequência de comandos, detecção de duplicata, parse da
+    listagem, códigos de saída — foi exercido de verdade. Repetir `just story-ship` e
+    `just story-queue` sem `--remote` quando o servidor voltar (SC-007); é também
+    pré-requisito do gate do M3, que precisa de pacotes reais na inbox do servidor.
+  - Desvio de contrato registrado: `preview` **não** valida o pacote antes de narrar.
+    A tabela de `contracts/cli.md` só prevê validação em `validate` e `ship`, e as duas
+    receitas usam configs diferentes (`story-preview` roda com `config.prod.yaml`,
+    `story-validate` com `config.yaml`), então validar aqui poderia recusar por um
+    critério que não é o do passo. Um JSON malformado ainda falha na hora, ao carregar.
+
+**Checkpoint**: [X] Milestone 2 DONE (2026-09-22) — o operador consegue preparar, ouvir e enfileirar histórias sem precisar do servidor. O envio por SSH real fica pendente de um host acessível (ver evidência de T027).
 
 ---
 

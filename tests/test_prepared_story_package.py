@@ -6,6 +6,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
+from src.entities.configs.bots import TelegramBotConfig
 from src.entities.language import Language
 from src.entities.prepared_story import PreparedStoryPackage, extract_post_id
 from src.services.prepared_story_validation import validate_package
@@ -216,3 +217,29 @@ class TestValidatePackage:
 
         fields = [p.split(":", 1)[0] for p in problems]
         assert fields == ["story_title", "script_text", "script_text"]
+
+
+class TestPreparedStoriesConfig:
+    """The bot config gains a `prepared_stories` block, with usable defaults.
+
+    Every existing config.yaml predates this feature, so loading one without
+    the block must keep working and still point `ship` at the prod server.
+    """
+
+    def test_defaults_when_the_block_is_absent(self):
+        config = TelegramBotConfig()
+
+        assert (
+            config.prepared_stories.remote
+            == "gustavo@192.168.1.100:~/video-generator/.storage/prepared"
+        )
+        assert config.prepared_stories.inbox_dir == ".storage/prepared"
+        assert config.prepared_stories.fill_with_discovery is True
+
+    def test_block_overrides_only_what_it_names(self):
+        config = TelegramBotConfig.model_validate(
+            {"prepared_stories": {"fill_with_discovery": False}}
+        )
+
+        assert config.prepared_stories.fill_with_discovery is False
+        assert config.prepared_stories.inbox_dir == ".storage/prepared"

@@ -6,16 +6,21 @@ to the services, what it writes to disk, what it prints and its exit code.
 """
 
 import json
+import re
+import subprocess
 import time
+from pathlib import Path
 
 import pytest
 
 from scripts import prepare_story
 from src.core.container import container
 from src.entities.config import EvaluationConfig, MainConfig
+from src.entities.editor.audio_clip import AudioClip
 from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import StoryCandidate
+from src.services.speech_service import SpeechResult
 from tests.test_prepared_story_package import package_payload
 
 
@@ -328,3 +333,283 @@ class TestList:
 
         assert code == 0
         assert "Nenhum pacote" in capsys.readouterr().out
+
+
+MP3_FIXTURE = Path(__file__).parent / "data" / "output_portuguese.mp3"
+
+
+class FakeSpeechService:
+    """Returns a real (short) mp3 so the duration the CLI prints is a real one."""
+
+    def __init__(self):
+        self.calls: list[dict] = []
+
+    async def generate_speech(self, **kwargs):
+        self.calls.append(kwargs)
+        speech_bytes = MP3_FIXTURE.read_bytes()
+        return SpeechResult(clip=AudioClip(bytes=speech_bytes), bytes=speech_bytes)
+
+
+@pytest.fixture
+def speech():
+    fake = FakeSpeechService()
+    container.speech_service.override(fake)
+    yield fake
+    container.speech_service.reset_override()
+
+
+class TestPreview:
+    def test_writes_the_mp3_next_to_the_package(self, tmp_path, config, speech, capsys):
+        path = write_package(tmp_path)
+
+        code = prepare_story.main(["preview", path])
+
+        assert code == 0
+        assert (tmp_path / "1vuze4m.preview.mp3").exists()
+        assert "1vuze4m.preview.mp3" in capsys.readouterr().out
+
+    def test_uses_the_voice_and_language_of_the_package(
+        self, tmp_path, config, speech, capsys
+    ):
+        path = write_package(
+            tmp_path, narrator_gender="female", resolved_gender="female"
+        )
+
+        prepare_story.main(["preview", path])
+
+        assert speech.calls == [
+            {
+                "text": package_payload()["script_text"],
+                "gender": "female",
+                "rate": 1.0,
+                "language": Language.PORTUGUESE,
+            }
+        ]
+
+    def test_prints_the_duration_as_mm_ss(self, tmp_path, config, speech, capsys):
+        path = write_package(tmp_path)
+
+        prepare_story.main(["preview", path])
+
+        out = capsys.readouterr().out
+        assert re.search(r"\b\d{2}:\d{2}\b", out)
+
+    def test_rate_can_be_overridden(self, tmp_path, config, speech, capsys):
+        path = write_package(tmp_path)
+
+        prepare_story.main(["preview", path, "--rate", "1.5"])
+
+        assert speech.calls[0]["rate"] == 1.5
+
+    def test_second_run_replaces_the_previous_mp3(
+        self, tmp_path, config, speech, capsys
+    ):
+        path = write_package(tmp_path)
+        mp3 = tmp_path / "1vuze4m.preview.mp3"
+        mp3.write_bytes(b"stale")
+
+        prepare_story.main(["preview", path])
+
+        assert mp3.read_bytes() != b"stale"
+        assert len(speech.calls) == 1
+
+
+class FakeSubprocess:
+    """Records every command and answers from a queue of scripted results."""
+
+    def __init__(self, results=None):
+        self.commands: list[list[str]] = []
+        self._results = dict(results or {})
+
+    def __call__(self, cmd, **kwargs):
+        self.commands.append(list(cmd))
+        key = cmd[0] if cmd[0] != "ssh" else _ssh_kind(cmd)
+        returncode, stderr = self._results.get(key, (0, ""))
+        return subprocess.CompletedProcess(cmd, returncode, stdout="", stderr=stderr)
+
+
+def _ssh_kind(cmd: list[str]) -> str:
+    remote_cmd = cmd[-1]
+    if remote_cmd.startswith("mkdir"):
+        return "mkdir"
+    if remote_cmd.startswith("test -e"):
+        return "test"
+    return "ssh"
+
+
+REMOTE = "gustavo@example.test:~/video-generator/.storage/prepared"
+
+
+@pytest.fixture
+def run(monkeypatch):
+    fake = FakeSubprocess()
+    monkeypatch.setattr(prepare_story.subprocess, "run", fake)
+    return fake
+
+
+class TestShip:
+    def test_invalid_package_never_touches_the_network(
+        self, tmp_path, config, run, capsys
+    ):
+        path = write_package(tmp_path, language="en")
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        assert code == 1
+        assert run.commands == []
+        assert "language: package=en" in capsys.readouterr().out
+
+    def test_creates_the_inbox_then_checks_then_copies(
+        self, tmp_path, config, run, capsys
+    ):
+        path = write_package(tmp_path)
+        run._results["test"] = (1, "")  # no duplicate on the remote
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        assert code == 0
+        assert run.commands == [
+            [
+                "ssh",
+                "gustavo@example.test",
+                "mkdir -p ~/video-generator/.storage/prepared/inbox",
+            ],
+            [
+                "ssh",
+                "gustavo@example.test",
+                "test -e ~/video-generator/.storage/prepared/inbox/1vuze4m.json",
+            ],
+            [
+                "scp",
+                path,
+                "gustavo@example.test:~/video-generator/.storage/prepared/inbox/",
+            ],
+        ]
+        assert "1vuze4m.json" in capsys.readouterr().out
+
+    def test_duplicate_asks_and_aborts_on_no(
+        self, tmp_path, config, run, monkeypatch, capsys
+    ):
+        path = write_package(tmp_path)
+        run._results["test"] = (0, "")  # already queued
+        monkeypatch.setattr("builtins.input", lambda prompt="": "n")
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        assert code == 1
+        assert [c[0] for c in run.commands] == ["ssh", "ssh"]
+
+    def test_duplicate_proceeds_on_yes(
+        self, tmp_path, config, run, monkeypatch, capsys
+    ):
+        path = write_package(tmp_path)
+        run._results["test"] = (0, "")
+        monkeypatch.setattr("builtins.input", lambda prompt="": "y")
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        assert code == 0
+        assert run.commands[-1][0] == "scp"
+
+    def test_force_skips_the_question(self, tmp_path, config, run, monkeypatch, capsys):
+        path = write_package(tmp_path)
+        run._results["test"] = (0, "")
+
+        def no_input(prompt=""):
+            raise AssertionError("--force must not prompt")
+
+        monkeypatch.setattr("builtins.input", no_input)
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE, "--force"])
+
+        assert code == 0
+        assert run.commands[-1][0] == "scp"
+
+    def test_scp_failure_exits_2_and_leaves_the_local_file_alone(
+        self, tmp_path, config, run, capsys
+    ):
+        path = write_package(tmp_path)
+        before = Path(path).read_bytes()
+        run._results["test"] = (1, "")
+        run._results["scp"] = (1, "ssh: connect to host example.test: timed out")
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        out = capsys.readouterr().out
+        assert code == 2
+        assert "timed out" in out
+        assert "scp" in out
+        assert Path(path).read_bytes() == before
+
+    def test_unreachable_host_on_mkdir_exits_2_before_copying(
+        self, tmp_path, config, run, capsys
+    ):
+        path = write_package(tmp_path)
+        run._results["mkdir"] = (255, "ssh: Could not resolve hostname")
+
+        code = prepare_story.main(["ship", path, "--remote", REMOTE])
+
+        assert code == 2
+        assert [c[0] for c in run.commands] == ["ssh"]
+
+    def test_remote_defaults_to_the_config(self, tmp_path, config, run, capsys):
+        path = write_package(tmp_path)
+        run._results["test"] = (1, "")
+
+        prepare_story.main(["ship", path])
+
+        assert run.commands[0][1] == "gustavo@192.168.1.100"
+
+
+class TestQueue:
+    def _remote_listing(self, *payloads) -> str:
+        blocks = []
+        for mtime, payload in payloads:
+            blocks.append(f"{mtime}\n{json.dumps(payload, indent=2)}\n\n")
+        return "".join(blocks)
+
+    def test_lists_the_remote_inbox(self, tmp_path, config, monkeypatch, capsys):
+        listing = self._remote_listing(
+            (1789900500, package_payload()),
+        )
+
+        def fake_run(cmd, **kwargs):
+            assert cmd[0] == "ssh"
+            return subprocess.CompletedProcess(cmd, 0, stdout=listing, stderr="")
+
+        monkeypatch.setattr(prepare_story.subprocess, "run", fake_run)
+
+        code = prepare_story.main(["queue", "--remote", REMOTE])
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "1vuze4m" in out
+        assert "Ele pediu pra eu ignorar o encontro dele" in out
+        assert "reddit.com" in out
+        assert "2026-09-21" in out
+
+    def test_empty_inbox_says_so(self, tmp_path, config, monkeypatch, capsys):
+        monkeypatch.setattr(
+            prepare_story.subprocess,
+            "run",
+            lambda cmd, **kwargs: subprocess.CompletedProcess(cmd, 0, "", ""),
+        )
+
+        code = prepare_story.main(["queue", "--remote", REMOTE])
+
+        assert code == 0
+        assert "Fila vazia." in capsys.readouterr().out
+
+    def test_ssh_failure_exits_2(self, tmp_path, config, monkeypatch, capsys):
+        monkeypatch.setattr(
+            prepare_story.subprocess,
+            "run",
+            lambda cmd, **kwargs: subprocess.CompletedProcess(
+                cmd, 255, "", "Connection refused"
+            ),
+        )
+
+        code = prepare_story.main(["queue", "--remote", REMOTE])
+
+        assert code == 2
+        assert "Connection refused" in capsys.readouterr().out
