@@ -9,10 +9,12 @@ is offline as far as LLMs are concerned — the only network call is to Reddit.
 import argparse
 import asyncio
 import json
+import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import ValidationError
 
@@ -29,6 +31,7 @@ CANDIDATES_FILENAME = "candidates.json"
 
 EXIT_OK = 0
 EXIT_INVALID = 1
+EXIT_NETWORK = 2
 
 
 def _parse_subreddits(values: Optional[List[str]]) -> Optional[List[str]]:
@@ -284,6 +287,162 @@ def cmd_list(args) -> int:
     return EXIT_OK
 
 
+def _format_duration(seconds: float) -> str:
+    total = int(round(seconds))
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def cmd_preview(args) -> int:
+    path = Path(args.file)
+    package = _load_package(path)
+    speech_service = container.speech_service()
+
+    print(
+        f"Narrando {len(package.script_text)} chars "
+        f"(voz {package.resolved_gender}, {package.language.value}, rate={args.rate})..."
+    )
+    result = asyncio.run(
+        speech_service.generate_speech(
+            text=package.script_text,
+            gender=package.resolved_gender,
+            rate=args.rate,
+            language=package.language,
+        )
+    )
+
+    mp3_path = path.with_suffix(".preview.mp3")
+    mp3_path.write_bytes(result.bytes)
+
+    print(f"{mp3_path}  {_format_duration(result.clip.clip.duration)}")
+    return EXIT_OK
+
+
+def _split_remote(remote: str) -> Tuple[str, str]:
+    """`user@host:dir` -> (`user@host`, `dir`). The dir may start with `~`."""
+    host, separator, directory = remote.partition(":")
+    if not separator or not directory:
+        raise ValueError(f"--remote deve ser user@host:dir, recebi {remote!r}")
+    return host, directory.rstrip("/")
+
+
+def _remote_default() -> str:
+    return container.main_config().bots.satisfying_bot.prepared_stories.remote
+
+
+def _run(cmd: List[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def _report_command_failure(cmd: List[str], result) -> int:
+    print(f"Falhou: {' '.join(cmd)}")
+    stderr = (result.stderr or "").strip()
+    if stderr:
+        print(f"  {stderr}")
+    return EXIT_NETWORK
+
+
+def cmd_ship(args) -> int:
+    config = container.main_config()
+    censor = container.text_censor()
+
+    host, directory = _split_remote(args.remote or _remote_default())
+    inbox = f"{directory}/inbox"
+
+    packages = []
+    for raw_path in args.files:
+        path = Path(raw_path)
+        try:
+            package = _load_package(path)
+        except (ValidationError, ValueError) as exc:
+            print(f"✗ {path.name}")
+            print(f"  - pacote não pôde ser lido: {exc}")
+            return EXIT_INVALID
+
+        problems = validate_package(package, censor, config.language)
+        if problems:
+            print(f"✗ {path.name}")
+            for problem in problems:
+                print(f"  - {problem}")
+            return EXIT_INVALID
+
+        packages.append((path, package))
+
+    mkdir = ["ssh", host, f"mkdir -p {inbox}"]
+    result = _run(mkdir)
+    if result.returncode != 0:
+        return _report_command_failure(mkdir, result)
+
+    for path, package in packages:
+        remote_file = f"{inbox}/{package.post_id}.json"
+
+        if not args.force:
+            exists = ["ssh", host, f"test -e {remote_file}"]
+            result = _run(exists)
+            if result.returncode == 0:
+                answer = input(
+                    f"{package.post_id}.json já existe na fila, substituir? [y/N] "
+                )
+                if answer.strip().lower() not in ("y", "yes", "s", "sim"):
+                    print("Cancelado; nada foi enviado.")
+                    return EXIT_INVALID
+
+        copy = ["scp", str(path), f"{host}:{inbox}/"]
+        result = _run(copy)
+        if result.returncode != 0:
+            return _report_command_failure(copy, result)
+
+        print(f"→ enviado {package.post_id}.json para {host}:{inbox}")
+
+    return EXIT_OK
+
+
+_QUEUE_LISTING = (
+    'for f in {inbox}/*.json; do [ -e "$f" ] || continue; '
+    'stat -c "%Y" "$f" 2>/dev/null || stat -f "%m" "$f"; '
+    'cat "$f"; echo; echo; done'
+)
+
+
+def _parse_queue_listing(output: str) -> List[Tuple[int, PreparedStoryPackage]]:
+    entries = []
+    for block in re.split(r"\n\s*\n", output.strip()):
+        block = block.strip()
+        if not block:
+            continue
+        mtime_line, _, raw = block.partition("\n")
+        if not raw.strip():
+            continue
+        entries.append(
+            (int(mtime_line.strip()), PreparedStoryPackage.model_validate_json(raw))
+        )
+    return entries
+
+
+def cmd_queue(args) -> int:
+    host, directory = _split_remote(args.remote or _remote_default())
+
+    listing = ["ssh", host, _QUEUE_LISTING.format(inbox=f"{directory}/inbox")]
+    result = _run(listing)
+    if result.returncode != 0:
+        return _report_command_failure(listing, result)
+
+    entries = _parse_queue_listing(result.stdout or "")
+    if not entries:
+        print("Fila vazia.")
+        return EXIT_OK
+
+    for mtime, package in entries:
+        enqueued = datetime.fromtimestamp(mtime).isoformat(timespec="seconds")
+        print(
+            f"{package.post_id}  {package.story_title[:60]}\n"
+            f"    {package.post.url}\n"
+            f"    criado {package.created_at.isoformat(timespec='seconds')}  "
+            f"enfileirado {enqueued}"
+        )
+
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Prepara histórias do Reddit localmente, sem chamar modelo pago."
@@ -327,6 +486,27 @@ def build_parser() -> argparse.ArgumentParser:
     listing = subparsers.add_parser("list", help="Lista os pacotes locais")
     add_out(listing)
 
+    preview = subparsers.add_parser(
+        "preview", help="Gera o mp3 da narração ao lado do pacote"
+    )
+    preview.add_argument("file")
+    preview.add_argument(
+        "--rate",
+        type=float,
+        default=1.0,
+        help="Multiplicador extra sobre o default_rate da config (default: 1.0)",
+    )
+
+    ship = subparsers.add_parser("ship", help="Envia pacotes validados para a fila")
+    ship.add_argument("files", nargs="+")
+    ship.add_argument("--remote", help="user@host:dir (default: config)")
+    ship.add_argument(
+        "--force", action="store_true", help="Substitui duplicatas sem perguntar"
+    )
+
+    queue = subparsers.add_parser("queue", help="Lista a fila remota")
+    queue.add_argument("--remote", help="user@host:dir (default: config)")
+
     return parser
 
 
@@ -341,6 +521,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         return cmd_prompt(args)
     if args.command == "validate":
         return cmd_validate(args)
+    if args.command == "preview":
+        return cmd_preview(args)
+    if args.command == "ship":
+        return cmd_ship(args)
+    if args.command == "queue":
+        return cmd_queue(args)
     return cmd_list(args)
 
 

@@ -87,6 +87,19 @@ story-validate file:
 story-list:
     uv run python scripts/prepare_story.py list
 
+# config.prod.yaml carries default_rate, so the preview sounds like the server.
+# Narrate a package with the production voice and speed.
+story-preview file:
+    CONFIG_PATH=config.prod.yaml uv run python scripts/prepare_story.py preview {{file}}
+
+# Validate and copy a package into the server's queue (scp over ssh).
+story-ship file:
+    uv run python scripts/prepare_story.py ship {{file}}
+
+# Show what is waiting in the server's queue.
+story-queue:
+    uv run python scripts/prepare_story.py queue
+
 # Format code
 fmt:
     uv run black src scripts tests bots

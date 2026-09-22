@@ -24,6 +24,10 @@ proxies:
 services:
   video_config: { ... }
   captions_config: { ... }
+
+bots:
+  image_story_bot: { ... }
+  satisfying_bot: { ... }
 ```
 
 ---
@@ -263,6 +267,34 @@ captions_config:
 | `upper_text` | `bool` | `false` | Force uppercase captions |
 | `marging` | `int` | `50` | Text margin in pixels |
 | `fade_duration` | `float` | `0` | Fade in/out duration for each word (seconds) |
+
+---
+
+## Bots
+
+### Prepared stories (`bots.satisfying_bot.prepared_stories`)
+
+Stories written on the laptop (see `scripts/prepare_story.py` and the
+`/prepare-story` skill) travel to the server as JSON packages. This block says
+where they are sent and where the server looks for them.
+
+```yaml
+bots:
+  satisfying_bot:
+    prepared_stories:
+      remote: gustavo@192.168.1.100:~/video-generator/.storage/prepared
+      inbox_dir: .storage/prepared
+      fill_with_discovery: true
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `remote` | `str` | `gustavo@192.168.1.100:~/video-generator/.storage/prepared` | SSH destination (`user@host:dir`) used by `just story-ship` and `just story-queue`; the CLI creates `<dir>/inbox` itself |
+| `inbox_dir` | `str` | `.storage/prepared` | Queue root on the server, holding `inbox/`, `done/` and `failed/` |
+| `fill_with_discovery` | `bool` | `true` | When the queue holds fewer packages than the daily count, complete the run with automatic discovery. `false` publishes only what the operator prepared |
+
+Override `remote` per run with `--remote` — useful for testing the hand-off
+against your own machine (`--remote "$USER@localhost:$PWD/.storage/prepared"`).
 
 ---
 

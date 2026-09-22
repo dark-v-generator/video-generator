@@ -95,6 +95,18 @@ bots:
       - "20:00"
     publish_min_lead_minutes: 30
     publish_hashtags: []
+    # Hand-off of stories prepared on the laptop (see docs/configuration.md).
+    # The whole block is optional; the values below are the defaults.
+    # prepared_stories:
+    #   # Where `just story-ship` copies packages to (user@host:dir). The CLI
+    #   # creates <dir>/inbox itself.
+    #   remote: gustavo@192.168.1.100:~/video-generator/.storage/prepared
+    #   # Queue root read by the server; holds inbox/, done/ and failed/.
+    #   inbox_dir: .storage/prepared
+    #   # When the queue has fewer packages than the daily count, complete the
+    #   # run with automatic discovery. Set to false to publish only what the
+    #   # operator prepared.
+    #   fill_with_discovery: true
 evaluation:
   subreddits:
     - pettyrevenge

@@ -1,6 +1,6 @@
 ---
 name: prepare-story
-description: Conduz a preparação local de uma história do Reddit para o pipeline diário — descobrir candidatas, escrever o roteiro seguindo o prompt editorial do servidor e validar o pacote. Use quando o operador pedir para preparar, escolher, roteirizar ou revisar uma história, com ou sem uma URL do Reddit em mãos.
+description: Conduz a preparação local de uma história do Reddit para o pipeline diário — descobrir candidatas, escrever o roteiro seguindo o prompt editorial do servidor, validar o pacote, ouvir a narração e enfileirá-lo no servidor. Use quando o operador pedir para preparar, escolher, roteirizar, revisar, ouvir ou enviar uma história, com ou sem uma URL do Reddit em mãos.
 ---
 
 # Preparar uma história localmente
@@ -93,8 +93,36 @@ Mostre o roteiro e escute. Enquanto a revisão não for aprovada, mantenha o arq
 anterior no lugar — se o operador preferir a versão de antes, ela precisa existir.
 Escreva a nova versão por cima só depois do aval dele, e valide de novo.
 
-## Depois daqui
+### 6. Ouvir a narração
 
-Ouvir a narração (`just story-preview`) e enfileirar o pacote no servidor
-(`just story-ship`, `just story-queue`) chegam no Milestone 2 desta feature. Por
-enquanto o fluxo termina no pacote validado, e o envio é manual.
+```bash
+just story-preview output/prepared/<post_id>.json
+```
+
+O mp3 sai em `output/prepared/<post_id>.preview.mp3`, com a voz do `resolved_gender` e
+a velocidade de produção — é literalmente o áudio que o vídeo teria. Peça ao operador
+para ouvir. Um roteiro que lê bem nem sempre soa bem: frase longa demais, nome difícil
+de pronunciar, sequência de números. Se ele pedir ajustes, volte ao passo 5 e gere a
+prévia de novo (o arquivo é substituído).
+
+### 7. Enviar para a fila
+
+Só depois de o operador dizer, com todas as letras, que quer enviar:
+
+```bash
+just story-ship output/prepared/<post_id>.json
+```
+
+O comando valida de novo, cria a `inbox` remota se faltar e copia o pacote. Ele
+pergunta antes de substituir uma duplicata e nunca mexe no arquivo local: se a rede
+cair no meio, nada se perde e basta repetir. Se o pacote não passar na validação, ele
+recusa sem tocar na rede — volte ao passo 4.
+
+Feche mostrando o que está esperando o próximo job diário:
+
+```bash
+just story-queue
+```
+
+A partir daqui o servidor assume: ele produz o vídeo com o roteiro verbatim e agenda a
+publicação. Nada do que você escreveu é reinterpretado por outro modelo.
