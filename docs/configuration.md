@@ -296,6 +296,9 @@ bots:
 Override `remote` per run with `--remote` — useful for testing the hand-off
 against your own machine (`--remote "$USER@localhost:$PWD/.storage/prepared"`).
 
+The operator-facing walkthrough of the whole flow is in
+[prepared-stories.md](./prepared-stories.md).
+
 ---
 
 ## Secrets (`.env`)

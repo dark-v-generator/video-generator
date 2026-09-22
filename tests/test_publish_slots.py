@@ -9,7 +9,9 @@ from bots import satisfying_bot
 from bots.satisfying_bot import compute_publish_slots, next_publish_slot
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import EvaluatedStory
+from src.services.prepared_story_queue import PreparedStoryQueue
 from src.services.reddit_video_service import PreparedStory
+from src.services.text_censor import TextCensor
 
 SLOTS = ["12:00", "18:00", "19:00", "20:00"]
 
@@ -219,9 +221,10 @@ class TestDailyAutoPublishPipeline:
                 return "scheduled"
 
         class FakeContainer:
-            def __init__(self, service, llm):
+            def __init__(self, service, llm, queue):
                 self._service = service
                 self._llm = llm
+                self._queue = queue
 
             def wire(self, modules):
                 return None
@@ -232,21 +235,33 @@ class TestDailyAutoPublishPipeline:
             def llm_proxy(self):
                 return self._llm
 
+            def prepared_story_queue(self):
+                return self._queue
+
+            def text_censor(self):
+                return TextCensor()
+
         service = FakeService()
         publisher = FakePublisher()
         messages = []
 
-        async def discover_stories():
+        async def discover_stories(subreddits=None, exclude_urls=None):
             return stories
 
         async def send_message(text):
             messages.append(text)
 
+        # Without this the test appends its fixture rows to the real
+        # .storage/tiktok_publish_log.csv, which the daily run reads back to
+        # keep discovery off already-scheduled posts.
+        monkeypatch.setenv(
+            "TIKTOK_PUBLISH_LOG_PATH", str(tmp_path / "tiktok_publish_log.csv")
+        )
         monkeypatch.setattr(satisfying_bot, "_discover_stories", discover_stories)
         monkeypatch.setattr(
             satisfying_bot,
             "container",
-            FakeContainer(service, FakeLLM()),
+            FakeContainer(service, FakeLLM(), PreparedStoryQueue(str(tmp_path / "q"))),
         )
         monkeypatch.setattr(
             satisfying_bot,
