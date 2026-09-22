@@ -12,7 +12,7 @@ from .interfaces import IImageGeneratorProxy
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 5
-MAX_POLL_ATTEMPTS = 360 # The job can take a lot of time on cold start
+MAX_POLL_ATTEMPTS = 360  # The job can take a lot of time on cold start
 
 
 class RunPodComfyUIProxy(IImageGeneratorProxy):

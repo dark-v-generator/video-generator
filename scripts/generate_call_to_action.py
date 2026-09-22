@@ -1,4 +1,5 @@
 """Generate a placeholder call-to-action PNG for use as an overlay."""
+
 import os
 import textwrap
 from PIL import Image, ImageDraw, ImageFont

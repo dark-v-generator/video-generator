@@ -232,9 +232,7 @@ def cmd_prompt(args) -> int:
 
     language = Language(args.language) if args.language else config.language
     print(
-        render_story_prompt(
-            entry["post"]["title"], entry["post"]["content"], language
-        )
+        render_story_prompt(entry["post"]["title"], entry["post"]["content"], language)
     )
     return EXIT_OK
 

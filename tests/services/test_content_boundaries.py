@@ -32,33 +32,51 @@ def _words(texts, start=0.0, step=0.4):
 def test_keeps_first_word_when_no_marker():
     svc = _svc(cover_duration=3)
     words = _words(
-        ["Morava", "com", "o", "Marcos", "e", "ele", "pegava", "minhas",
-         "coisas", "emprestadas", "sempre", "assim", "curta", "e", "siga"]
+        [
+            "Morava",
+            "com",
+            "o",
+            "Marcos",
+            "e",
+            "ele",
+            "pegava",
+            "minhas",
+            "coisas",
+            "emprestadas",
+            "sempre",
+            "assim",
+            "curta",
+            "e",
+            "siga",
+        ]
     )
     intro, cta, offset, content = svc._compute_content_boundaries(words)
 
-    assert content[0]["word"] == "Morava"          # first word NOT dropped
-    assert intro == 3.0                            # cover window == cover_duration
+    assert content[0]["word"] == "Morava"  # first word NOT dropped
+    assert intro == 3.0  # cover window == cover_duration
     assert offset == words[0]["start"]
-    assert content[0]["start"] == 0.0              # zero-based
+    assert content[0]["start"] == 0.0  # zero-based
     # CTA ("curta") is excluded from content
     assert all(w["word"] != "curta" for w in content)
 
 
 def test_cover_window_follows_config():
     svc = _svc(cover_duration=5)
-    _, _, _, _ = svc._compute_content_boundaries(_words(["a", "b", "c", "d", "e", "f", "g"]))
-    intro, *_ = svc._compute_content_boundaries(_words(["a", "b", "c", "d", "e", "f", "g"]))
+    _, _, _, _ = svc._compute_content_boundaries(
+        _words(["a", "b", "c", "d", "e", "f", "g"])
+    )
+    intro, *_ = svc._compute_content_boundaries(
+        _words(["a", "b", "c", "d", "e", "f", "g"])
+    )
     assert intro == 5.0
 
 
 def test_legacy_marker_is_still_stripped():
     svc = _svc(cover_duration=3)
-    words = (
-        _words(["Titulo", "antigo", "Parte", "1."])
-        + _words(["Era", "uma", "vez", "uma", "historia", "boa", "curta", "fim"], start=2.0)
+    words = _words(["Titulo", "antigo", "Parte", "1."]) + _words(
+        ["Era", "uma", "vez", "uma", "historia", "boa", "curta", "fim"], start=2.0
     )
     intro, cta, offset, content = svc._compute_content_boundaries(words)
 
-    assert content[0]["word"] == "Era"             # everything up to "1." stripped
-    assert intro == words[3]["end"]                # end of the "1." marker
+    assert content[0]["word"] == "Era"  # everything up to "1." stripped
+    assert intro == words[3]["end"]  # end of the "1." marker

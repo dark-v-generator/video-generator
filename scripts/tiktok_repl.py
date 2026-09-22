@@ -40,7 +40,11 @@ from src.proxies.tiktok_publisher_proxy import (
     TIKTOK_UPLOAD_URL,
     DEFAULT_USER_AGENT,
 )
-from src.proxies.tiktok_publisher_tools import _eval_js, _wrap_js_for_eval, _summarize_value
+from src.proxies.tiktok_publisher_tools import (
+    _eval_js,
+    _wrap_js_for_eval,
+    _summarize_value,
+)
 
 COOKIES_PATH = Path(".storage/tiktok_cookies.json")
 USER_DATA_DIR = COOKIES_PATH.parent / (COOKIES_PATH.stem + "_userdata")
@@ -88,6 +92,7 @@ def setup():
 
 # ── Tool functions ──────────────────────────────────────────────
 
+
 async def run_js(code_str: str):
     wrapped = _wrap_js_for_eval(code_str)
     result = await _eval_js(browser, wrapped)
@@ -101,10 +106,7 @@ async def run_js(code_str: str):
 
 async def click_by_text(text: str, role: str | None = None, index: int = 1):
     text_json = json.dumps(text)
-    role_clause = (
-        f"el.getAttribute('role') === {json.dumps(role)}"
-        if role else "true"
-    )
+    role_clause = f"el.getAttribute('role') === {json.dumps(role)}" if role else "true"
     js = f"""
     (() => {{
       const target = {text_json}.toLowerCase();
@@ -195,7 +197,9 @@ async def upload(file_path: str):
     """
     check = await _eval_js(browser, js)
     if "error" in check or not check.get("value", {}).get("ok"):
-        print("No <input type=file> found. Trying to reveal one by clicking the drop zone...")
+        print(
+            "No <input type=file> found. Trying to reveal one by clicking the drop zone..."
+        )
         await run_js("""
             const btn = document.querySelector("button");
             if (btn && /select/i.test(btn.innerText)) btn.click();
@@ -228,7 +232,8 @@ async def upload(file_path: str):
 async def nav(url: str):
     cdp = await browser.get_or_create_cdp_session()
     await cdp.cdp_client.send.Page.navigate(
-        params={"url": url}, session_id=cdp.session_id,
+        params={"url": url},
+        session_id=cdp.session_id,
     )
     await asyncio.sleep(3)
     print(f"[nav] {url}")
@@ -237,7 +242,8 @@ async def nav(url: str):
 async def screenshot(path: str = "screenshot.png"):
     cdp = await browser.get_or_create_cdp_session()
     result = await cdp.cdp_client.send.Page.captureScreenshot(
-        params={"format": "png"}, session_id=cdp.session_id,
+        params={"format": "png"},
+        session_id=cdp.session_id,
     )
     data = base64.b64decode(result["data"])
     Path(path).write_bytes(data)
@@ -262,6 +268,7 @@ async def keys(shortcut: str):
 
 
 # ── Async-aware REPL ───────────────────────────────────────────
+
 
 class AsyncConsole(code.InteractiveConsole):
     def runsource(self, source, filename="<input>", symbol="single"):
@@ -290,6 +297,7 @@ class AsyncConsole(code.InteractiveConsole):
 
 # ── Main ───────────────────────────────────────────────────────
 
+
 def main():
     setup()
 
@@ -310,17 +318,19 @@ def main():
     print("  await keys('Escape')")
     print("=" * 60 + "\n")
 
-    console = AsyncConsole(locals={
-        "run_js": run_js,
-        "click_by_text": click_by_text,
-        "set_contenteditable": set_contenteditable,
-        "get_text": get_text,
-        "upload": upload,
-        "nav": nav,
-        "screenshot": screenshot,
-        "keys": keys,
-        "browser": browser,
-    })
+    console = AsyncConsole(
+        locals={
+            "run_js": run_js,
+            "click_by_text": click_by_text,
+            "set_contenteditable": set_contenteditable,
+            "get_text": get_text,
+            "upload": upload,
+            "nav": nav,
+            "screenshot": screenshot,
+            "keys": keys,
+            "browser": browser,
+        }
+    )
     console.interact(banner="", exitmsg="Closing browser...")
 
     R(browser.stop())

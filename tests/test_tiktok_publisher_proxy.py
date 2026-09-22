@@ -93,9 +93,7 @@ def test_format_description_strips_old_hashtags_and_dedupes_new_tags():
         ["#reddit", "#fyp", "chefeToxico#reddit", "obedienciaCega"],
     )
 
-    assert result == (
-        "Meu chefe me proibiu de decidir  #reddit #fyp #chefeToxico"
-    )
+    assert result == ("Meu chefe me proibiu de decidir  #reddit #fyp #chefeToxico")
 
 
 def test_format_description_without_hashtags_does_not_add_defaults():
@@ -118,9 +116,13 @@ async def test_publish_video_builds_agent_with_thinking_disabled(
     monkeypatch.setattr(proxy_module, "Agent", _FakeAgent)
     monkeypatch.setattr(proxy_module, "build_tools", lambda: object())
     monkeypatch.setattr(
-        proxy, "_start_session_with_stealth", lambda agent: proxy_module.asyncio.sleep(0)
+        proxy,
+        "_start_session_with_stealth",
+        lambda agent: proxy_module.asyncio.sleep(0),
     )
-    monkeypatch.setattr(proxy, "_safe_stop", lambda browser: proxy_module.asyncio.sleep(0))
+    monkeypatch.setattr(
+        proxy, "_safe_stop", lambda browser: proxy_module.asyncio.sleep(0)
+    )
 
     result = await proxy.publish_video(
         video_path=str(video_path),
@@ -235,7 +237,9 @@ async def test_raw_capture_writes_artifact_for_truncated_structured_output(
     monkeypatch.setattr(proxy_module.AsyncCompletions, "create", fake_create)
 
     with proxy._capture_openai_raw_failures(recorder):
-        result = await proxy_module.AsyncCompletions.create(object(), model="test-model")
+        result = await proxy_module.AsyncCompletions.create(
+            object(), model="test-model"
+        )
 
     artifact_path = tmp_path / "20260515T123456.llm_failure.json"
     assert result is parsed
@@ -277,7 +281,9 @@ async def test_raw_capture_does_not_write_artifact_on_success(
     monkeypatch.setattr(proxy_module.AsyncCompletions, "create", fake_create)
 
     with proxy._capture_openai_raw_failures(recorder):
-        result = await proxy_module.AsyncCompletions.create(object(), model="test-model")
+        result = await proxy_module.AsyncCompletions.create(
+            object(), model="test-model"
+        )
 
     assert result is parsed
     assert not (tmp_path / "20260515T123456.llm_failure.json").exists()

@@ -28,15 +28,15 @@ def test_literal_newlines_inside_string_value():
     # The exact failure mode observed with kimi-k2.6: a string value that spans
     # multiple physical lines with literal newlines + indentation.
     raw = (
-        '```json\n'
-        '{\n'
+        "```json\n"
+        "{\n"
         '  "title": "Minha irmã proibiu meus filhos no casamento",\n'
         '  "narrator_gender": "unknown",\n'
         '  "part1": "Minha irmã decidiu que meus filhos não podiam ir.\n'
         '             Aquilo doeu, mas eu disse que tudo bem.",\n'
         '  "part2": "No fim, eu não paguei nada. E você? Curta e comente."\n'
-        '}\n'
-        '```'
+        "}\n"
+        "```"
     )
     data = _parse(raw)
     assert data["narrator_gender"] == "unknown"

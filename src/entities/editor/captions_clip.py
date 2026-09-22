@@ -27,16 +27,18 @@ class CaptionsClip:
             clips.append(clip)
         return clips
 
-    def __make_word_clip(self, caption_segment: CaptionSegment, size_rate: float) -> TextClip:
+    def __make_word_clip(
+        self, caption_segment: CaptionSegment, size_rate: float
+    ) -> TextClip:
         start_time, end_time = [caption_segment.start, caption_segment.end]
         text = caption_segment.text
         show_text = text.upper() if self.config.upper_text else text
         show_text = show_text.replace(",", "").replace(".", "").strip()
-        
+
         font_size = int(round(self.config.font_size * size_rate))
         stroke_width = int(round(self.config.stroke_width * size_rate))
         margin = int(round(self.config.marging * size_rate))
-        
+
         word_clip = TextClip(
             text=show_text,
             font=self.font_path,

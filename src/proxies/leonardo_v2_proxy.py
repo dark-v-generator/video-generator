@@ -4,7 +4,9 @@ from typing import List
 
 import requests
 
-from src.entities.configs.proxies.image_generation import LeonardoV2ImageGenerationConfig
+from src.entities.configs.proxies.image_generation import (
+    LeonardoV2ImageGenerationConfig,
+)
 
 from .interfaces import IImageGeneratorProxy
 
@@ -15,10 +17,14 @@ MAX_POLL_ATTEMPTS = 200
 
 VALID_DIMENSION_PAIRS = [
     (1024, 1024),
-    (848, 1264), (1264, 848),
-    (896, 1200), (1200, 896),
-    (928, 1152), (1152, 928),
-    (768, 1376), (1376, 768),
+    (848, 1264),
+    (1264, 848),
+    (896, 1200),
+    (1200, 896),
+    (928, 1152),
+    (1152, 928),
+    (768, 1376),
+    (1376, 768),
 ]
 
 
@@ -73,7 +79,11 @@ class LeonardoV2ImageProxy(IImageGeneratorProxy):
 
         logger.info(
             "Leonardo v2: submitting %s generation (%dx%d -> %dx%d)",
-            self.model, width, height, gen_w, gen_h,
+            self.model,
+            width,
+            height,
+            gen_w,
+            gen_h,
         )
         response = requests.post(
             f"{self.V2_BASE}/generations", json=payload, headers=self.headers
@@ -125,17 +135,11 @@ class LeonardoV2ImageProxy(IImageGeneratorProxy):
             )
 
             if status == "COMPLETE":
-                return [
-                    img["url"] for img in gen_data.get("generated_images", [])
-                ]
+                return [img["url"] for img in gen_data.get("generated_images", [])]
             elif status == "FAILED":
-                raise Exception(
-                    f"Leonardo v2 generation {generation_id} failed"
-                )
+                raise Exception(f"Leonardo v2 generation {generation_id} failed")
 
-        raise Exception(
-            f"Timeout waiting for Leonardo v2 generation {generation_id}"
-        )
+        raise Exception(f"Timeout waiting for Leonardo v2 generation {generation_id}")
 
     @staticmethod
     def _snap_dimensions(width: int, height: int) -> tuple[int, int]:

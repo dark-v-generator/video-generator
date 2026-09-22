@@ -147,6 +147,7 @@ def test_bot_detected_default_client_is_not_configured():
 
 class RateLimited(Exception):
     """Stand-in for urllib's HTTPError 429."""
+
     code = 429
 
     def __str__(self):

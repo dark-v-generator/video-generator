@@ -380,7 +380,13 @@ class PromptLLMProxy(ILLMProxy):
         notas = data.get("notas", {})
         grades = [
             notas.get(k, {}).get("nota", 0)
-            for k in ("retencao", "qualidade", "viralizacao", "adequacao_tiktok", "gancho")
+            for k in (
+                "retencao",
+                "qualidade",
+                "viralizacao",
+                "adequacao_tiktok",
+                "gancho",
+            )
         ]
         nota_geral = round(sum(grades) / len(grades), 1) if grades else 0.0
 

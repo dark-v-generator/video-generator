@@ -43,10 +43,22 @@ def _compress_video(video_bytes: bytes, target_mb: int = 48) -> bytes:
     try:
         subprocess.run(
             [
-                "ffmpeg", "-y", "-i", src_path,
-                "-c:v", "libx264", "-crf", str(crf), "-preset", "fast",
-                "-c:a", "aac", "-b:a", "128k",
-                "-movflags", "+faststart",
+                "ffmpeg",
+                "-y",
+                "-i",
+                src_path,
+                "-c:v",
+                "libx264",
+                "-crf",
+                str(crf),
+                "-preset",
+                "fast",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-movflags",
+                "+faststart",
                 dst_path,
             ],
             capture_output=True,
@@ -54,10 +66,13 @@ def _compress_video(video_bytes: bytes, target_mb: int = 48) -> bytes:
         )
         with open(dst_path, "rb") as f:
             compressed = f.read()
-        logger.info("Compressed: %.1f MB -> %.1f MB", src_mb, len(compressed) / (1024 * 1024))
+        logger.info(
+            "Compressed: %.1f MB -> %.1f MB", src_mb, len(compressed) / (1024 * 1024)
+        )
         return compressed
     finally:
         import os
+
         os.unlink(src_path)
         if os.path.exists(dst_path):
             os.unlink(dst_path)
@@ -109,7 +124,9 @@ async def send_image_bytes(
     )
 
 
-async def send_video_bytes_to_chat(bot, chat_id: int, video_bytes: bytes, caption: str) -> None:
+async def send_video_bytes_to_chat(
+    bot, chat_id: int, video_bytes: bytes, caption: str
+) -> None:
     if len(video_bytes) > TELEGRAM_VIDEO_LIMIT:
         video_bytes = await asyncio.to_thread(_compress_video, video_bytes)
     await bot.send_video(
@@ -122,7 +139,9 @@ async def send_video_bytes_to_chat(bot, chat_id: int, video_bytes: bytes, captio
     )
 
 
-async def send_audio_bytes_to_chat(bot, chat_id: int, audio_bytes: bytes, caption: str) -> None:
+async def send_audio_bytes_to_chat(
+    bot, chat_id: int, audio_bytes: bytes, caption: str
+) -> None:
     await bot.send_voice(
         chat_id=chat_id,
         voice=io.BytesIO(audio_bytes),

@@ -10,7 +10,8 @@ class TelegramBotConfig(BaseYAMLModel):
     daily_minute_utc: int = Field(0, title="Minute (UTC) to run daily /find")
 
     daily_auto_publish_count: int = Field(
-        4, title="Number of top stories to auto-generate and schedule daily",
+        4,
+        title="Number of top stories to auto-generate and schedule daily",
     )
     publish_slots_local: List[str] = Field(
         default_factory=lambda: ["12:00", "18:00", "19:00", "20:00"],

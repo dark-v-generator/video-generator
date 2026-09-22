@@ -109,7 +109,6 @@ def _js(code: str) -> str:
     return out
 
 
-
 def _wrap_js_for_eval(code: str) -> str:
     """Make user-supplied JS legal as a CDP ``Runtime.evaluate`` expression.
 
@@ -285,9 +284,9 @@ async def _eval_js(browser_session, expression: str) -> dict:
 #
 # The reliable signal that Draft accepted input is the placeholder
 # disappearing — ``innerText`` can show text Draft never registered.
-_CAPTION_JS = (
-    Path(__file__).parent / "js" / "tiktok_caption.js"
-).read_text(encoding="utf-8")
+_CAPTION_JS = (Path(__file__).parent / "js" / "tiktok_caption.js").read_text(
+    encoding="utf-8"
+)
 
 
 async def _cdp_clear_field(browser_session, selector: str) -> bool:
@@ -520,13 +519,11 @@ def build_tools() -> Tools:
         ),
         param_model=SetContenteditableAction,
     )
-    async def set_contenteditable(
-        params: SetContenteditableAction, browser_session
-    ):
+    async def set_contenteditable(params: SetContenteditableAction, browser_session):
         clean_text = params.text.replace("\n", " ").replace("\r", " ")
-        expr = _CAPTION_JS.replace(
-            "__SELECTOR__", json.dumps(params.selector)
-        ).replace("__TEXT__", json.dumps(clean_text))
+        expr = _CAPTION_JS.replace("__SELECTOR__", json.dumps(params.selector)).replace(
+            "__TEXT__", json.dumps(clean_text)
+        )
         result = await _eval_js(browser_session, expr)
         if "error" in result:
             return ActionResult(
@@ -626,9 +623,8 @@ def build_tools() -> Tools:
 
     class UploadVideoAction(BaseModel):
         """Upload a video file to TikTok Studio."""
-        file_path: str = Field(
-            description="Absolute path to the video file on disk."
-        )
+
+        file_path: str = Field(description="Absolute path to the video file on disk.")
 
     @tools.registry.action(
         "Upload a video file to TikTok Studio. Finds the hidden file "
@@ -639,6 +635,7 @@ def build_tools() -> Tools:
     async def upload_video(params: UploadVideoAction, browser_session):
         import asyncio
         import os
+
         file_path = params.file_path.strip()
         if not os.path.exists(file_path):
             return ActionResult(
@@ -646,7 +643,9 @@ def build_tools() -> Tools:
                 error="file_not_found",
             )
         # Check if file input exists, if not click "Select videos" to reveal it
-        check = await _eval_js(browser_session, """
+        check = await _eval_js(
+            browser_session,
+            """
             (() => {
               const input = document.querySelector('input[type="file"]');
               if (input) return {ok: true};
@@ -655,7 +654,8 @@ def build_tools() -> Tools:
               if (btn) { btn.click(); return {ok: false, reason: 'clicked Select to reveal input'}; }
               return {ok: false, reason: 'no file input and no Select button'};
             })()
-        """)
+        """,
+        )
         if isinstance(check.get("value"), dict) and not check["value"].get("ok"):
             await asyncio.sleep(1)
         # Use CDP to set the file directly
@@ -705,9 +705,7 @@ def build_tools() -> Tools:
             "v => document.body.innerText.toLowerCase().includes(v))",
         )
         if check.get("value") is not True:
-            return ActionResult(
-                extracted_content="dismiss_overlay -> no overlay found"
-            )
+            return ActionResult(extracted_content="dismiss_overlay -> no overlay found")
         # First discard
         click1_js = """
         (() => {
@@ -720,6 +718,7 @@ def build_tools() -> Tools:
         """
         await _eval_js(browser_session, _js(click1_js))
         import asyncio
+
         await asyncio.sleep(1)
         # Second discard (confirmation dialog inserts a new button)
         click2_js = """
@@ -732,7 +731,9 @@ def build_tools() -> Tools:
         })()
         """
         r2 = await _eval_js(browser_session, _js(click2_js))
-        if "error" in r2 or not (isinstance(r2.get("value"), dict) and r2["value"].get("ok")):
+        if "error" in r2 or not (
+            isinstance(r2.get("value"), dict) and r2["value"].get("ok")
+        ):
             return ActionResult(
                 extracted_content="dismiss_overlay -> first Discard clicked but confirmation failed",
                 error="confirmation_failed",
@@ -752,6 +753,7 @@ def build_tools() -> Tools:
     )
     async def select_cover_frame(params: SelectCoverFrameAction, browser_session):
         import asyncio
+
         # Click "Edit cover"
         open_js = """
         (() => {
@@ -763,7 +765,9 @@ def build_tools() -> Tools:
         })()
         """
         r = await _eval_js(browser_session, _js(open_js))
-        if "error" in r or not (isinstance(r.get("value"), dict) and r["value"].get("ok")):
+        if "error" in r or not (
+            isinstance(r.get("value"), dict) and r["value"].get("ok")
+        ):
             return ActionResult(
                 extracted_content="select_cover_frame -> Edit cover button not found",
                 error="not_found",
@@ -900,6 +904,7 @@ def build_tools() -> Tools:
 
     class SetScheduleDateAction(BaseModel):
         """Click a day in the TikTok date picker calendar."""
+
         day: str = Field(description="Day number to click, e.g. '15'.")
 
     @tools.registry.action(
@@ -910,6 +915,7 @@ def build_tools() -> Tools:
     )
     async def set_schedule_date(params: SetScheduleDateAction, browser_session):
         import asyncio
+
         open_js = "document.querySelectorAll('input.TUXTextInputCore-input')[1].click()"
         await _eval_js(browser_session, _js(open_js))
         await asyncio.sleep(0.5)
@@ -940,6 +946,7 @@ def build_tools() -> Tools:
 
     class SetScheduleTimeAction(BaseModel):
         """Set the hour and minute in the TikTok time picker."""
+
         hour: str = Field(description="Hour to select, e.g. '13'.")
         minute: str = Field(description="Minute to select, e.g. '30'.")
 
@@ -951,6 +958,7 @@ def build_tools() -> Tools:
     )
     async def set_schedule_time(params: SetScheduleTimeAction, browser_session):
         import asyncio
+
         open_js = "document.querySelectorAll('input.TUXTextInputCore-input')[0].click()"
         await _eval_js(browser_session, _js(open_js))
         await asyncio.sleep(0.5)

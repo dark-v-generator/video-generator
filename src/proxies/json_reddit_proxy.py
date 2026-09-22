@@ -73,9 +73,7 @@ class JsonRedditProxy(IRedditProxy):
 
         expires_in = int(data.get("expires_in") or 3600)
         self._access_token = token
-        self._token_expires_at = (
-            now + expires_in - self._TOKEN_EXPIRY_SKEW_SECONDS
-        )
+        self._token_expires_at = now + expires_in - self._TOKEN_EXPIRY_SKEW_SECONDS
         return token
 
     def _request_json(self, path: str, params: dict | None = None):
@@ -130,7 +128,10 @@ class JsonRedditProxy(IRedditProxy):
         post = self._parse_post_data(post_data)
 
         self._logger.info(
-            "Fetched post '%s' from %s by %s", post.title[:60], post.community, post.author
+            "Fetched post '%s' from %s by %s",
+            post.title[:60],
+            post.community,
+            post.author,
         )
         return post
 
@@ -191,6 +192,10 @@ class JsonRedditProxy(IRedditProxy):
                 break
 
         self._logger.info(
-            "Listed %d posts from r/%s (%s/%s)", len(collected), subreddit, sort, time_filter
+            "Listed %d posts from r/%s (%s/%s)",
+            len(collected),
+            subreddit,
+            sort,
+            time_filter,
         )
         return collected

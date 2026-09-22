@@ -138,7 +138,8 @@ class ILLMProxy(ABC):
         self, title: str, part1: str, part2: str, target_language: Language
     ) -> list[dict]:
         """Extract characters from a story and return visual descriptions.
-        Returns a list of dicts: [{"name": str, "description": str, "visual_prompt": str}]."""
+        Returns a list of dicts: [{"name": str, "description": str, "visual_prompt": str}].
+        """
         ...
 
     @abstractmethod

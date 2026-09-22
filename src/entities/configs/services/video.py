@@ -31,15 +31,13 @@ class AntiFingerprintConfig(BaseYAMLModel):
     contrast_delta: float = Field(
         0,
         title=(
-            "Maximum random LumContrast amplitude (sampled in ±value). "
-            "0 disables."
+            "Maximum random LumContrast amplitude (sampled in ±value). " "0 disables."
         ),
     )
     hue_shift_degrees: float = Field(
         0,
         title=(
-            "Maximum random hue rotation in degrees (sampled in ±value). "
-            "0 disables."
+            "Maximum random hue rotation in degrees (sampled in ±value). " "0 disables."
         ),
     )
     speed_delta: float = Field(

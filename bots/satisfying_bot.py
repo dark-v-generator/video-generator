@@ -138,12 +138,16 @@ class GenerationQueue:
 
         except Exception as e:
             logger.exception("Failed to generate video for %s", job.url)
-            retry_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    "🔄 Tentar de novo",
-                    callback_data=f"{RETRY_CALLBACK_PREFIX}{job.url_key}",
-                )]
-            ])
+            retry_keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🔄 Tentar de novo",
+                            callback_data=f"{RETRY_CALLBACK_PREFIX}{job.url_key}",
+                        )
+                    ]
+                ]
+            )
             error_text = str(e)
             if len(error_text) > 300:
                 error_text = error_text[:300] + "…"
@@ -185,7 +189,12 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     status_msg = await update.message.reply_text("⏳ Adicionando à fila...")
 
     url_key = _store_url(url)
-    job = _GenerationJob(url=url, url_key=url_key, reply_message=update.message, status_message=status_msg)
+    job = _GenerationJob(
+        url=url,
+        url_key=url_key,
+        reply_message=update.message,
+        status_message=status_msg,
+    )
     pos = await generation_queue.enqueue(job)
 
     if pos > 1:
@@ -242,7 +251,10 @@ def _parse_subreddits(args: list[str] | None) -> list[str] | None:
 
 
 def _format_find_message(
-    i: int, story: EvaluatedStory, *, include_scores: bool = True,
+    i: int,
+    story: EvaluatedStory,
+    *,
+    include_scores: bool = True,
 ) -> str:
     """Build the text body for a single story message."""
     post = story.post
@@ -308,12 +320,16 @@ async def _run_find(
         text = _format_find_message(i, story, include_scores=True)
         url_key = _store_url(story.post.url)
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                "🎬 Gerar Vídeo",
-                callback_data=f"{FIND_CALLBACK_PREFIX}{url_key}",
-            )]
-        ])
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "🎬 Gerar Vídeo",
+                        callback_data=f"{FIND_CALLBACK_PREFIX}{url_key}",
+                    )
+                ]
+            ]
+        )
 
         await bot.send_message(chat_id, text, reply_markup=keyboard)
 
@@ -342,7 +358,9 @@ async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _run_find(context.bot, update.effective_chat.id, subreddits=subreddits)
 
 
-async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_find_generate(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     query = update.callback_query
     await query.answer()
 
@@ -360,7 +378,9 @@ async def handle_find_generate(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_reply_markup(reply_markup=None)
     status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
 
-    job = _GenerationJob(url=url, url_key=url_key, reply_message=query.message, status_message=status_msg)
+    job = _GenerationJob(
+        url=url, url_key=url_key, reply_message=query.message, status_message=status_msg
+    )
     pos = await generation_queue.enqueue(job)
 
     if pos > 1:
@@ -387,13 +407,17 @@ async def handle_retry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.edit_message_reply_markup(reply_markup=None)
     status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
 
-    job = _GenerationJob(url=url, url_key=url_key, reply_message=query.message, status_message=status_msg)
+    job = _GenerationJob(
+        url=url, url_key=url_key, reply_message=query.message, status_message=status_msg
+    )
     pos = await generation_queue.enqueue(job)
 
     if pos > 1:
         await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
     else:
-        await status_msg.edit_text("⏳ Tentando de novo... pode demorar alguns minutos.")
+        await status_msg.edit_text(
+            "⏳ Tentando de novo... pode demorar alguns minutos."
+        )
 
 
 def _cleanup_temp(path: str | None) -> None:
@@ -407,8 +431,7 @@ def _cleanup_temp(path: str | None) -> None:
 def _parse_slot_times(slot_times: list[str]) -> list[datetime.time]:
     """Parse and sort HH:MM strings into time objects."""
     parsed = sorted(
-        datetime.time(int(h), int(m))
-        for h, m in (s.split(":") for s in slot_times)
+        datetime.time(int(h), int(m)) for h, m in (s.split(":") for s in slot_times)
     )
     if not parsed:
         raise ValueError("publish_slots_local must contain at least one HH:MM entry")
@@ -487,7 +510,6 @@ def _build_tiktok_publisher() -> BrowserUseTikTokPublisherProxy:
 
 import json as _json
 
-
 _DEFAULT_OUTPUT_DIR = "output/daily"
 _DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
 
@@ -495,6 +517,7 @@ _DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
 @dataclass
 class GeneratedVideo:
     """Metadata for a generated video ready to publish."""
+
     video_path: str
     title: str
     summary: str
@@ -543,7 +566,9 @@ def _append_publish_log(
     row = {
         "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "status": status,
-        "scheduled_at": schedule_at.isoformat(timespec="minutes") if schedule_at else "",
+        "scheduled_at": (
+            schedule_at.isoformat(timespec="minutes") if schedule_at else ""
+        ),
         "video_path": video.video_path,
         "title": video.title,
         "post_url": video.post_url,
@@ -579,12 +604,14 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
         if not os.path.exists(mp4):
             logger.warning("Video file missing, skipping: %s", mp4)
             continue
-        videos.append(GeneratedVideo(
-            video_path=mp4,
-            title=data["title"],
-            summary=data.get("summary", ""),
-            post_url=data.get("post_url", ""),
-        ))
+        videos.append(
+            GeneratedVideo(
+                video_path=mp4,
+                title=data["title"],
+                summary=data.get("summary", ""),
+                post_url=data.get("post_url", ""),
+            )
+        )
     return videos
 
 
@@ -599,14 +626,27 @@ def _is_transient_error(exc: Exception) -> bool:
         return True
 
     exc_str = str(exc).lower()
-    transient_signals = ["429", "rate limit", "too many requests", "timeout", "503", "502"]
+    transient_signals = [
+        "429",
+        "rate limit",
+        "too many requests",
+        "timeout",
+        "503",
+        "502",
+    ]
     return any(s in exc_str for s in transient_signals)
 
 
 def _is_content_filter_error(exc: Exception) -> bool:
     """Return True for errors caused by content/safety filters (not worth retrying)."""
     exc_str = str(exc).lower()
-    filter_signals = ["safety filter", "content filter", "nsfw", "blocked", "content policy"]
+    filter_signals = [
+        "safety filter",
+        "content filter",
+        "nsfw",
+        "blocked",
+        "content policy",
+    ]
     return any(s in exc_str for s in filter_signals)
 
 
@@ -619,9 +659,11 @@ def _truncate_error(exc: Exception, limit: int = 300) -> str:
 
 def _target_count(results: list[EvaluatedStory], publish_count: int | None) -> int:
     return min(
-        publish_count
-        if publish_count is not None
-        else bot_config.daily_auto_publish_count,
+        (
+            publish_count
+            if publish_count is not None
+            else bot_config.daily_auto_publish_count
+        ),
         len(results),
     )
 
@@ -642,9 +684,7 @@ async def _prepare_story_with_retries(
     for attempt in range(1, _STORY_RETRY_MAX + 1):
         try:
             retry_suffix = (
-                f" (tentativa {attempt}/{_STORY_RETRY_MAX})"
-                if attempt > 1
-                else ""
+                f" (tentativa {attempt}/{_STORY_RETRY_MAX})" if attempt > 1 else ""
             )
             await send_message(f"{label} Gerando roteiro...{retry_suffix}")
             prepared = await service.prepare_satisfying_story(
@@ -666,7 +706,11 @@ async def _prepare_story_with_retries(
                 delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
                 logger.warning(
                     "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
-                    post.url, attempt, _STORY_RETRY_MAX, delay, e,
+                    post.url,
+                    attempt,
+                    _STORY_RETRY_MAX,
+                    delay,
+                    e,
                 )
                 await send_message(
                     f"⏳ {label} Erro temporário, tentando de novo em {delay}s "
@@ -677,7 +721,9 @@ async def _prepare_story_with_retries(
 
             logger.exception(
                 "Failed to prepare story for %s (attempt %d/%d)",
-                post.url, attempt, _STORY_RETRY_MAX,
+                post.url,
+                attempt,
+                _STORY_RETRY_MAX,
             )
             await send_message(
                 f"❌ {label} Erro no roteiro: {_truncate_error(e)}. "
@@ -997,9 +1043,7 @@ async def run_daily_auto_publish(
         if video is None:
             continue
 
-        await send_message(
-            f"#{candidate_idx} Vídeo finalizado. Agendando história..."
-        )
+        await send_message(f"#{candidate_idx} Vídeo finalizado. Agendando história...")
         slot = await _publish_one_video(
             send_message,
             llm_proxy,
@@ -1142,8 +1186,12 @@ def main() -> None:
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler("find", cmd_find))
     app.add_handler(CommandHandler(["autopost", "auto_publish"], cmd_autopost))
-    app.add_handler(CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}"))
-    app.add_handler(CallbackQueryHandler(handle_retry, pattern=f"^{RETRY_CALLBACK_PREFIX}"))
+    app.add_handler(
+        CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}")
+    )
+    app.add_handler(
+        CallbackQueryHandler(handle_retry, pattern=f"^{RETRY_CALLBACK_PREFIX}")
+    )
 
     schedule_time = datetime.time(
         hour=bot_config.daily_hour_utc,

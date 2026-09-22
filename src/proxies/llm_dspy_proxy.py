@@ -141,9 +141,7 @@ class StoryEvaluationSignature(dspy.Signature):
     Keep the JSON keys and veredito values exactly as specified. Understand source-language acronyms and shorthand before evaluating, including AITA/NTA/YTA/ESH/NAH, SO, MIL, FIL, BIL, SIL, TL;DR, ETA, OP, and Portuguese terms such as EOB, NEOB, TEOB, NGM, "sou o babaca" and "não é o babaca".
     """
 
-    target_language = dspy.InputField(
-        desc="The language for the evaluation output."
-    )
+    target_language = dspy.InputField(desc="The language for the evaluation output.")
     reddit_post_title = dspy.InputField(desc="The original title of the Reddit post.")
     reddit_post_text = dspy.InputField(desc="The original content of the Reddit post.")
 
@@ -451,7 +449,13 @@ class DSPyLLMProxy(ILLMProxy):
         notas = data.get("notas", {})
         grades = [
             notas.get(k, {}).get("nota", 0)
-            for k in ("retencao", "qualidade", "viralizacao", "adequacao_tiktok", "gancho")
+            for k in (
+                "retencao",
+                "qualidade",
+                "viralizacao",
+                "adequacao_tiktok",
+                "gancho",
+            )
         ]
         nota_geral = round(sum(grades) / len(grades), 1) if grades else 0.0
 
@@ -480,6 +484,7 @@ class DSPyLLMProxy(ILLMProxy):
 
         class HashtagSignature(dspy.Signature):
             """Generate TikTok hashtags for a story."""
+
             title: str = dspy.InputField()
             summary: str = dspy.InputField()
             target_language: str = dspy.InputField()
@@ -550,7 +555,13 @@ class DSPyLLMProxy(ILLMProxy):
             content=f"Extract characters from this story:\n{combined}",
             target_language=target_language,
         )
-        return [{"name": "Narrator", "description": "Main character", "visual_prompt": "A person"}]
+        return [
+            {
+                "name": "Narrator",
+                "description": "Main character",
+                "visual_prompt": "A person",
+            }
+        ]
 
     async def generate_image_story(
         self,

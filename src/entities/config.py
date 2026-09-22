@@ -16,7 +16,12 @@ from src.entities.configs.proxies.speech import (
     EdgeTTSSpeechConfig,
 )
 from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig
-from src.entities.configs.proxies.llm import LLMConfigType, DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
+from src.entities.configs.proxies.llm import (
+    LLMConfigType,
+    DSPyLLMConfig,
+    PromptLLMConfig,
+    LLMProviderConfig,
+)
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 from src.entities.configs.proxies.tiktok_publisher import TikTokPublisherConfig
@@ -36,7 +41,8 @@ class ProxiesConfig(BaseYAMLModel):
         LocalImageGenerationConfig(), title="Image Generation configuration (scenes)"
     )
     portrait_generation_config: Optional[ImageGenerationConfigType] = Field(
-        None, title="Image Generation configuration for character portraits (falls back to image_generation_config)",
+        None,
+        title="Image Generation configuration for character portraits (falls back to image_generation_config)",
     )
     speech_config: SpeechConfigType = Field(
         EdgeTTSSpeechConfig(), title="Speech configuration"
@@ -44,7 +50,9 @@ class ProxiesConfig(BaseYAMLModel):
     reddit_config: RedditConfigType = Field(
         BS4RedditConfig(), title="Reddit configuration"
     )
-    llm_config: LLMConfigType = Field(DSPyLLMConfig(), title="General LLM configuration")
+    llm_config: LLMConfigType = Field(
+        DSPyLLMConfig(), title="General LLM configuration"
+    )
     history_adaptation_llm_config: Optional[LLMConfigType] = Field(
         None,
         title="LLM configuration for Reddit story adaptation (falls back to llm_config)",

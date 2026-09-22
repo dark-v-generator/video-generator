@@ -193,9 +193,7 @@ class LeonardoImageProxy(IImageGeneratorProxy):
             )
             return None
 
-        logger.info(
-            "Uploaded character '%s' as init image %s", name, init_image_id
-        )
+        logger.info("Uploaded character '%s' as init image %s", name, init_image_id)
         self._uploaded_image_cache[cache_key] = init_image_id
         return init_image_id
 

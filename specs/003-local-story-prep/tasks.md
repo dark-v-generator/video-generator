@@ -228,6 +228,20 @@ com a fila vazia se comporta exatamente como hoje.
 ## Phase 6: Polish
 
 - [ ] T040 [P] Rodar `uv run black src scripts tests bots` e revisar os diffs dos três PRs contra a constituição (fail fast fora dos pontos justificados; nada de I/O em `src/entities`/`src/services` além do diretório da fila)
+
+  **Parcial (2026-09-22, PR de polish)**: `black==26.5.1` adicionado ao extra `dev` do
+  pyproject (não estava instalado) e `uv run black src scripts tests bots` rodado —
+  60 arquivos reformatados, quase todos com drift anterior a esta feature; os módulos
+  novos do M1 já saíram praticamente formatados. Receita `fmt` do Justfile passou a
+  usar `uv run` e a incluir `bots`, para o drift não voltar. Suíte depois da
+  formatação: `1 failed, 239 passed` (mesma falha pré-existente).
+
+  Revisão do diff do **PR 1 (M1)** contra a constituição: sem I/O em
+  `src/entities/prepared_story.py` nem em `src/services/prepared_story_validation.py`
+  (todo o acesso a arquivo vive em `scripts/prepare_story.py`); o único ponto que não
+  falha na hora é o `validate`, que captura `ValidationError` porque relatar problemas
+  de pacote é exatamente o contrato do subcomando. Falta revisar os diffs de M2 e M3,
+  que ainda não existem — por isso a tarefa continua aberta.
 - [ ] T041 Rodar o quickstart.md §6 completo e a suíte inteira `uv run pytest -q`; registrar o resultado no plan.md (seção "Verificação pós-implementação", como na feature 002)
 
 ---

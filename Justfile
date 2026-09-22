@@ -89,7 +89,7 @@ story-list:
 
 # Format code
 fmt:
-    .venv/bin/black src scripts tests
+    uv run black src scripts tests bots
 
 # Deploy to prod server: sync files, install deps, restart bot
 deploy:

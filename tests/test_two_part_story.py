@@ -3,7 +3,11 @@ import asyncio
 import os
 from src.proxies.factories import LLMProxyFactory, RedditProxyFactory
 from src.entities.configs.proxies.reddit import BS4RedditConfig
-from src.entities.configs.proxies.llm import DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
+from src.entities.configs.proxies.llm import (
+    DSPyLLMConfig,
+    PromptLLMConfig,
+    LLMProviderConfig,
+)
 from src.entities.language import Language
 
 

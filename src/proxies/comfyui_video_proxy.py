@@ -47,7 +47,9 @@ class ComfyUIVideoProxy(IVideoGeneratorProxy):
         height: int = 768,
     ) -> bytes:
         image_name: str = self._upload_image(reference_image)
-        workflow: dict[str, Any] = self._build_workflow(prompt, image_name, width, height)
+        workflow: dict[str, Any] = self._build_workflow(
+            prompt, image_name, width, height
+        )
         prompt_id: str = self._queue_prompt(workflow)
         return self._poll_until_complete(prompt_id)
 
@@ -110,9 +112,7 @@ class ComfyUIVideoProxy(IVideoGeneratorProxy):
 
             if status_str == "error":
                 messages: list[Any] = job.get("status", {}).get("messages", [])
-                raise RuntimeError(
-                    f"ComfyUI job {prompt_id} failed: {messages}"
-                )
+                raise RuntimeError(f"ComfyUI job {prompt_id} failed: {messages}")
 
             outputs: dict[str, Any] = job.get("outputs", {})
             if not outputs:

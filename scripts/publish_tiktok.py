@@ -80,8 +80,7 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help=(
-            "Override config.yaml's tiktok_publisher_config.max_steps"
-            " (default 60)."
+            "Override config.yaml's tiktok_publisher_config.max_steps" " (default 60)."
         ),
     )
     parser.add_argument(
@@ -136,9 +135,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 _DURATION_RE = re.compile(
-    r"(?P<days>\d+)\s*d|"
-    r"(?P<hours>\d+)\s*h|"
-    r"(?P<minutes>\d+)\s*m"
+    r"(?P<days>\d+)\s*d|" r"(?P<hours>\d+)\s*h|" r"(?P<minutes>\d+)\s*m"
 )
 
 
@@ -196,13 +193,9 @@ async def _run(args: argparse.Namespace) -> int:
     # CLI flags win over config; config wins over hard-coded defaults.
     model = args.model or publisher_cfg.agent_model
     cookies_path = args.cookies_path or publisher_cfg.cookies_path
-    headless = (
-        args.headless if args.headless is not None else publisher_cfg.headless
-    )
+    headless = args.headless if args.headless is not None else publisher_cfg.headless
     use_vision = (
-        args.use_vision
-        if args.use_vision is not None
-        else publisher_cfg.use_vision
+        args.use_vision if args.use_vision is not None else publisher_cfg.use_vision
     )
     max_steps = (
         args.max_steps if args.max_steps is not None else publisher_cfg.max_steps

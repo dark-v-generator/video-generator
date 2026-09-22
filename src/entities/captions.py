@@ -25,9 +25,7 @@ class Captions(BaseYAMLModel):
 
     def after_time(self, t: float) -> "Captions":
         """Return a new Captions keeping only segments that start at or after *t*."""
-        return Captions(
-            segments=[s for s in self.segments if s.start >= t]
-        )
+        return Captions(segments=[s for s in self.segments if s.start >= t])
 
     def stripped(self) -> "Captions":
         return Captions(

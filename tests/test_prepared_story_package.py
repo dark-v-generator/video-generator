@@ -12,7 +12,6 @@ from src.services.prepared_story_validation import validate_package
 from src.services.reddit_video_service import PreparedStory
 from src.services.text_censor import TextCensor
 
-
 POST_URL = (
     "https://www.reddit.com/r/MaliciousCompliance/comments/1vuze4m/"
     "no_second_date_and_i_cant_be_happier/"
@@ -98,7 +97,9 @@ class TestPreparedStoryPackage:
         assert package.language is Language.PORTUGUESE
 
         dumped = json.loads(package.model_dump_json())
-        assert PreparedStoryPackage.model_validate(dumped).language is Language.PORTUGUESE
+        assert (
+            PreparedStoryPackage.model_validate(dumped).language is Language.PORTUGUESE
+        )
 
     def test_to_prepared_story_maps_one_to_one(self):
         package = build_package()
@@ -147,9 +148,7 @@ class TestPreparedStoryPackage:
 
 class TestValidatePackage:
     def test_valid_package_has_no_problems(self):
-        problems = validate_package(
-            build_package(), TextCensor(), Language.PORTUGUESE
-        )
+        problems = validate_package(build_package(), TextCensor(), Language.PORTUGUESE)
 
         assert problems == []
 

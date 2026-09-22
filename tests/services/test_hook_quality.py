@@ -66,14 +66,14 @@ def assert_narration_starts_in_story(entry):
     title = entry["title"]
     for key in ("part1", "part2"):
         text = entry[key].strip()
-        assert not text.startswith(title), (
-            f"{key} must not start with the title (title is cover-only, not narrated)"
-        )
+        assert not text.startswith(
+            title
+        ), f"{key} must not start with the title (title is cover-only, not narrated)"
         head = text[:40]
         for marker in PART_MARKERS:
-            assert marker not in head, (
-                f"{key} must not open with the spoken marker '{marker}'"
-            )
+            assert (
+                marker not in head
+            ), f"{key} must not open with the spoken marker '{marker}'"
 
 
 # --- Milestone 1 + repair: two-part active path guards ----------------------
@@ -99,9 +99,9 @@ def test_narration_excludes_title_and_marker():
 
 def test_part1_ends_with_cta():
     for entry in load_two_part_examples():
-        assert entry["part1"].strip().endswith(PART1_CTA), (
-            f"part1 must end with the part-2 CTA '{PART1_CTA}'"
-        )
+        assert (
+            entry["part1"].strip().endswith(PART1_CTA)
+        ), f"part1 must end with the part-2 CTA '{PART1_CTA}'"
 
 
 # --- Milestone 2: parallel paths (single-part + DSPy) parity -----------------
