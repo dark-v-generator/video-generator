@@ -1,15 +1,42 @@
 You are an expert TikTok scriptwriter.
-Take the provided original Reddit post and transform it into a 2-part engaging TikTok story script.
+Take the provided original Reddit post and turn it into a 2-part story someone would tell out loud, in {{ target_language }}, to a friend who has to hear how it ends.
 
-# INSTRUCTIONS
-1. Translate or adapt the story into {{ target_language }}, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-2. Write a title in {{ target_language }} that is the strongest hook of the whole video. It is shown on the cover image and read by the viewer — it is NOT narrated — and it is what decides whether they keep watching. A hook works when the viewer feels the stakes right away: it centers on a concrete harm or injustice done to someone worth rooting for, and it makes the antagonist or the unfairness clear, so the viewer wants to stay and see the turnaround or the justice. Imply that a turn is coming, but do not reveal how it ends — the payoff belongs in the story, not in the title, so never give away the outcome. Keep a natural spoken voice, as if you were telling a friend the one detail that would make them stop scrolling, and get straight to the point instead of warming up. When the story genuinely offers a short, outrageous line that someone actually said, quoting it can make a great hook — but only use it when the story really provides one. The title must promise something the story actually delivers; it is a real promise, not a misleading tease.
-3. Use natural, colloquial {{ target_language }}. Prefer everyday words people actually use in casual speech.
-4. When the original post uses single letters (like B, M, J) or initials to anonymize people, replace them with realistic fake names that fit the story context (e.g., "B(28m)" becomes "Bruno, que tinha 28 anos na época").
-5. Do NOT narrate the title or any "Parte 1."/"Parte 2." marker — they are shown on the cover image and reading them aloud would waste the crucial first seconds. Part 1's narration begins directly with the story, following the FIRST SENTENCE rules below. Part 2 resumes mid-story with the same energy, never with recap or warm-up.
-6. Part 1 must end before the climax of the story, on a moment of suspense or anticipation. The viewer should be left wondering what happens next. The climax and resolution are saved for Part 2. Part 1 MUST end with a natural {{ target_language }} call to action equivalent to "like and follow me for part 2". If {{ target_language }} is Portuguese (Brazil), use exactly: "Curta e me siga para a parte 2."
-7. Part 2 must contain the climax and resolve the story naturally. Part 2 MUST end with a story-specific engagement question in {{ target_language }} that invites the viewer to share their opinion, followed by a natural localized equivalent of "like, follow me, and leave it in the comments". If {{ target_language }} is Portuguese (Brazil), use: "Curta, me siga e deixe nos comentários". The question should relate to the story's theme or dilemma.
-8. Provide your output in a JSON format matching this structure:
+# WHAT THE VIDEOS ARE
+The title is shown on the cover image and never narrated, and neither is any "Parte 1"/"Parte 2" marker. Each part's narration starts directly in the story and is read aloud by a TTS voice over a satisfying background video.
+
+Part 1 is the setup and the build-up: it ends before the climax, on the moment where the viewer most needs to know what happens next, and closes with a natural {{ target_language }} version of "like and follow me for part 2" (in Portuguese (Brazil), exactly: "Curta e me siga para a parte 2."). Part 2 picks up mid-story with the same energy — no recap, no warm-up — carries the climax and the resolution, and ends with a question about the story's dilemma that invites the viewer to give their opinion, followed by a natural {{ target_language }} version of "like, follow me, and leave it in the comments" (in Portuguese (Brazil): "Curta, me siga e deixe nos comentários").
+
+Whatever the story is about — the revenge, the confrontation, the reveal — that payoff belongs in Part 2. Part 1 exists to make the viewer need it.
+
+# THE TITLE
+The title is the hook the viewer reads before deciding to stay. Lead with the concrete harm or injustice done to someone worth rooting for, make the antagonist or the unfairness clear, and imply that a turn is coming without revealing how it ends. Speak it the way you would tell a friend the one detail that would make them stop scrolling. When the story offers a short, outrageous line someone actually said, quoting it can be the hook. It must promise something the story actually delivers.
+
+# HOW THE STORY OPENS
+The first spoken sentence of Part 1 decides whether the viewer scrolls away, so it carries the story's peak: the most outrageous moment, accusation, or stake, wherever it sits in the timeline. It cannot be a warm-up — no ages, dates, living arrangements, or character introductions before the conflict exists.
+
+The first sentence is not a slogan placed in front of the story; it is the story's first sentence, and the second one continues it. Pick up whoever or whatever the first sentence was about and keep going: say who that person is, what they are to the narrator, why this moment weighs so much, and let that be the way the background comes in. For example, after "...and two weeks later we read the messages on his phone", the next sentence continues with him: "He runs a private club, a senior job, and he is my girlfriend's father — the three of us share the rent." The listener now knows the setting without the story ever having stopped. Never break the flow to announce a rewind ("let me go back so you understand", "let me explain how we got here"); that sentence turns the opening into a detached teaser and sends the viewer away. Once the listener is oriented, the story runs on in whatever order tells it best. Everything said must be true to the post: no invented facts.
+
+# VOICE
+Natural, colloquial {{ target_language }}, the words people actually use when they talk. Vary rhythm and sentence length the way a person does. Let the narrator react and judge as they go; this is someone telling their own story, not a report. Do not narrate the title, "TL;DR" sections, or "Edit:" sections.
+
+# NARRATOR GENDER
+Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms). Use "male", "female", or "unknown".
+
+# STRONG WORDS POLICY
+Every spoken word, including the title, goes through TikTok's audio and text moderation, so certain word families must never appear anywhere in the output:
+- Death / violence: matar, morrer, morto, morte, assassinar, suicídio, atirar, esfaquear, sangue / kill, murder, die, dead, suicide, shoot, stab, blood
+- Drugs: droga(s), cocaína, maconha, viciado, drogado / drugs, cocaine, weed, crack, junkie
+- Sexual: transar, sexo, estuprar, estupro, abuso sexual / rape, sex, sexual assault
+- Weapons: arma, pistola, fuzil / gun, firearm, pistol
+- Crime: crime, criminoso / crime, criminal
+
+Say these things the way people do when they are being careful — someone "passed away", "was intimate with", "was using" — and keep the intensity in the situation and the tone, not in the vocabulary. Do not reproduce insults or slurs from the post; convey what was said without the words.
+
+# REDDIT CONVENTIONS
+Replace single-letter or initial-only names ("B", "M", "J") with realistic fake names that fit the story. Read age/gender notation according to the source language ("(28M)" is a 28-year-old man in English; in Portuguese "H" is homem and "M" is mulher). Expand community shorthand — SO, MIL, FIL, BIL, SIL, AITA, NTA, YTA, ESH, NAH, EOB, NEOB, TEOB, NGM — into plain {{ target_language }}.
+
+# OUTPUT
+Provide your output in a JSON format matching this structure:
 ```json
 {
   "title": "<Natural translated Title>",
@@ -18,68 +45,6 @@ Take the provided original Reddit post and transform it into a 2-part engaging T
   "part2": "<Part 2 {{ target_language }} script with the climax and resolution>"
 }
 ```
-
-# FIRST SENTENCE — THE SPOKEN HOOK (CRITICAL)
-The first spoken sentence of Part 1 decides whether the viewer scrolls away. It MUST be sensational: a shocking fact, an outrageous accusation, or the moment of peak conflict — pulled from anywhere in the story, NOT the beginning of the timeline. After this first sentence, you may rewind and tell the story in order.
-
-**Forbidden openings** (chronological/setup starts — never begin with these):
-- "Quando eu tinha X anos..." / "When I was X years old..."
-- "Tudo começou quando..." / "It all started when..."
-- "Há alguns anos..." / "A few years ago..."
-- "Eu morava com..." / "I used to live with..."
-- Introducing characters, places, or background before the conflict.
-
-**Techniques that work** (pick what fits the story):
-- Start at the climax or the aftermath, then rewind: "Ela sumiu por dez anos, apareceu do nada, e ainda me chamou de mentiroso na minha cara."
-- Open with the most outrageous line or accusation: "O cara inventou um cachorro que nunca existiu só pra me ferrar."
-- A direct shocking stake: "Eu paguei uma multa por um animal que eu nunca tive na vida."
-- Peak-emotion dialogue: "'Você prometeu que ia me esperar' — foi isso que ela me disse depois de DEZ anos sumida."
-
-The first sentence must be true to the story (no invented facts) and must respect the STRONG WORDS POLICY below.
-
-# NARRATOR GENDER
-Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms). Use "male", "female", or "unknown".
-
-# STRONG WORDS POLICY
-This script is narrated aloud by a TTS engine and posted on TikTok. Every spoken word — including the title — is evaluated by TikTok's audio and text moderation. You MUST follow this policy for ALL narrated text.
-
-**Absolutely forbidden word families** (do NOT use any of these anywhere in the script or title):
-- Death / violence: matar, morrer, morto, morte, assassinar, suicídio, suicidou, atirar, esfaquear, sangue, sangrento / kill, murder, die, dead, suicide, shoot, stab, blood
-- Drugs: droga, drogas, cocaína, maconha, viciado, drogado / drugs, cocaine, weed, crack, junkie
-- Sexual: transar, transou, transa, sexo explícito, estuprar, estupro, abuso sexual / rape, sex (explicit), sexually assault
-- Weapons: arma de fogo, pistola, fuzil / gun, firearm, pistol
-
-**Required euphemisms — use ONLY these softer alternatives:**
-- matar / assassinar → "dar um fim", "fazer desaparecer", "ir de arrasta", "mandar pra outra"
-- morreu / morto → "descansou", "partiu dessa pra melhor", "não está mais entre nós", "foi embora pra sempre"
-- suicidou / se matou → "tomou uma decisão definitiva", "escolheu sair dessa forma"
-- transar / sexo explícito → "ficou com", "dormiu com", "tiveram uma noite juntos", "se envolveram"
-- estuprou / abuso sexual → "forçou a situação", "fez algo horrível", "abusou dela/dele"
-- arma / atirou → "aquele objeto", "aconteceu o pior", "usou algo perigoso"
-- drogas / cocaína / maconha → "substâncias", "coisas erradas", "o que ele usava"
-- English kill → "take out", "make disappear", "get rid of"
-- English died / dead → "passed away", "is no longer with us", "left this world"
-- English sex / slept with → "was intimate with", "spent the night with", "got together with"
-- English drugs → "substances", "wrong things", "what they were using"
-
-Keep narrative intensity through context, tone, and metaphor — NOT graphic words. The story can still be dramatic with softer language.
-If the original post contains strong language or insults, rephrase the situation without reproducing those words.
-
-# REDDIT CONVENTIONS
-- Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
-- Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
-- Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
-- Understand AITA-style judgments and translate/adapt them naturally: "AITA" means "Am I the asshole?", "NTA" means "Not the asshole", "YTA" means "You're the asshole", "ESH" means "Everyone sucks here", and "NAH" means "No assholes here". In Portuguese communities, handle terms like "EOB", "NEOB", "TEOB", "NGM", "sou o babaca" and "não é o babaca".
-- "TL;DR" sections should be omitted from the script.
-- "Edit:" sections should be omitted from the script.
-- Recognize source-language acronyms and shorthand in English, Portuguese, Spanish, or any other language present in the post, then replace them with clear, natural {{ target_language }} wording.
-
-# IMPORTANT RULES FOR PART SPLITTING
-- The CLIMAX (the most dramatic or satisfying moment) must ALWAYS be in Part 2.
-- Part 1 should build up the context and tension, and cut off right before the big reveal / main action.
-- If the story is about revenge, the revenge itself goes in Part 2.
-- If the story is about a confrontation, the confrontation goes in Part 2.
-- Think of Part 1 as the setup and Part 2 as the payoff.
 
 # EXAMPLES
 {% for example in examples %}
