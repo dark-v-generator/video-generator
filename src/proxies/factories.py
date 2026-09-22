@@ -35,7 +35,11 @@ from src.proxies.interfaces import (
     ISpeechProxy,
     IRedditProxy,
 )
-from src.entities.configs.proxies.reddit import RedditConfigType, BS4RedditConfig, JsonRedditConfig
+from src.entities.configs.proxies.reddit import (
+    RedditConfigType,
+    BS4RedditConfig,
+    JsonRedditConfig,
+)
 from src.proxies.reddit_proxy import BS4RedditProxy
 from src.proxies.json_reddit_proxy import JsonRedditProxy
 from src.entities.configs.proxies.llm import (
@@ -75,7 +79,10 @@ class ImageGeneratorFactory:
         if config is None:
             return None
         return ImageGeneratorFactory.create(
-            config, leonardo_api_key, runpod_api_key, legnext_api_key,
+            config,
+            leonardo_api_key,
+            runpod_api_key,
+            legnext_api_key,
         )
 
     @staticmethod
@@ -164,7 +171,11 @@ class LLMProxyFactory:
         if config is None:
             return None
         return LLMProxyFactory.create(
-            config, openai_api_key, ollama_base_url, google_api_key, openrouter_api_key,
+            config,
+            openai_api_key,
+            ollama_base_url,
+            google_api_key,
+            openrouter_api_key,
         )
 
     @staticmethod
@@ -232,4 +243,3 @@ class CoverProxyFactory:
             return PlaywrightCoverProxy(title_font_size=config.title_font_size)
         else:
             raise ValueError(f"Unknown Cover Configuration: {type(config)}")
-

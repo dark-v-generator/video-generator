@@ -694,10 +694,14 @@ class RedditVideoService:
 
         # Censor on-screen caption segments inside the clips.
         captions_result_1.clip.captions = Captions(
-            segments=self._text_censor.censor_segments(captions_result_1.captions.segments)
+            segments=self._text_censor.censor_segments(
+                captions_result_1.captions.segments
+            )
         )
         captions_result_2.clip.captions = Captions(
-            segments=self._text_censor.censor_segments(captions_result_2.captions.segments)
+            segments=self._text_censor.censor_segments(
+                captions_result_2.captions.segments
+            )
         )
 
         config = self._video_service._video_config
@@ -731,10 +735,14 @@ class RedditVideoService:
 
         # 6. Generate images
         generated_images_1 = self._generate_images_for_story(
-            image_story_1, img_w, img_h,
+            image_story_1,
+            img_w,
+            img_h,
         )
         generated_images_2 = self._generate_images_for_story(
-            image_story_2, img_w, img_h,
+            image_story_2,
+            img_w,
+            img_h,
         )
 
         # 8. Covers
@@ -855,7 +863,9 @@ class RedditVideoService:
             word = w.get("word", "").strip()
             if re.match(r"^\d+[.,]?$", word):
                 prev = (
-                    self._normalize_marker_word(raw_transcription[i - 1].get("word", ""))
+                    self._normalize_marker_word(
+                        raw_transcription[i - 1].get("word", "")
+                    )
                     if i > 0
                     else ""
                 )
@@ -926,7 +936,9 @@ class RedditVideoService:
 
         cta_start_time = segments[-3]["start"] if n > 3 else segments[0]["start"]
         for i in range(max(0, n - 20), n):
-            word = RedditVideoService._normalize_marker_word(segments[i].get("word", ""))
+            word = RedditVideoService._normalize_marker_word(
+                segments[i].get("word", "")
+            )
             if word in RedditVideoService.CTA_START_WORDS:
                 return segments[i]["start"]
 
@@ -990,7 +1002,9 @@ class RedditVideoService:
             return result[0]
 
         with ThreadPoolExecutor(max_workers=self.IMAGE_GEN_MAX_WORKERS) as pool:
-            futures = [pool.submit(_generate_single, img_def) for img_def in image_story.images]
+            futures = [
+                pool.submit(_generate_single, img_def) for img_def in image_story.images
+            ]
             return [f.result() for f in futures]
 
     async def _render_image_story_to_bytes(

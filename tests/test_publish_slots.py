@@ -11,7 +11,6 @@ from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import EvaluatedStory
 from src.services.reddit_video_service import PreparedStory
 
-
 SLOTS = ["12:00", "18:00", "19:00", "20:00"]
 
 

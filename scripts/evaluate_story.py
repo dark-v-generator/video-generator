@@ -4,7 +4,6 @@ import asyncio
 from src.entities.language import Language
 from src.core.container import container
 
-
 CRITERIA_LABELS = {
     "retencao": "Potencial de Retenção",
     "qualidade": "Qualidade da História",

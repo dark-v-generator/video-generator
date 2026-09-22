@@ -91,7 +91,10 @@ def finder():
 
 def write_package(directory, **overrides) -> str:
     payload = package_payload(**overrides)
-    path = directory / f"{payload['post']['url'].split('/comments/')[1].split('/')[0]}.json"
+    path = (
+        directory
+        / f"{payload['post']['url'].split('/comments/')[1].split('/')[0]}.json"
+    )
     path.write_text(json.dumps(payload), encoding="utf-8")
     return str(path)
 
@@ -178,7 +181,9 @@ class TestShow:
 
         assert code == 1
 
-    def test_url_appends_the_post_as_the_next_rank(self, tmp_path, config, finder, capsys):
+    def test_url_appends_the_post_as_the_next_rank(
+        self, tmp_path, config, finder, capsys
+    ):
         prepare_story.main(["find", "--out", str(tmp_path)])
         capsys.readouterr()
 
@@ -186,7 +191,9 @@ class TestShow:
         proxy = FakeRedditProxy(post)
         container.reddit_proxy.override(proxy)
         try:
-            code = prepare_story.main(["show", "--url", post.url, "--out", str(tmp_path)])
+            code = prepare_story.main(
+                ["show", "--url", post.url, "--out", str(tmp_path)]
+            )
         finally:
             container.reddit_proxy.reset_override()
 
@@ -204,7 +211,9 @@ class TestShow:
         post = make_post("ccc333", "Historia vinda de URL")
         container.reddit_proxy.override(FakeRedditProxy(post))
         try:
-            code = prepare_story.main(["show", "--url", post.url, "--out", str(tmp_path)])
+            code = prepare_story.main(
+                ["show", "--url", post.url, "--out", str(tmp_path)]
+            )
         finally:
             container.reddit_proxy.reset_override()
 

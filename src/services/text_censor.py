@@ -122,7 +122,9 @@ class TextCensor:
     def __init__(self, extra_mappings: Optional[dict[str, str]] = None) -> None:
         self._overrides: dict[str, str] = {}
         if extra_mappings:
-            self._overrides = {_strip_accents(k.lower()): v for k, v in extra_mappings.items()}
+            self._overrides = {
+                _strip_accents(k.lower()): v for k, v in extra_mappings.items()
+            }
 
         stems = list(_DEFAULT_STEMS)
         if extra_mappings:

@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 _UNAVAILABLE_EXACT_TEXT = {
     "[deleted]",
     "[removed]",
@@ -65,7 +64,9 @@ def assert_reddit_post_data_available(
         raise ValueError(_unavailable_message(url))
 
 
-def assert_reddit_post_available(title: Any, content: Any, url: str | None = None) -> None:
+def assert_reddit_post_available(
+    title: Any, content: Any, url: str | None = None
+) -> None:
     if not is_unavailable_reddit_post(title, content):
         return
 

@@ -199,7 +199,9 @@ class _LLMFailureRecorder:
         status_code = None
         request_id = None
         try:
-            request_url = str(getattr(getattr(raw_response, "http_request", None), "url", ""))
+            request_url = str(
+                getattr(getattr(raw_response, "http_request", None), "url", "")
+            )
         except Exception:
             request_url = ""
         try:
@@ -345,9 +347,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         if not self._cookies_path.exists():
             # Keep a Playwright-compatible export alongside the user_data_dir
             # so other tooling can introspect the session if needed.
-            self._cookies_path.write_text(
-                json.dumps({"cookies": [], "origins": []})
-            )
+            self._cookies_path.write_text(json.dumps({"cookies": [], "origins": []}))
 
         # The memory module owns run capture (rich JSON + markdown
         # trace per run, no LLM reflection). Files land under the same
@@ -545,9 +545,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
                     schedule_at=schedule_at,
                 )
             except Exception as exc:
-                self._logger.warning(
-                    "TikTok memory bookkeeping failed: %s", exc
-                )
+                self._logger.warning("TikTok memory bookkeeping failed: %s", exc)
             await self._safe_stop(browser)
 
     def _make_step_callback(self):
@@ -570,7 +568,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
             try:
                 actions = []
                 try:
-                    for a in (getattr(model_output, "action", None) or []):
+                    for a in getattr(model_output, "action", None) or []:
                         if hasattr(a, "model_dump"):
                             d = a.model_dump(exclude_none=True)
                             if isinstance(d, dict) and len(d) == 1:
@@ -709,9 +707,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
             )
 
     @staticmethod
-    def _format_description(
-        description: str, hashtags: Optional[List[str]]
-    ) -> str:
+    def _format_description(description: str, hashtags: Optional[List[str]]) -> str:
         clean_description = strip_trailing_hashtags(description)
         if hashtags is None:
             return clean_description

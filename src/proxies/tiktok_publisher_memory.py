@@ -179,7 +179,11 @@ class TikTokPublisherMemory:
         try:
             self._append_jsonl(
                 self._live_log_path,
-                {"type": "step", "ts": datetime.now().isoformat(timespec="seconds"), **step},
+                {
+                    "type": "step",
+                    "ts": datetime.now().isoformat(timespec="seconds"),
+                    **step,
+                },
             )
         except Exception as exc:
             self._logger.warning("Live log append failed: %s", exc)

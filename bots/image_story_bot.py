@@ -47,7 +47,9 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("Please send a valid Reddit post URL.")
         return
 
-    await update.message.reply_text("Generating image-story video... This may take a few minutes.")
+    await update.message.reply_text(
+        "Generating image-story video... This may take a few minutes."
+    )
     logger.info("User %s requested image-story for: %s", user_id, url)
 
     try:

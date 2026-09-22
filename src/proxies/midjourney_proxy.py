@@ -4,7 +4,9 @@ from typing import List
 
 import requests
 
-from src.entities.configs.proxies.image_generation import MidjourneyImageGenerationConfig
+from src.entities.configs.proxies.image_generation import (
+    MidjourneyImageGenerationConfig,
+)
 
 from .interfaces import IImageGeneratorProxy
 
@@ -82,7 +84,9 @@ class MidjourneyImageProxy(IImageGeneratorProxy):
 
             logger.info(
                 "Midjourney: %s — status %s (poll %d)",
-                job_id, status, attempt + 1,
+                job_id,
+                status,
+                attempt + 1,
             )
 
             if status == "completed":

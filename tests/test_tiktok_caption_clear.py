@@ -63,7 +63,9 @@ async def test_cdp_clear_issues_select_all_and_delete_commands():
     commands = [c for ev in session.key_events for c in ev.get("commands", [])]
     assert commands == ["selectAll", "deleteBackward"]
     # Ctrl on the first pass (the publisher runs on Linux).
-    select_all = next(ev for ev in session.key_events if "selectAll" in ev.get("commands", []))
+    select_all = next(
+        ev for ev in session.key_events if "selectAll" in ev.get("commands", [])
+    )
     assert select_all["modifiers"] == 2
     assert select_all["type"] == "rawKeyDown"
 

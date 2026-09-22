@@ -38,13 +38,17 @@ async def _send_to_stdout(text: str) -> None:
 
 async def _run_full(count: int | None, output_dir: str) -> None:
     await run_daily_auto_publish(
-        _send_to_stdout, publish_count=count, output_dir=output_dir,
+        _send_to_stdout,
+        publish_count=count,
+        output_dir=output_dir,
     )
 
 
 async def _run_generate(count: int | None, output_dir: str) -> None:
     await run_daily_generate(
-        _send_to_stdout, publish_count=count, output_dir=output_dir,
+        _send_to_stdout,
+        publish_count=count,
+        output_dir=output_dir,
     )
 
 

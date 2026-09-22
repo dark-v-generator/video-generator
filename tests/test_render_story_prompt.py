@@ -16,7 +16,6 @@ from src.proxies import llm_prompt_proxy
 from src.proxies.llm_prompt_proxy import PromptLLMProxy
 from src.proxies.prompts.render import render_story_prompt
 
-
 TITLE = "No second date and I can't be happier"
 CONTENT = "I work as a waiter in a fancy restaurant.\n\nHe asked me to stay away."
 

@@ -16,7 +16,6 @@ from ..entities.image_story import ImageStory
 
 from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -135,7 +134,8 @@ class VideoService:
             logger.error(
                 "No locally available backgrounds to fall back on; "
                 "compilation has %.1fs of the %ds needed",
-                total_duration, min_duration,
+                total_duration,
+                min_duration,
             )
             raise throttle_error
 
@@ -156,7 +156,8 @@ class VideoService:
                 # local clip is still worth trying, but this id is not.
                 logger.warning(
                     "Locally available background %s needed the network after "
-                    "all; skipping it", video_id,
+                    "all; skipping it",
+                    video_id,
                 )
                 continue
             except Exception:
@@ -175,7 +176,8 @@ class VideoService:
             if total_duration >= min_duration:
                 logger.info(
                     "Compilation completed from local backgrounds despite the "
-                    "throttle (%.1fs)", total_duration,
+                    "throttle (%.1fs)",
+                    total_duration,
                 )
                 return YouTubeCompilationResult(
                     clip=video, downloaded_bytes=downloaded_bytes
@@ -183,7 +185,8 @@ class VideoService:
 
         logger.error(
             "Local backgrounds were not enough: %.1fs of the %ds needed",
-            total_duration, min_duration,
+            total_duration,
+            min_duration,
         )
         raise throttle_error
 
@@ -300,7 +303,11 @@ class VideoService:
             background_video.merge(cover)
 
         # --- CTA image overlay ---
-        if self._call_to_action_bytes is not None and cta_start > 0 and cta_start < total_duration:
+        if (
+            self._call_to_action_bytes is not None
+            and cta_start > 0
+            and cta_start < total_duration
+        ):
             cta_clip = image_clip.ImageClip(bytes=self._call_to_action_bytes)
             cta_clip.fit_width(width, config.padding)
             cta_clip.center(width, height)
@@ -390,12 +397,19 @@ class VideoService:
                 zoom_in = random.choice([True, False])
                 use_draw = draw_dur > 0 and not first_visible
                 kb_clip = self._create_ken_burns_clip(
-                    img_bytes, width, height, clip_duration, zoom_in,
+                    img_bytes,
+                    width,
+                    height,
+                    clip_duration,
+                    zoom_in,
                 )
                 kb_clip = kb_clip.with_start(start)
                 if use_draw:
                     mask = self._create_brush_mask_clip(
-                        width, height, clip_duration, draw_dur,
+                        width,
+                        height,
+                        clip_duration,
+                        draw_dur,
                     )
                     kb_clip = kb_clip.with_mask(mask)
                 elif not first_visible:
@@ -513,7 +527,11 @@ class VideoService:
 
     @classmethod
     def _create_brush_mask_clip(
-        cls, width: int, height: int, duration: float, draw_duration: float,
+        cls,
+        width: int,
+        height: int,
+        duration: float,
+        draw_duration: float,
     ) -> MoviepyVideoClip:
         """Create a grayscale mask clip that reveals via the brush pattern.
 
@@ -529,7 +547,9 @@ class VideoService:
                 return np.ones((height, width), dtype=np.float64)
             p = t / draw_duration
             return np.clip(
-                (p - reveal_map) / feather, 0.0, 1.0,
+                (p - reveal_map) / feather,
+                0.0,
+                1.0,
             ).astype(np.float64)
 
         return MoviepyVideoClip(make_mask_frame, duration=duration, is_mask=True)

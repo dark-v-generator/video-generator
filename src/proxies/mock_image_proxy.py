@@ -30,7 +30,9 @@ class MockImageGeneratorProxy(IImageGeneratorProxy):
 
             font_size = max(20, width // 25)
             try:
-                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+                font = ImageFont.truetype(
+                    "/System/Library/Fonts/Helvetica.ttc", font_size
+                )
             except (OSError, IOError):
                 font = ImageFont.load_default()
 

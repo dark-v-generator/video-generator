@@ -3,7 +3,6 @@ import asyncio
 
 from src.core.container import container
 
-
 LLM_LABELS = {
     "retencao": "Retenção",
     "qualidade": "Qualidade",
@@ -47,10 +46,14 @@ def print_results(evaluated: list) -> None:
         notas = ev.get("notas", {})
 
         print(f"\n{'─' * 70}")
-        print(f"  #{i}  [{story.veredito}]  LLM: {story.nota_geral}/100  |  Det: {story.deterministic_score}/100")
+        print(
+            f"  #{i}  [{story.veredito}]  LLM: {story.nota_geral}/100  |  Det: {story.deterministic_score}/100"
+        )
         print(f"  {post.title[:80]}")
         ratio_str = f"{post.upvote_ratio:.0%}" if post.upvote_ratio else "n/a"
-        print(f"  r/{post.community.replace('r/', '')}  |  {post.score or 0} pts ({ratio_str})  |  {post.num_comments or 0} comments  |  {len(post.content)} chars")
+        print(
+            f"  r/{post.community.replace('r/', '')}  |  {post.score or 0} pts ({ratio_str})  |  {post.num_comments or 0} comments  |  {len(post.content)} chars"
+        )
         if post.url:
             print(f"  {post.url}")
 
@@ -79,8 +82,12 @@ async def main():
         choices=["hour", "day", "week", "month", "year", "all"],
         default="day",
     )
-    parser.add_argument("--top-per-sub", type=int, default=5, help="Best posts to pick per subreddit")
-    parser.add_argument("--per-sub", type=int, default=25, help="Posts to fetch per subreddit")
+    parser.add_argument(
+        "--top-per-sub", type=int, default=5, help="Best posts to pick per subreddit"
+    )
+    parser.add_argument(
+        "--per-sub", type=int, default=25, help="Posts to fetch per subreddit"
+    )
     parser.add_argument(
         "--sub",
         action="append",
@@ -93,7 +100,9 @@ async def main():
     config = container.main_config()
     finder = container.story_finder_service()
 
-    print(f"Finding best stories (sort={args.sort}, time={args.time}, top_per_sub={args.top_per_sub})...\n")
+    print(
+        f"Finding best stories (sort={args.sort}, time={args.time}, top_per_sub={args.top_per_sub})...\n"
+    )
 
     results = await finder.find_best_stories(
         sort=args.sort,

@@ -197,7 +197,8 @@ class PyTubeProxy(IYouTubeProxy):
                     logger.error(
                         "YouTube is rate-limiting this IP (429) on client %s; "
                         "giving up on %s without trying the rest",
-                        client, video_id,
+                        client,
+                        video_id,
                     )
                     raise YouTubeRateLimitError(
                         f"YouTube returned HTTP 429 for {video_id} (client {client}). "
@@ -207,7 +208,10 @@ class PyTubeProxy(IYouTubeProxy):
                 failures.append(f"{client}: {type(e).__name__}: {e}")
                 logger.warning(
                     "Client %s failed for %s (%s: %s), trying the next one",
-                    client, video_id, type(e).__name__, e,
+                    client,
+                    video_id,
+                    type(e).__name__,
+                    e,
                 )
 
         detail = " | ".join(failures) or "no clients configured"
@@ -226,9 +230,9 @@ class PyTubeProxy(IYouTubeProxy):
             if result is not None:
                 return result
 
-        streams = yt.streams.filter(
-            progressive=True, file_extension="mp4"
-        ).order_by("resolution")
+        streams = yt.streams.filter(progressive=True, file_extension="mp4").order_by(
+            "resolution"
+        )
         stream = streams.first() if low_quality else streams.desc().first()
         if not stream:
             fallback_streams = yt.streams.filter(file_extension="mp4").order_by(
@@ -246,7 +250,9 @@ class PyTubeProxy(IYouTubeProxy):
 
         logger.info(
             "Downloading progressive %s for %s via %s",
-            stream.resolution, video_id, client,
+            stream.resolution,
+            video_id,
+            client,
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = stream.download(output_path=temp_dir)
@@ -259,14 +265,12 @@ class PyTubeProxy(IYouTubeProxy):
         Returns the MP4 bytes, or None if adaptive streams are
         unavailable so the caller can fall back to progressive.
         """
-        candidates = (
-            yt.streams
-            .filter(adaptive=True, file_extension="mp4", only_video=True, res="1080p")
+        candidates = yt.streams.filter(
+            adaptive=True, file_extension="mp4", only_video=True, res="1080p"
         )
         if not candidates:
-            candidates = (
-                yt.streams
-                .filter(adaptive=True, file_extension="mp4", only_video=True, res="720p")
+            candidates = yt.streams.filter(
+                adaptive=True, file_extension="mp4", only_video=True, res="720p"
             )
         video_stream = candidates.first() if candidates else None
         if not video_stream:
@@ -274,7 +278,8 @@ class PyTubeProxy(IYouTubeProxy):
 
         logger.info(
             "Downloading adaptive %s video-only for %s",
-            video_stream.resolution, yt.video_id,
+            video_stream.resolution,
+            yt.video_id,
         )
 
         with tempfile.TemporaryDirectory() as td:

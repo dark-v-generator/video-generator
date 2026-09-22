@@ -58,7 +58,9 @@ def test_list_video_ids_delegates_without_touching_the_cache(tmp_path):
     inner = FakeYouTubeProxy()
     proxy = build(tmp_path, inner)
 
-    result = asyncio.run(proxy.list_video_ids("https://youtube.com/@chan", surface="shorts"))
+    result = asyncio.run(
+        proxy.list_video_ids("https://youtube.com/@chan", surface="shorts")
+    )
 
     assert result == ["abc123def45", "xyz987uvw65"]
     assert inner.list_calls == [("https://youtube.com/@chan", "shorts")]
@@ -87,7 +89,9 @@ def test_second_download_is_served_from_disk_without_calling_inner(tmp_path):
     second = asyncio.run(proxy.download_video("abc123def45"))
 
     assert first == second == mp4_bytes()
-    assert inner.download_calls == [("abc123def45", False)], "hit must not hit the network"
+    assert inner.download_calls == [
+        ("abc123def45", False)
+    ], "hit must not hit the network"
 
 
 def test_hit_is_served_by_a_fresh_proxy_instance(tmp_path):
@@ -95,7 +99,9 @@ def test_hit_is_served_by_a_fresh_proxy_instance(tmp_path):
     asyncio.run(build(tmp_path, FakeYouTubeProxy()).download_video("abc123def45"))
 
     inner = FakeYouTubeProxy()
-    assert asyncio.run(build(tmp_path, inner).download_video("abc123def45")) == mp4_bytes()
+    assert (
+        asyncio.run(build(tmp_path, inner).download_video("abc123def45")) == mp4_bytes()
+    )
     assert inner.download_calls == []
 
 
@@ -195,7 +201,9 @@ def test_missing_directory_is_created_and_the_tilde_is_expanded(tmp_path, monkey
     )
     asyncio.run(proxy.download_video("abc123def45"))
 
-    assert (tmp_path / "cache/backgrounds/abc123def45-hq.mp4").read_bytes() == mp4_bytes()
+    assert (
+        tmp_path / "cache/backgrounds/abc123def45-hq.mp4"
+    ).read_bytes() == mp4_bytes()
 
 
 # --- C3/C9: writes are atomic ------------------------------------------------
@@ -259,9 +267,13 @@ def test_quality_tracks_never_serve_each_other(tmp_path):
     proxy = build(tmp_path, inner)
 
     assert asyncio.run(proxy.download_video("abc123def45")) == mp4_bytes(b"hq")
-    assert asyncio.run(proxy.download_video("abc123def45", low_quality=True)) == mp4_bytes(b"lq")
+    assert asyncio.run(
+        proxy.download_video("abc123def45", low_quality=True)
+    ) == mp4_bytes(b"lq")
     assert asyncio.run(proxy.download_video("abc123def45")) == mp4_bytes(b"hq")
-    assert asyncio.run(proxy.download_video("abc123def45", low_quality=True)) == mp4_bytes(b"lq")
+    assert asyncio.run(
+        proxy.download_video("abc123def45", low_quality=True)
+    ) == mp4_bytes(b"lq")
 
     assert inner.download_calls == [("abc123def45", False), ("abc123def45", True)]
     assert sorted(p.name for p in tmp_path.iterdir()) == [
@@ -322,7 +334,7 @@ def test_disabled_cache_does_not_create_its_directory(tmp_path):
 
 def gb(n_bytes: float) -> float:
     """Express a byte budget in the gigabytes the config speaks."""
-    return n_bytes / (1024 ** 3)
+    return n_bytes / (1024**3)
 
 
 def clip(size: int, marker: bytes = b"x") -> bytes:
@@ -501,7 +513,10 @@ def test_config_without_a_cache_block_keeps_working_with_defaults():
 
 def test_cache_block_from_yaml_overrides_the_defaults():
     config = PyTubeYouTubeConfig(
-        **{"type": "pytube", "cache": {"enabled": False, "dir": "/data/bg", "max_gigabytes": 5}}
+        **{
+            "type": "pytube",
+            "cache": {"enabled": False, "dir": "/data/bg", "max_gigabytes": 5},
+        }
     )
 
     assert config.cache.enabled is False
@@ -540,7 +555,9 @@ def test_locally_available_keeps_the_order_it_was_given(tmp_path):
 
     asked = ["cccccccccc3", "zzzzzzzzzz9", "aaaaaaaaaa1", "bbbbbbbbbb2"]
     assert proxy.locally_available(asked) == [
-        "cccccccccc3", "aaaaaaaaaa1", "bbbbbbbbbb2",
+        "cccccccccc3",
+        "aaaaaaaaaa1",
+        "bbbbbbbbbb2",
     ]
 
 
@@ -548,11 +565,16 @@ def test_locally_available_separates_the_quality_tracks(tmp_path):
     proxy = build(tmp_path, FakeYouTubeProxy())
     asyncio.run(proxy.download_video("abc123def45", low_quality=False))
 
-    assert proxy.locally_available(["abc123def45"], low_quality=False) == ["abc123def45"]
+    assert proxy.locally_available(["abc123def45"], low_quality=False) == [
+        "abc123def45"
+    ]
     assert proxy.locally_available(["abc123def45"], low_quality=True) == []
 
 
 def test_locally_available_is_empty_for_a_plain_proxy():
     # The interface default: a proxy with no local store promises nothing,
     # so the service falls back to nothing and the throttle still surfaces.
-    assert PyTubeProxy(config=PyTubeYouTubeConfig()).locally_available(["abc123def45"]) == []
+    assert (
+        PyTubeProxy(config=PyTubeYouTubeConfig()).locally_available(["abc123def45"])
+        == []
+    )

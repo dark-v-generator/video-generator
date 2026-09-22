@@ -17,7 +17,7 @@ _FTYP_OFFSET = 4
 _FTYP = b"ftyp"
 _MIN_MP4_SIZE = _FTYP_OFFSET + len(_FTYP)
 
-_BYTES_PER_GIGABYTE = 1024 ** 3
+_BYTES_PER_GIGABYTE = 1024**3
 # Only published entries count against the budget and are eligible for
 # eviction: half-written temporaries carry a '.part' suffix, and anything else
 # in the directory belongs to whoever put it there.
@@ -66,7 +66,10 @@ class CachingYouTubeProxy(IYouTubeProxy):
             self._hits += 1
             logger.info(
                 "Background cache hit for %s (%s) — %d hits / %d misses this run",
-                video_id, self._track(low_quality), self._hits, self._misses,
+                video_id,
+                self._track(low_quality),
+                self._hits,
+                self._misses,
             )
             return cached
 
@@ -74,7 +77,10 @@ class CachingYouTubeProxy(IYouTubeProxy):
         logger.info(
             "Background cache miss for %s (%s) — downloading; "
             "%d hits / %d misses this run",
-            video_id, self._track(low_quality), self._hits, self._misses,
+            video_id,
+            self._track(low_quality),
+            self._hits,
+            self._misses,
         )
         data = await self._inner.download_video(video_id, low_quality)
         self._store_entry(path, data)
@@ -114,7 +120,8 @@ class CachingYouTubeProxy(IYouTubeProxy):
             logger.warning(
                 "Background cache directory %s is unavailable (%s); "
                 "this run will download every clip",
-                self._dir, e,
+                self._dir,
+                e,
             )
 
     def _read_entry(self, path: Path) -> bytes | None:
@@ -124,7 +131,9 @@ class CachingYouTubeProxy(IYouTubeProxy):
         except FileNotFoundError:
             return None
         except OSError as e:
-            logger.warning("Could not read cached clip %s (%s); re-downloading", path, e)
+            logger.warning(
+                "Could not read cached clip %s (%s); re-downloading", path, e
+            )
             self._discard(path)
             return None
 
@@ -133,7 +142,8 @@ class CachingYouTubeProxy(IYouTubeProxy):
             # forever if it were kept, so drop it and fall through to a download.
             logger.warning(
                 "Cached clip %s is not a usable mp4 (%d bytes); discarding it",
-                path, len(data),
+                path,
+                len(data),
             )
             self._discard(path)
             return None
@@ -157,7 +167,8 @@ class CachingYouTubeProxy(IYouTubeProxy):
             logger.warning(
                 "Could not cache %s (%s); the clip was still downloaded, "
                 "so the run continues without it being cached",
-                path.name, e,
+                path.name,
+                e,
             )
             if tmp_path is not None:
                 self._discard(Path(tmp_path))
@@ -172,9 +183,7 @@ class CachingYouTubeProxy(IYouTubeProxy):
         except OSError as e:
             # An entry we cannot touch just looks older than it is; the clip was
             # still served, so this is not worth failing a run over.
-            logger.warning(
-                "Could not refresh the last-used time of %s (%s)", path, e
-            )
+            logger.warning("Could not refresh the last-used time of %s (%s)", path, e)
 
     def _evict_until_within_budget(self) -> None:
         """Drop the least recently used entries until the cache fits its cap.
@@ -198,7 +207,8 @@ class CachingYouTubeProxy(IYouTubeProxy):
             logger.warning(
                 "Could not measure the background cache in %s (%s); "
                 "leaving it as it is",
-                self._dir, e,
+                self._dir,
+                e,
             )
             return
 
@@ -216,14 +226,16 @@ class CachingYouTubeProxy(IYouTubeProxy):
                 logger.warning(
                     "Could not evict cached clip %s (%s); "
                     "the cache stays above its budget",
-                    entry, e,
+                    entry,
+                    e,
                 )
                 continue
             else:
                 logger.info(
-                    "Evicted %s (%d bytes) to keep the background cache "
-                    "under %g GB",
-                    entry.name, size, self._cache.max_gigabytes,
+                    "Evicted %s (%d bytes) to keep the background cache " "under %g GB",
+                    entry.name,
+                    size,
+                    self._cache.max_gigabytes,
                 )
             total -= size
 

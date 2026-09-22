@@ -204,8 +204,12 @@ async def on_audio_change(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         audio = await service.generate_audio(script, speech_rate=rate)
         context.user_data["audio"] = audio
 
-        await send_audio_bytes(update.message, audio.part1.bytes, "Áudio Parte 1 (revisado)")
-        await send_audio_bytes(update.message, audio.part2.bytes, "Áudio Parte 2 (revisado)")
+        await send_audio_bytes(
+            update.message, audio.part1.bytes, "Áudio Parte 1 (revisado)"
+        )
+        await send_audio_bytes(
+            update.message, audio.part2.bytes, "Áudio Parte 2 (revisado)"
+        )
         await update.message.reply_text(
             "Áudio revisado. Aprova ou pede mais mudanças.",
             reply_markup=APPROVE_KEYBOARD,

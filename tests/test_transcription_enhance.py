@@ -9,7 +9,11 @@ from src.proxies.factories import (
 )
 from src.entities.configs.proxies.transcription import LocalTranscriptionConfig
 from src.entities.configs.proxies.speech import EdgeTTSSpeechConfig
-from src.entities.configs.proxies.llm import DSPyLLMConfig, PromptLLMConfig, LLMProviderConfig
+from src.entities.configs.proxies.llm import (
+    DSPyLLMConfig,
+    PromptLLMConfig,
+    LLMProviderConfig,
+)
 from src.entities.language import Language
 
 

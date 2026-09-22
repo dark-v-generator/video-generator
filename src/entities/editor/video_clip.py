@@ -108,9 +108,7 @@ class VideoClip:
             self.clip = self.clip.with_effects(effects)
 
         if config.hue_shift_degrees > 0:
-            shift = random.uniform(
-                -config.hue_shift_degrees, config.hue_shift_degrees
-            )
+            shift = random.uniform(-config.hue_shift_degrees, config.hue_shift_degrees)
             self.clip = _apply_hue_shift(self.clip, shift)
 
 

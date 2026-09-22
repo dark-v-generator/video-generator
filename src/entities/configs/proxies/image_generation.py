@@ -45,7 +45,9 @@ class RunPodImageGenerationConfig(BaseYAMLModel):
 class LeonardoV2ImageGenerationConfig(BaseYAMLModel):
     type: Literal["leonardo-v2"] = "leonardo-v2"
     api_key: Optional[str] = Field(None, title="Leonardo API Key")
-    model: str = Field("nano-banana-2", title="Model identifier string (e.g. nano-banana-2)")
+    model: str = Field(
+        "nano-banana-2", title="Model identifier string (e.g. nano-banana-2)"
+    )
     style_ids: list[str] = Field(default_factory=list, title="Style UUIDs")
     prompt_enhance: str = Field("OFF", title="ON or OFF")
 

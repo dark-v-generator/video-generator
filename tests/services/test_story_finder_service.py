@@ -57,7 +57,9 @@ class ForbiddenLLMProxy:
         raise AssertionError("evaluate_story must not be called by find_candidates")
 
 
-def make_post(sub: str, post_id: str, score: int, num_comments: int = 120) -> RedditPost:
+def make_post(
+    sub: str, post_id: str, score: int, num_comments: int = 120
+) -> RedditPost:
     return RedditPost(
         title=f"Story {post_id}",
         content=(
@@ -139,9 +141,7 @@ async def test_find_candidates_excludes_urls_before_the_per_sub_cut():
         ["pettyrevenge"],
     )
 
-    candidates = await service.find_candidates(
-        top_per_sub=1, exclude_urls={best.url}
-    )
+    candidates = await service.find_candidates(top_per_sub=1, exclude_urls={best.url})
 
     assert [c.post.title for c in candidates] == ["Story ccc"]
 

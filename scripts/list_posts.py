@@ -74,7 +74,9 @@ def main():
 
     print(f"\n{'─' * 70}")
     print(f"  Total: {total} posts from {len(subreddits)} subreddits")
-    print(f"  Filters: sort={args.sort}, time={args.time}, chars=[{min_chars}, {max_chars}]")
+    print(
+        f"  Filters: sort={args.sort}, time={args.time}, chars=[{min_chars}, {max_chars}]"
+    )
     print(f"{'─' * 70}\n")
 
 

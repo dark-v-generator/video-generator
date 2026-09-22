@@ -2,6 +2,7 @@ from typing import Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
+
 class CaptionsConfig(BaseYAMLModel):
     upper: bool = Field(True)
     font_path: str = Field("default_font.ttf", title="Path to the font file")

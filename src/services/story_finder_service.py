@@ -129,7 +129,7 @@ def _text_quality_score(content: str) -> float:
         score += 15.0
 
     # Paragraph structure (well-structured posts have multiple paragraphs)
-    paragraphs = len([p for p in content.split('\n') if p.strip()])
+    paragraphs = len([p for p in content.split("\n") if p.strip()])
     if paragraphs >= 5:
         score += 25.0
     elif paragraphs >= 3:
@@ -138,7 +138,7 @@ def _text_quality_score(content: str) -> float:
         score += 10.0
 
     # Sentence variety (not just a wall of text)
-    sentences = len(re.findall(r'[.!?]+', content))
+    sentences = len(re.findall(r"[.!?]+", content))
     if sentences >= 10:
         score += 20.0
     elif sentences >= 5:
@@ -340,7 +340,12 @@ class StoryFinderService:
                 )
             except Exception:
                 logger.exception("LLM evaluation failed for '%s'", post.title[:60])
-                evaluation = {"nota_geral": 0.0, "veredito": "Erro", "resumo": "", "notas": {}}
+                evaluation = {
+                    "nota_geral": 0.0,
+                    "veredito": "Erro",
+                    "resumo": "",
+                    "notas": {},
+                }
 
             evaluated.append(
                 EvaluatedStory(

@@ -416,5 +416,7 @@ class MockLLMProxy(ILLMProxy):
     ) -> ImageStory:
         mock = _build_mock_image_story(transcription)
         mock.introduction_end_time = introduction_end_time or mock.introduction_end_time
-        mock.call_to_action_start_time = call_to_action_start_time or mock.call_to_action_start_time
+        mock.call_to_action_start_time = (
+            call_to_action_start_time or mock.call_to_action_start_time
+        )
         return mock
