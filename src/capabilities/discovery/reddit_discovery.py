@@ -1,4 +1,4 @@
-"""Service that finds the best Reddit stories for TikTok across configured subreddits.
+"""Finds the best Reddit stories for TikTok across the configured subreddits.
 
 Pipeline:
 1. Fetch posts from all configured subreddits.
@@ -11,15 +11,17 @@ Pipeline:
 import math
 import re
 import time
-from typing import List, Literal, Optional, Set
 import statistics
+from typing import List, Optional, Set
 
-from src.core.logging_config import get_logger
-from src.entities.config import EvaluationConfig
-from src.entities.language import Language
-from src.entities.reddit_post import RedditPost
-from src.entities.story_candidate import StoryCandidate, EvaluatedStory
-from src.proxies.interfaces import IRedditProxy, ILLMProxy
+from ...core.logging_config import get_logger
+from ...entities.config import EvaluationConfig
+from ...entities.language import Language
+from ...entities.reddit_post import RedditPost
+from ...entities.story import StoryOrigin
+from ...entities.story_candidate import EvaluatedStory, StoryCandidate
+from ...proxies.interfaces import ILLMProxy, IRedditProxy
+from .contract import Sort, TimeFilter
 
 logger = get_logger(__name__)
 
@@ -217,21 +219,25 @@ def score_candidates(posts: List[RedditPost]) -> List[StoryCandidate]:
     return candidates
 
 
-class StoryFinderService:
+class RedditStoryDiscovery:
     def __init__(
         self,
-        reddit_proxy: IRedditProxy,
-        llm_proxy: ILLMProxy,
-        evaluation_config: EvaluationConfig,
+        reddit: IRedditProxy,
+        llm: ILLMProxy,
+        evaluation: EvaluationConfig,
     ):
-        self._reddit = reddit_proxy
-        self._llm = llm_proxy
-        self._config = evaluation_config
+        self._reddit = reddit
+        self._llm = llm
+        self._config = evaluation
+
+    def fetch(self, url: str) -> StoryOrigin:
+        return StoryOrigin.from_post(self._reddit.get_reddit_post(url))
 
     async def find_candidates(
         self,
-        sort: Literal["top", "new", "hot"] = "top",
-        time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
+        *,
+        sort: Sort = "top",
+        time_filter: TimeFilter = "day",
         posts_per_sub: int = 25,
         top_per_sub: int = 5,
         subreddits: Optional[List[str]] = None,
@@ -239,8 +245,8 @@ class StoryFinderService:
     ) -> List[StoryCandidate]:
         """Rank posts with the deterministic score only — no LLM call at all.
 
-        This is the shortlist the operator picks from on the laptop, and the
-        first half of ``find_best_stories`` on the server.
+        The first half of ``find_best_stories``; cheap enough to shortlist
+        without paying for a model.
         """
         finalists: List[StoryCandidate] = []
         subreddit_names = subreddits or self._config.subreddits
@@ -292,42 +298,22 @@ class StoryFinderService:
         finalists.sort(key=lambda c: c.deterministic_score, reverse=True)
         return finalists
 
-    async def find_best_stories(
-        self,
-        sort: Literal["top", "new", "hot"] = "top",
-        time_filter: Literal["hour", "day", "week", "month", "year", "all"] = "day",
-        posts_per_sub: int = 25,
-        top_per_sub: int = 5,
-        language: Language | None = None,
-        subreddits: Optional[List[str]] = None,
-        exclude_urls: Optional[Set[str]] = None,
+    async def grade(
+        self, candidates: List[StoryCandidate], language: Language
     ) -> List[EvaluatedStory]:
-        target_language = language or Language.PORTUGUESE
-        subreddit_names = subreddits or self._config.subreddits
+        """Ask the model to grade each candidate, best first.
 
-        finalists = await self.find_candidates(
-            sort=sort,
-            time_filter=time_filter,
-            posts_per_sub=posts_per_sub,
-            top_per_sub=top_per_sub,
-            subreddits=subreddit_names,
-            exclude_urls=exclude_urls,
-        )
-
-        logger.info(
-            "%d finalists from %d subs. Running LLM evaluation...",
-            len(finalists),
-            len(subreddit_names),
-        )
-
+        One failed evaluation grades that candidate 0 with verdict ``Erro``
+        instead of losing the whole list.
+        """
         evaluated: List[EvaluatedStory] = []
-        for i, candidate in enumerate(finalists, 1):
+        for i, candidate in enumerate(candidates, 1):
             post = candidate.post
             sub_name = post.community.replace("r/", "")
             logger.info(
                 "  [%d/%d] Evaluating (r/%s, det=%.1f): %s",
                 i,
-                len(finalists),
+                len(candidates),
                 sub_name,
                 candidate.deterministic_score,
                 post.title[:50],
@@ -336,7 +322,7 @@ class StoryFinderService:
                 evaluation = await self._llm.evaluate_story(
                     title=post.title,
                     content=post.content,
-                    target_language=target_language,
+                    target_language=language,
                 )
             except Exception:
                 logger.exception("LLM evaluation failed for '%s'", post.title[:60])
@@ -356,6 +342,37 @@ class StoryFinderService:
             )
 
         evaluated.sort(key=lambda e: e.nota_geral, reverse=True)
+        return evaluated
+
+    async def find_best_stories(
+        self,
+        *,
+        language: Language,
+        sort: Sort = "top",
+        time_filter: TimeFilter = "day",
+        posts_per_sub: int = 25,
+        top_per_sub: int = 5,
+        subreddits: Optional[List[str]] = None,
+        exclude_urls: Optional[Set[str]] = None,
+    ) -> List[EvaluatedStory]:
+        subreddit_names = subreddits or self._config.subreddits
+
+        finalists = await self.find_candidates(
+            sort=sort,
+            time_filter=time_filter,
+            posts_per_sub=posts_per_sub,
+            top_per_sub=top_per_sub,
+            subreddits=subreddit_names,
+            exclude_urls=exclude_urls,
+        )
+
+        logger.info(
+            "%d finalists from %d subs. Running LLM evaluation...",
+            len(finalists),
+            len(subreddit_names),
+        )
+
+        evaluated = await self.grade(finalists, language)
         excellent = [e for e in evaluated if e.veredito == "Excelente"]
         if len(excellent) >= 10:
             result = excellent

@@ -98,13 +98,13 @@ async def main():
 
     container.wire(modules=[__name__])
     config = container.main_config()
-    finder = container.story_finder_service()
+    discovery = container.story_discovery()
 
     print(
         f"Finding best stories (sort={args.sort}, time={args.time}, top_per_sub={args.top_per_sub})...\n"
     )
 
-    results = await finder.find_best_stories(
+    results = await discovery.find_best_stories(
         sort=args.sort,
         time_filter=args.time,
         posts_per_sub=args.per_sub,

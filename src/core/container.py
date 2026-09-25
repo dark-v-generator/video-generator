@@ -3,6 +3,7 @@ import os
 from dependency_injector import containers, providers
 from .secrets import secrets
 
+from ..capabilities.discovery import RedditStoryDiscovery
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
 from ..prompts import loader as prompts
@@ -12,7 +13,6 @@ from ..services.video_service import VideoService
 from ..services.captions_service import CaptionsService
 from ..services.cover_service import CoverService
 from ..services.speech_service import SpeechService
-from ..services.story_finder_service import StoryFinderService
 from ..proxies import factories as proxies_factories
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
@@ -82,6 +82,12 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config=main_config.provided.proxies.cover_config,
     )
     # Capabilities
+    story_discovery = providers.Singleton(
+        RedditStoryDiscovery,
+        reddit=reddit_proxy,
+        llm=llm_proxy,
+        evaluation=main_config.provided.evaluation,
+    )
     story_writer = providers.Singleton(
         ModelStoryWriter,
         llm=providers.Callable(
@@ -120,19 +126,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     reddit_video_service = providers.Singleton(
         RedditVideoService,
-        reddit_proxy=reddit_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,
         text_censor=text_censor,
-    )
-
-    story_finder_service = providers.Singleton(
-        StoryFinderService,
-        reddit_proxy=reddit_proxy,
-        llm_proxy=llm_proxy,
-        evaluation_config=main_config.provided.evaluation,
     )
 
 

@@ -8,6 +8,7 @@ import pytest
 from bots import satisfying_bot
 from bots.satisfying_bot import compute_publish_slots, next_publish_slot
 from src.entities.reddit_post import RedditPost
+from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory
 from tests.fakes.writer import EchoStoryWriter
 
@@ -167,14 +168,19 @@ class TestDailyAutoPublishPipeline:
             for i, post in enumerate(posts, start=1)
         ]
 
+        class FakeDiscovery:
+            def __init__(self):
+                self.fetched_urls = []
+
+            def fetch(self, url):
+                self.fetched_urls.append(url)
+                return StoryOrigin.from_post(
+                    next(post for post in posts if post.url == url)
+                )
+
         class FakeService:
             def __init__(self):
-                self.prepared_urls = []
                 self.generated_titles = []
-
-            def scrape_post(self, url):
-                self.prepared_urls.append(url)
-                return next(post for post in posts if post.url == url)
 
             async def generate_satisfying_video_from_story(self, story, *, low_quality):
                 self.generated_titles.append(story.title)
@@ -212,6 +218,9 @@ class TestDailyAutoPublishPipeline:
             def reddit_video_service(self):
                 return self._service
 
+            def story_discovery(self):
+                return discovery
+
             def story_writer(self):
                 return EchoStoryWriter()
 
@@ -219,6 +228,7 @@ class TestDailyAutoPublishPipeline:
                 return self._llm
 
         service = FakeService()
+        discovery = FakeDiscovery()
         publisher = FakePublisher()
         messages = []
 
@@ -252,7 +262,7 @@ class TestDailyAutoPublishPipeline:
             output_dir=str(tmp_path),
         )
 
-        assert service.prepared_urls == ["url-1", "url-2", "url-3"]
+        assert discovery.fetched_urls == ["url-1", "url-2", "url-3"]
         assert service.generated_titles == ["Story 1", "Story 2", "Story 3"]
         assert [call[1] for call in publisher.calls] == [
             "Story 1",

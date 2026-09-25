@@ -62,18 +62,21 @@ async def main():
 
     container.wire(modules=[__name__])
 
-    reddit_proxy = container.reddit_proxy()
+    discovery = container.story_discovery()
     llm_proxy = container.llm_proxy()
 
     print(f"Scraping post: {args.post_url}")
-    post = reddit_proxy.get_reddit_post(args.post_url)
-    print(f"Post: {post.title} (r/{post.community})\n")
+    origin = discovery.fetch(args.post_url)
+    print(f"Post: {origin.title} ({origin.community})\n")
 
     print("Evaluating...")
     lang_enum = Language(args.language)
+    # Straight to the model rather than ``discovery.grade``: grading tolerates
+    # a failed evaluation to keep a ranking alive, and here there is no
+    # ranking — the operator wants to see the error.
     evaluation = await llm_proxy.evaluate_story(
-        title=post.title,
-        content=post.content,
+        title=origin.title,
+        content=origin.content,
         target_language=lang_enum,
     )
 

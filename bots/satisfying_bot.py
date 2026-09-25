@@ -30,7 +30,7 @@ from src.capabilities.writing import (
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
-from src.entities.story import Story, StoryOrigin
+from src.entities.story import Story
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
 from src.services.tiktok_caption import normalize_hashtags
@@ -119,7 +119,7 @@ class GenerationQueue:
             container.wire(modules=[__name__])
             service = container.reddit_video_service()
 
-            origin = StoryOrigin.from_post(service.scrape_post(job.url))
+            origin = container.story_discovery().fetch(job.url)
             story = await container.story_writer().write(
                 origin, language=config.language
             )
@@ -295,8 +295,8 @@ async def _discover_stories(
 ) -> list[EvaluatedStory]:
     """Run the story-finder pipeline and return ranked results."""
     container.wire(modules=[__name__])
-    finder = container.story_finder_service()
-    return await finder.find_best_stories(
+    discovery = container.story_discovery()
+    return await discovery.find_best_stories(
         sort="top",
         time_filter="day",
         top_per_sub=5,
@@ -684,7 +684,7 @@ def _requested_count(publish_count: int | None) -> int:
 
 async def _prepare_story_with_retries(
     send_message,
-    service,
+    discovery,
     writer,
     story: EvaluatedStory,
     *,
@@ -702,7 +702,7 @@ async def _prepare_story_with_retries(
                 f" (tentativa {attempt}/{_STORY_RETRY_MAX})" if attempt > 1 else ""
             )
             await send_message(f"{label} Gerando roteiro...{retry_suffix}")
-            origin = StoryOrigin.from_post(service.scrape_post(post.url))
+            origin = discovery.fetch(post.url)
             written = await writer.write(origin, language=config.language)
             await send_message(f"{label} Roteiro finalizado. Gerando vídeo...")
             return dataclasses.replace(written, summary=story.resumo[:400])
@@ -879,6 +879,7 @@ async def run_daily_generate(
 
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
+    discovery = container.story_discovery()
     writer = container.story_writer()
 
     generated: list[GeneratedVideo] = []
@@ -889,7 +890,7 @@ async def run_daily_generate(
 
         written = await _prepare_story_with_retries(
             send_message,
-            service,
+            discovery,
             writer,
             story,
             candidate_number=candidate_idx,
@@ -1023,6 +1024,7 @@ async def run_daily_auto_publish(
 
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
+    discovery = container.story_discovery()
     writer = container.story_writer()
     llm_proxy = container.llm_proxy()
     publisher = _build_tiktok_publisher()
@@ -1036,7 +1038,7 @@ async def run_daily_auto_publish(
 
         written = await _prepare_story_with_retries(
             send_message,
-            service,
+            discovery,
             writer,
             story,
             candidate_number=candidate_idx,
