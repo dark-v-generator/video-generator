@@ -3,10 +3,6 @@ from typing import List, Optional
 from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
-from src.entities.configs.proxies.image_generation import (
-    ImageGenerationConfigType,
-    LocalImageGenerationConfig,
-)
 from src.entities.configs.proxies.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
@@ -36,13 +32,6 @@ from src.entities.language import Language
 class ProxiesConfig(BaseYAMLModel):
     transcription_config: TranscriptionConfigType = Field(
         LocalTranscriptionConfig(), title="Transcription configuration"
-    )
-    image_generation_config: ImageGenerationConfigType = Field(
-        LocalImageGenerationConfig(), title="Image Generation configuration (scenes)"
-    )
-    portrait_generation_config: Optional[ImageGenerationConfigType] = Field(
-        None,
-        title="Image Generation configuration for character portraits (falls back to image_generation_config)",
     )
     speech_config: SpeechConfigType = Field(
         EdgeTTSSpeechConfig(), title="Speech configuration"

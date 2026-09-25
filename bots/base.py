@@ -110,20 +110,6 @@ async def send_audio_bytes(
     )
 
 
-async def send_image_bytes(
-    message,
-    image_bytes: bytes,
-    caption: str,
-) -> None:
-    """Send a photo from in-memory bytes."""
-    await message.reply_photo(
-        photo=io.BytesIO(image_bytes),
-        caption=caption,
-        read_timeout=60,
-        write_timeout=60,
-    )
-
-
 async def send_video_bytes_to_chat(
     bot, chat_id: int, video_bytes: bytes, caption: str
 ) -> None:

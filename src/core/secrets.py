@@ -8,9 +8,6 @@ class Secrets(BaseSettings):
     openai_api_key: Optional[str] = None
     youtube_api_key: Optional[str] = None
     elevenlabs_api_key: Optional[str] = None
-    leonardo_api_key: Optional[str] = None
-    runpod_api_key: Optional[str] = None
-    legnext_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
     reddit_client_id: Optional[str] = None
@@ -20,8 +17,7 @@ class Secrets(BaseSettings):
     # LLM settings
     ollama_base_url: str = "http://localhost:11434"
 
-    # Telegram bot tokens
-    telegram_image_story_bot_token: Optional[str] = None
+    # Telegram bot token
     telegram_satisfying_bot_token: Optional[str] = None
 
     # TikTok auto-publisher credentials. Non-secret tunables (model,

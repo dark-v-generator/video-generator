@@ -1,70 +1,11 @@
 import os
 import json
-import yaml
 import dspy
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
-from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
 from src.services.tiktok_caption import normalize_hashtags
-
-
-class TwoPartTikTokStorySignature(dspy.Signature):
-    """
-    You are an expert TikTok scriptwriter.
-    Take the provided original Reddit post (title and text) and transform it into a 2-part engaging TikTok story script.
-
-    Requirements:
-    1. Translate or adapt the story into the requested target_language, keeping a natural, conversational tone as if someone is telling the story out loud to a friend.
-    2. Write a title in the requested target_language that is the strongest hook of the whole video. It is shown on the cover image and read by the viewer — it is NOT narrated. Lead by concrete harm or injustice done to someone worth rooting for, with a clear antagonist or unfairness, imply a turn is coming without revealing the outcome, and keep a natural spoken voice.
-    3. Use natural, colloquial target_language. Prefer everyday words people actually use in casual speech.
-    4. Do NOT narrate the title or a "Part 1."/"Part 2." marker — they are shown on the cover image. Each part's narration begins directly in the story, opening on the conflict or the stakes in the first spoken words.
-    5. Part 1 must end before the climax. The climax belongs in Part 2. Part 1 is setup, Part 2 is payoff. Revenge, confrontations, and resolutions go in Part 2.
-    6. Part 1 must end on suspense, with a localized call to action equivalent to "like and follow me for part 2". For Portuguese (Brazil), use "Curta e me siga para a parte 2."
-    7. Part 2 must contain the climax, resolve the story, and end with a story-specific engagement question that invites the viewer to share their opinion, followed by a localized equivalent of "like, follow me, and leave it in the comments". For Portuguese (Brazil), use "Curta, me siga e deixe nos comentários".
-    8. ONLY provide the text for each section, do NOT include outside commentary, camera directions, or extra formatting.
-    8. Identify the narrator's gender from contextual clues in the post (e.g., "I (25F)", gender-specific terms).
-    10. STRONG WORDS POLICY — applies to ALL narrated text including the title. This script is spoken by
-       a TTS engine on TikTok where every word is audio-moderated. NEVER use: matar, morrer, morto,
-       morte, assassinar, suicídio, suicidou, atirar, esfaquear, sangue, sangrento, droga, drogas,
-       cocaína, maconha, viciado, transar, transou, sexo explícito, estuprar, estupro, abuso sexual,
-       arma de fogo, pistola / kill, murder, die, dead, suicide, shoot, stab, blood, drugs, cocaine,
-       weed, rape, sex (explicit), gun.
-       Use euphemisms: "dar um fim"/"fazer desaparecer"/"ir de arrasta" for killing; "descansou"/
-       "partiu dessa pra melhor"/"não está mais entre nós" for death; "tomou uma decisão definitiva"
-       for suicide; "ficou com"/"dormiu com"/"tiveram uma noite juntos" for sex; "forçou a situação"/
-       "fez algo horrível" for assault; "substâncias"/"coisas erradas" for drugs; "aquele objeto"/
-       "aconteceu o pior" for weapons. Keep intensity through tone, context, and metaphor — not
-       graphic words.
-    9. Reddit posts use specific conventions you MUST handle:
-       - Letter abbreviations for names (e.g., "B", "M", "J") must be replaced with realistic fake names.
-       - Interpret age/gender notation according to the source language. In English, "(28M)" means a 28-year-old male and "(22F)" means a 22-year-old female. In Portuguese, "H" means homem and "M" means mulher.
-       - Acronyms like "SO" (significant other), "MIL" (mother-in-law), "FIL" (father-in-law), "BIL" (brother-in-law), "SIL" (sister-in-law) should be replaced with natural language.
-       - Understand AITA-style judgments and translate/adapt them naturally: "AITA" means "Am I the asshole?", "NTA" means "Not the asshole", "YTA" means "You're the asshole", "ESH" means "Everyone sucks here", and "NAH" means "No assholes here". In Portuguese communities, handle terms like "EOB", "NEOB", "TEOB", "NGM", "sou o babaca" and "não é o babaca".
-       - "TL;DR" sections should be omitted from the script.
-       - "Edit:" sections should be omitted from the script.
-       - Recognize source-language acronyms and shorthand in English, Portuguese, Spanish, or any other language present in the post, then replace them with clear, natural target_language wording.
-    """
-
-    target_language = dspy.InputField(
-        desc="The language the final scripts should be translated to."
-    )
-    reddit_post_title = dspy.InputField(desc="The original title of the story.")
-    reddit_post_text = dspy.InputField(desc="The original content of the story.")
-
-    viral_title = dspy.OutputField(
-        desc="The strong hook shown on the COVER image (read by the viewer, NOT narrated). Leads by concrete harm/injustice with a clear victim and antagonist, without revealing the outcome. Natural and spoken in tone."
-    )
-    narrator_gender = dspy.OutputField(
-        desc="The narrator's gender inferred from the post. Must be exactly one of: 'male', 'female', or 'unknown'."
-    )
-    part1_script = dspy.OutputField(
-        desc="Part 1: begins directly in the story (NO title, NO 'Parte N.' marker), opening on the conflict/stakes, then the setup and context, ending before the climax with suspense and a localized call to action."
-    )
-    part2_script = dspy.OutputField(
-        desc="Part 2: continues directly in the story (NO title, NO 'Parte N.' marker), the climax and resolution, ending with a story-specific engagement question followed by a localized like/follow/comment call to action."
-    )
 
 
 class TikTokStorySignature(dspy.Signature):
@@ -178,56 +119,11 @@ class EnhanceTranscriptionSignature(dspy.Signature):
     )
 
 
-class GenerateImageStorySignature(dspy.Signature):
-    """
-    You are an expert at creating visual storyboards for narrated video content.
-
-    Given a narrated story text and its word-level transcription with timestamps,
-    produce a visual timeline for the video as a JSON object.
-
-    Rules:
-    1. introduction_end_time: the `end` timestamp of the last word before the story begins (e.g. end of "Parte 1.").
-    2. call_to_action_start_time: the `start` timestamp of the first CTA word (e.g. "Curta").
-    3. 10-15 images illustrating scenes. First at 0.0 (blurred during intro, mood background).
-       Second image a few sentences after introduction_end_time so the viewer sees image 1 unblurred.
-       Strictly increasing start_times, last before call_to_action_start_time.
-    4. Each image start_time should be the `end` timestamp of the last word of the sentence the
-       previous image illustrates. Use exact transcription values (e.g. 10.94), not rounded numbers.
-    5. Each image lasts roughly 4-8 seconds. Split longer scenes into multiple images with different
-       angles or moments.
-    6. Visual consistency: describe every character identically across prompts (age, hair, build,
-       clothing). Pick one art style and append it to every prompt.
-    7. All image prompts must be appropriate for a general audience. Use creative, indirect visuals:
-       romantic moments → dimly lit room, silhouettes, hands holding.
-       conflict → aftermath (broken object, shocked expression) or tension before.
-       emotional moments → facial expressions, body language, environment.
-       Suggest what happened through context and setting, not directly.
-    8. Return only a JSON object, no commentary.
-    """
-
-    story_text = dspy.InputField(desc="The full narrated story text.")
-    transcription = dspy.InputField(
-        desc="JSON string of word-level transcription: [{word, start, end}, ...]"
-    )
-    style_context = dspy.InputField(
-        desc="Optional style guide from a previous part describing characters and art style. "
-        "If provided, follow it strictly for visual consistency. Empty string if not available.",
-        default="",
-    )
-
-    image_story_json = dspy.OutputField(
-        desc='A JSON object string: {"introduction_end_time": <float>, "call_to_action_start_time": <float>, "images": [{"start_time": <float>, "description": "...", "prompt": "..."}, ...]}'
-    )
-
-
 class DSPyLLMProxy(ILLMProxy):
     def __init__(self, config: DSPyLLMConfig):
         self._logger = get_logger(__name__)
         self.config = config.provider_config
         self._configure_dspy()
-
-        # We use dspy.ChainOfThought or just Predict for the 2-part story.
-        self._story_generator = None
 
         # Transcription enhancer
         self._enhancer = None
@@ -280,65 +176,6 @@ class DSPyLLMProxy(ILLMProxy):
         self._enhancer = enhancer
         return self._enhancer
 
-    def _get_story_generator(self):
-        if self._story_generator is not None:
-            return self._story_generator
-
-        generator = dspy.Predict(TwoPartTikTokStorySignature)
-
-        # Load few-shot examples from YAML
-        examples = []
-        try:
-            yaml_path = os.path.join(
-                os.path.dirname(__file__), "examples", "two_part_story.yaml"
-            )
-            if os.path.exists(yaml_path):
-                with open(yaml_path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f)
-                    if data:
-                        for entry in data:
-                            post = entry.get("original_post", {})
-                            part1_text = entry.get("part1", "")
-                            # The cover hook is the explicit `title` field; it is not
-                            # embedded in the narration anymore.
-                            viral_title = entry.get("title") or post.get("title", "")
-                            examples.append(
-                                dspy.Example(
-                                    target_language="Portuguese",
-                                    reddit_post_title=post.get("title", ""),
-                                    reddit_post_text=post.get("text", ""),
-                                    viral_title=viral_title,
-                                    narrator_gender=entry.get(
-                                        "narrator_gender", "unknown"
-                                    ),
-                                    part1_script=part1_text,
-                                    part2_script=entry.get("part2", ""),
-                                ).with_inputs(
-                                    "target_language",
-                                    "reddit_post_title",
-                                    "reddit_post_text",
-                                )
-                            )
-
-                if examples:
-                    # Optimize or just attach as few-shot demos for Predict/ChainOfThought
-                    # The easiest way to inject examples in a raw dspy.Predict is to assign them directly.
-                    # For production we would use BootstrapFewShot
-                    self._logger.info(
-                        f"Loaded {len(examples)} examples from YAML for TikTok generation."
-                    )
-                    teleprompter = dspy.teleprompt.LabeledFewShot(k=len(examples))
-                    # LabeledFewShot doesn't require compiling with a metric if we just want to inject exact examples
-                    # We wrap the module to include them.
-                    generator = teleprompter.compile(
-                        student=generator, trainset=examples
-                    )
-        except Exception as e:
-            self._logger.error(f"Failed to load dspy_examples.yaml: {e}")
-
-        self._story_generator = generator
-        return self._story_generator
-
     def _configure_dspy(self):
         provider = self.config.provider
         model_name = self.config.model
@@ -374,32 +211,6 @@ class DSPyLLMProxy(ILLMProxy):
             raise ValueError(f"Unknown DSPy language model provider: {provider}")
 
         dspy.settings.configure(lm=lm)
-
-    async def generate_two_part_story(
-        self, title: str, content: str, target_language: Language
-    ) -> dict:
-        self._logger.info(
-            f"Generating 2-part TikTok story via DSPy {self.config.provider}/{self.config.model}"
-        )
-
-        generator = self._get_story_generator()
-
-        result = generator(
-            target_language=get_language_name(target_language),
-            reddit_post_title=title,
-            reddit_post_text=content,
-        )
-
-        raw_gender = result.narrator_gender.strip().lower()
-        if raw_gender not in ("male", "female"):
-            raw_gender = "unknown"
-
-        return {
-            "title": result.viral_title,
-            "narrator_gender": raw_gender,
-            "part1": result.part1_script,
-            "part2": result.part2_script,
-        }
 
     async def generate_story(
         self, title: str, content: str, target_language: Language
@@ -507,24 +318,6 @@ class DSPyLLMProxy(ILLMProxy):
             self._logger.warning("Failed to parse hashtag JSON from DSPy")
             return normalize_hashtags([])
 
-    async def revise_story(
-        self, current_script: dict, feedback: str, target_language: Language
-    ) -> dict:
-        self._logger.info(
-            f"Revising story via DSPy {self.config.provider}/{self.config.model} "
-            "(falling back to generate_two_part_story with feedback in content)"
-        )
-        combined_content = (
-            f"ORIGINAL SCRIPT:\n{json.dumps(current_script, ensure_ascii=False, indent=2)}\n\n"
-            f"USER FEEDBACK:\n{feedback}\n\n"
-            "Rewrite the script incorporating the feedback above."
-        )
-        return await self.generate_two_part_story(
-            title=current_script.get("title", ""),
-            content=combined_content,
-            target_language=target_language,
-        )
-
     async def enhance_transcription(
         self, base_text: str, raw_transcription: list[dict]
     ) -> list[dict]:
@@ -542,53 +335,6 @@ class DSPyLLMProxy(ILLMProxy):
 
         response_text = result.enhanced_transcription
         return self._parse_json_text(response_text)
-
-    async def generate_characters(
-        self, title: str, part1: str, part2: str, target_language: Language
-    ) -> list[dict]:
-        self._logger.info(
-            f"Generating characters via DSPy {self.config.provider}/{self.config.model}"
-        )
-        combined = f"Title: {title}\n\nPart 1:\n{part1}\n\nPart 2:\n{part2}"
-        result = await self.generate_two_part_story(
-            title=title,
-            content=f"Extract characters from this story:\n{combined}",
-            target_language=target_language,
-        )
-        return [
-            {
-                "name": "Narrator",
-                "description": "Main character",
-                "visual_prompt": "A person",
-            }
-        ]
-
-    async def generate_image_story(
-        self,
-        story_text: str,
-        transcription: list[dict],
-        style_context: str | None = None,
-        characters: list[dict] | None = None,
-        introduction_end_time: float = 0.0,
-        call_to_action_start_time: float = 0.0,
-    ) -> ImageStory:
-        self._logger.info(
-            f"Generating image story via DSPy {self.config.provider}/{self.config.model}"
-        )
-
-        generator = dspy.Predict(GenerateImageStorySignature)
-        result = generator(
-            story_text=story_text,
-            transcription=json.dumps(transcription, ensure_ascii=False),
-            style_context=style_context or "",
-        )
-
-        data = self._parse_json_text(result.image_story_json)
-        if isinstance(data, list):
-            data = {"images": data}
-        data["introduction_end_time"] = introduction_end_time
-        data["call_to_action_start_time"] = call_to_action_start_time
-        return ImageStory(**data)
 
     @staticmethod
     def _parse_json_text(text: str):

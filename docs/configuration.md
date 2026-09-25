@@ -14,7 +14,6 @@ Any key omitted from `config.yaml` will use the default value defined in the Pyd
 ```yaml
 proxies:
   transcription_config: { ... }
-  image_generation_config: { ... }
   speech_config: { ... }
   reddit_config: { ... }
   llm_config: { ... }
@@ -26,7 +25,6 @@ services:
   captions_config: { ... }
 
 bots:
-  image_story_bot: { ... }
   satisfying_bot: { ... }
 ```
 
@@ -98,23 +96,6 @@ transcription_config:
 |---|---|---|---|
 | Local Whisper | `local` | No | Runs locally. Models: `tiny`, `base`, `small`, `medium`, `large` |
 | OpenAI Whisper | `openai` | Yes (`openai_api_key`) | Cloud API, model: `whisper-1` |
-
----
-
-### Image Generation (`image_generation_config`)
-
-Generates images for the video pipeline.
-
-```yaml
-image_generation_config:
-  type: local          # or "leonardo"
-  model_id: stabilityai/sdxl-turbo
-```
-
-| Provider | `type` value | Requires API Key | Notes |
-|---|---|---|---|
-| Local SDXL | `local` | No | HuggingFace model, runs on your GPU |
-| Leonardo AI | `leonardo` | Yes (`leonardo_api_key`) | Cloud API |
 
 ---
 
@@ -272,32 +253,19 @@ captions_config:
 
 ## Bots
 
-### Prepared stories (`bots.satisfying_bot.prepared_stories`)
+### Daily run (`bots.satisfying_bot`)
 
-Stories written on the laptop (see `scripts/prepare_story.py` and the
-`/prepare-story` skill) travel to the server as JSON packages. This block says
-where they are sent and where the server looks for them.
-
-```yaml
-bots:
-  satisfying_bot:
-    prepared_stories:
-      remote: gustavo@192.168.1.100:~/video-generator/.storage/prepared
-      inbox_dir: .storage/prepared
-      fill_with_discovery: true
-```
+The Telegram bot and `scripts/daily_auto_publish.py` both read this block.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `remote` | `str` | `gustavo@192.168.1.100:~/video-generator/.storage/prepared` | SSH destination (`user@host:dir`) used by `just story-ship` and `just story-queue`; the CLI creates `<dir>/inbox` itself |
-| `inbox_dir` | `str` | `.storage/prepared` | Queue root on the server, holding `inbox/`, `done/` and `failed/` |
-| `fill_with_discovery` | `bool` | `true` | When the queue holds fewer packages than the daily count, complete the run with automatic discovery. `false` publishes only what the operator prepared |
-
-Override `remote` per run with `--remote` — useful for testing the hand-off
-against your own machine (`--remote "$USER@localhost:$PWD/.storage/prepared"`).
-
-The operator-facing walkthrough of the whole flow is in
-[prepared-stories.md](./prepared-stories.md).
+| `allowed_user_ids` | `list[int]` | `[]` | Telegram users allowed to talk to the bot; the first one receives the daily run's messages |
+| `low_quality` | `bool` | `false` | Render at preview resolution |
+| `daily_hour_utc` / `daily_minute_utc` | `int` | `17` / `0` | When the bot starts the daily run |
+| `daily_auto_publish_count` | `int` | `4` | Stories to produce and schedule per run |
+| `publish_slots_local` | `list[str]` | `["12:00", "18:00", "19:00", "20:00"]` | Local-time TikTok slots (`HH:MM`) |
+| `publish_min_lead_minutes` | `int` | `30` | Minimum lead time for a slot to be eligible |
+| `publish_hashtags` | `list[str]` | `[]` | Hashtags added to every scheduled video |
 
 ---
 
@@ -309,7 +277,6 @@ API keys and sensitive configuration live in a `.env` file at the project root.
 OPENAI_API_KEY=sk-...
 YOUTUBE_API_KEY=AIza...
 ELEVENLABS_API_KEY=...
-LEONARDO_API_KEY=...
 OLLAMA_BASE_URL=http://localhost:11434
 ```
 
@@ -318,7 +285,6 @@ OLLAMA_BASE_URL=http://localhost:11434
 | `OPENAI_API_KEY` | OpenAI transcription / LLM | — |
 | `YOUTUBE_API_KEY` | YouTube API access | — |
 | `ELEVENLABS_API_KEY` | ElevenLabs speech | — |
-| `LEONARDO_API_KEY` | Leonardo AI image generation | — |
 | `OLLAMA_BASE_URL` | Ollama LLM provider | `http://localhost:11434` |
 | `YOUTUBE_PO_TOKEN` | Background downloads rejected by YouTube's bot detection — see [po-token.md](./po-token.md) | — |
 | `YOUTUBE_VISITOR_DATA` | Set together with `YOUTUBE_PO_TOKEN`; YouTube only accepts the token alongside the visitor id it was issued for | — |

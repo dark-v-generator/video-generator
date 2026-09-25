@@ -3,23 +3,6 @@ from pydantic import Field
 from src.entities.base_yaml_model import BaseYAMLModel
 
 
-class PreparedStoriesConfig(BaseYAMLModel):
-    """Where stories prepared on the laptop are sent and where the server reads them."""
-
-    remote: str = Field(
-        "gustavo@192.168.1.100:~/video-generator/.storage/prepared",
-        title="SSH destination (user@host:dir) used by `prepare_story.py ship/queue`",
-    )
-    inbox_dir: str = Field(
-        ".storage/prepared",
-        title="Queue root on the server; holds inbox/, done/ and failed/",
-    )
-    fill_with_discovery: bool = Field(
-        True,
-        title="Complete the daily count with automatic discovery when the queue is short",
-    )
-
-
 class TelegramBotConfig(BaseYAMLModel):
     allowed_user_ids: List[int] = Field(default_factory=list)
     low_quality: bool = False
@@ -42,12 +25,7 @@ class TelegramBotConfig(BaseYAMLModel):
         default_factory=list,
         title="Default hashtags appended to every auto-published video",
     )
-    prepared_stories: PreparedStoriesConfig = Field(
-        default_factory=PreparedStoriesConfig,
-        title="Hand-off of locally prepared stories",
-    )
 
 
 class BotsConfig(BaseYAMLModel):
-    image_story_bot: TelegramBotConfig = Field(default_factory=TelegramBotConfig)
     satisfying_bot: TelegramBotConfig = Field(default_factory=TelegramBotConfig)

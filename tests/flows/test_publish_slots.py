@@ -9,9 +9,7 @@ from bots import satisfying_bot
 from bots.satisfying_bot import compute_publish_slots, next_publish_slot
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import EvaluatedStory
-from src.services.prepared_story_queue import PreparedStoryQueue
 from src.services.reddit_video_service import PreparedStory
-from src.services.text_censor import TextCensor
 
 SLOTS = ["12:00", "18:00", "19:00", "20:00"]
 
@@ -221,10 +219,9 @@ class TestDailyAutoPublishPipeline:
                 return "scheduled"
 
         class FakeContainer:
-            def __init__(self, service, llm, queue):
+            def __init__(self, service, llm):
                 self._service = service
                 self._llm = llm
-                self._queue = queue
 
             def wire(self, modules):
                 return None
@@ -234,12 +231,6 @@ class TestDailyAutoPublishPipeline:
 
             def llm_proxy(self):
                 return self._llm
-
-            def prepared_story_queue(self):
-                return self._queue
-
-            def text_censor(self):
-                return TextCensor()
 
         service = FakeService()
         publisher = FakePublisher()
@@ -261,7 +252,7 @@ class TestDailyAutoPublishPipeline:
         monkeypatch.setattr(
             satisfying_bot,
             "container",
-            FakeContainer(service, FakeLLM(), PreparedStoryQueue(str(tmp_path / "q"))),
+            FakeContainer(service, FakeLLM()),
         )
         monkeypatch.setattr(
             satisfying_bot,

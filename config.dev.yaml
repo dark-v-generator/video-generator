@@ -2,8 +2,6 @@ language: pt-br
 proxies:
   cover_config:
     title_font_size: 150
-  image_generation_config:
-    type: mock
   llm_config:
     type: mock
   history_adaptation_llm_config:
@@ -43,9 +41,6 @@ services:
       hue_shift_degrees: 8.0
       speed_delta: 0.02
 bots:
-  image_story_bot:
-    allowed_user_ids: [627370641]
-    low_quality: false
   satisfying_bot:
     allowed_user_ids: [627370641]
     low_quality: false
