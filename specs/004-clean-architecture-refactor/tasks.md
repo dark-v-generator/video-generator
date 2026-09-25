@@ -146,15 +146,15 @@ são duas implementações do mesmo contrato, escolhidas por configuração.
 - `footage_source: local` com dois `.mp4` numa pasta e `just daily-generate 1` produz o vídeo sem menção a YouTube no log.
 - Golden verde.
 
-- [ ] T026 [US5] Criar `src/capabilities/footage/__init__.py`, `src/capabilities/footage/contract.py` (`Footage`, `FootageShortfallError(needed, got)`, `FootageSource` Protocol) e `src/capabilities/footage/youtube.py` (`YouTubeFootageSource(youtube, video_config)` com `create_youtube_video_compilation`, `_finish_without_network`, `_list_youtube_compilation_video_ids`, `_list_channel_video_ids`, `_youtube_channel_urls` movidos de `src/services/video_service.py`; a `Exception` genérica de pool esgotado vira `FootageShortfallError`)
-- [ ] T027 [P] [US5] Criar `src/capabilities/footage/local_folder.py` (`LocalFolderFootageSource(directory, video_config)`: lista `.mp4`, embaralha, concatena com `apply_anti_fingerprint` até `min_duration`, `FootageShortfallError` com o déficit)
-- [ ] T028 [US5] Integrar: `footage_source: Literal["youtube","local"] = "youtube"` e `local_footage_dir: Optional[str]` em `src/entities/configs/services/video.py`; provider `footage_source` em `src/core/container.py` (fábrica que escolhe por config e estoura `ValueError` nomeando `local_footage_dir` quando falta); `src/services/video_service.py` fica só com `generate_video` e constantes; `RedditVideoService._render_video_to_bytes` recebe `footage_source` e chama `compile(min_duration=speech.clip.duration, low_quality=...)`; blocos comentados com os defaults em `config.yaml`, `config.dev.yaml`, `config.prod.yaml`
-- [ ] T029 [P] [US5] Mover `tests/services/test_video_service.py` (parte de compilação) e `tests/services/test_compilation_rate_limit.py` para `tests/capabilities/test_footage_youtube.py`; criar `tests/capabilities/test_footage_local.py` (clipes falsos via monkeypatch de `VideoClip`, cobertura e déficit) e um teste em `tests/test_container_config.py` para `local` sem diretório; atualizar `tests/fakes/video.py` com um `FakeFootageSource`
-- [ ] T030 [US5] Gate M4: `specs/004-clean-architecture-refactor/quickstart.md` §4; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
+- [X] T026 [US5] Criar `src/capabilities/footage/__init__.py`, `src/capabilities/footage/contract.py` (`Footage`, `FootageShortfallError(needed, got)`, `FootageSource` Protocol) e `src/capabilities/footage/youtube.py` (`YouTubeFootageSource(youtube, video_config)` com `create_youtube_video_compilation`, `_finish_without_network`, `_list_youtube_compilation_video_ids`, `_list_channel_video_ids`, `_youtube_channel_urls` movidos de `src/services/video_service.py`; a `Exception` genérica de pool esgotado vira `FootageShortfallError`)
+- [X] T027 [P] [US5] Criar `src/capabilities/footage/local_folder.py` (`LocalFolderFootageSource(directory, video_config)`: lista `.mp4`, embaralha, concatena com `apply_anti_fingerprint` até `min_duration`, `FootageShortfallError` com o déficit)
+- [X] T028 [US5] Integrar: `footage_source: Literal["youtube","local"] = "youtube"` e `local_footage_dir: Optional[str]` em `src/entities/configs/services/video.py`; provider `footage_source` em `src/core/container.py` (fábrica que escolhe por config e estoura `ValueError` nomeando `local_footage_dir` quando falta); `src/services/video_service.py` fica só com `generate_video` e constantes; `RedditVideoService._render_video_to_bytes` recebe `footage_source` e chama `compile(min_duration=speech.clip.duration, low_quality=...)`; blocos comentados com os defaults em `config.yaml`, `config.dev.yaml`, `config.prod.yaml`
+- [X] T029 [P] [US5] Mover `tests/services/test_video_service.py` (parte de compilação) e `tests/services/test_compilation_rate_limit.py` para `tests/capabilities/test_footage_youtube.py`; criar `tests/capabilities/test_footage_local.py` (clipes falsos via monkeypatch de `VideoClip`, cobertura e déficit) e um teste em `tests/test_container_config.py` para `local` sem diretório; atualizar `tests/fakes/video.py` com um `FakeFootageSource`
+- [X] T030 [US5] Gate M4: `specs/004-clean-architecture-refactor/quickstart.md` §4; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
 
 **Live verification (milestone gate)**: quickstart §4.
 
-**Checkpoint**: Milestone 4 DONE
+**Checkpoint**: Milestone 4 DONE ✅ (2026-09-25)
 
 ---
 
@@ -390,6 +390,43 @@ funcionando.
     lista e continua no `reddit_proxy`.
   - `docs/architecture.md` ainda cita `story_finder_service.py`; a reescrita é do M7
     (T051).
-- Gates (T030, T038, T050, T055): a preencher com data, comando e resultado.
+- Gate M4 (T030, 2026-09-25):
+  - `uv run pytest tests/capabilities/test_footage_youtube.py
+    tests/capabilities/test_footage_local.py tests/test_container_config.py
+    tests/flows/test_daily_run_golden.py -q` → **24 passed** (os 12 testes movidos
+    de `test_video_service.py` e `test_compilation_rate_limit.py`, mais o pool
+    esgotado → `FootageShortfallError(100, 45)`, 7 da pasta local, 3 do container,
+    o golden); `uv run pytest -q` → **246 passed**. `black --check` limpo.
+  - Golden: passa com o fixture do M1 intacto; o container agora recebe um
+    `FakeFootageSource` e o `FakeVideoService` só compõe.
+  - `footage_source: local` (`config.dev.yaml` com `local_footage_dir` apontando para
+    uma pasta com os 7 `*-lq.mp4` do cache; os dois maiores somam ~119 s, menos que a narração do
+    dev, 192 s no gate do M1) e `daily_auto_publish.py --generate-only --count 1` com proxies reais
+    (Reddit JSON, LLM mock, edge-tts, whisper, Playwright) e a
+    `LocalFolderFootageSource` real abrindo os arquivos; só o `VideoService` trocado
+    pelo `FakeVideoService` (regra de não renderizar no laptop): 133 s, exit 0,
+    `Compiled 233.8s of local footage from 6 clip(s)`, `grep -ci "pytube\|youtube"`
+    no log → **0**. Manifest `story_01.json` com `source: auto`, sem `part`.
+  - `footage_source: local` sem `local_footage_dir`: `daily_auto_publish.py` e
+    `import bots.satisfying_bot` saem com `ValidationError: ...
+    services.video_config.local_footage_dir is required when footage_source is
+    'local'` em 8 s, antes de qualquer rede.
+  - Decisões: (1) a checagem de `local_footage_dir` ficou num `model_validator` do
+    `VideoConfig`, não no provider como o T028 dizia: assim o bot recusa o config no
+    boot em vez de na primeira renderização, horas depois; o provider virou um
+    `providers.Selector` que só constrói a fonte escolhida. (2) `Footage` ganhou
+    `sources` (ids ou nomes de arquivo) no lugar do `downloaded_bytes` do
+    `YouTubeCompilationResult`: ninguém lia os bytes, que seguravam cada vídeo baixado
+    em memória até o fim da renderização. As duas asserções sobre
+    `downloaded_bytes` passaram a comparar `sources` com os mesmos ids. (3)
+    `create_youtube_video_compilation` virou `compile` (o contrato). (4) Na pasta
+    local, um `.mp4` sem duração estoura nomeando o arquivo (a pasta é curada pelo
+    operador); no YouTube continua pulado. (5) `VideoService` perdeu o
+    `youtube_proxy` e as constantes mortas do image story (`KEN_BURNS_*`, `BRUSH_*`).
+  - **Pendente**: o render real com `footage_source: local` (moviepy sobre os clipes
+    locais) não foi exercitado no laptop; o caminho `youtube` padrão continua o
+    mesmo código, movido, e fica para o servidor (`just deploy` +
+    `just prod-daily-generate 1`).
+- Gates (T038, T050, T055): a preencher com data, comando e resultado.
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.

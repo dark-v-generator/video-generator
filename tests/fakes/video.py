@@ -1,9 +1,10 @@
-"""Fake video service: records what would be composed and writes fixed bytes."""
+"""Fake footage and composer: record what was asked for and write fixed bytes."""
 
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import List, Optional
 
+from src.capabilities.footage import Footage
 from src.entities.configs.services.video import VideoConfig
 
 FAKE_VIDEO_BYTES = b"fake-mp4"
@@ -27,19 +28,23 @@ class Composition:
 
 
 @dataclass
+class FakeFootageSource:
+    """A ``FootageSource`` that hands back an empty clip: no download, no decode."""
+
+    compilations: List[float] = field(default_factory=list)
+
+    async def compile(self, *, min_duration: float, low_quality: bool = False):
+        self.compilations.append(min_duration)
+        return Footage(clip=SimpleNamespace(), sources=["fake"])
+
+
+@dataclass
 class FakeVideoService:
-    """Stands in for ``VideoService``: no footage download, no moviepy render."""
+    """Stands in for ``VideoService``: no moviepy render."""
 
     _video_config: VideoConfig = field(default_factory=VideoConfig)
     payload: bytes = FAKE_VIDEO_BYTES
-    compilations: List[float] = field(default_factory=list)
     compositions: List[Composition] = field(default_factory=list)
-
-    async def create_youtube_video_compilation(
-        self, min_duration: float, low_quality: bool = False
-    ):
-        self.compilations.append(min_duration)
-        return SimpleNamespace(clip=SimpleNamespace(), downloaded_bytes=[])
 
     def generate_video(
         self,

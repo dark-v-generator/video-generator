@@ -4,6 +4,7 @@ from dependency_injector import containers, providers
 from .secrets import secrets
 
 from ..capabilities.discovery import RedditStoryDiscovery
+from ..capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
 from ..prompts import loader as prompts
@@ -88,6 +89,21 @@ class ApplicationContainer(containers.DeclarativeContainer):
         llm=llm_proxy,
         evaluation=main_config.provided.evaluation,
     )
+    # Only the selected source is built: a local run never constructs the
+    # YouTube proxy. VideoConfig already refuses "local" without a directory.
+    footage_source = providers.Selector(
+        main_config.provided.services.video_config.footage_source,
+        youtube=providers.Singleton(
+            YouTubeFootageSource,
+            youtube=youtube_proxy,
+            video_config=main_config.provided.services.video_config,
+        ),
+        local=providers.Singleton(
+            LocalFolderFootageSource,
+            directory=main_config.provided.services.video_config.local_footage_dir,
+            video_config=main_config.provided.services.video_config,
+        ),
+    )
     story_writer = providers.Singleton(
         ModelStoryWriter,
         llm=providers.Callable(
@@ -120,7 +136,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     video_service = providers.Singleton(
         VideoService,
-        youtube_proxy=youtube_proxy,
         video_config=main_config.provided.services.video_config,
     )
 
@@ -130,6 +145,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         captions_service=captions_service,
         cover_service=cover_service,
         video_service=video_service,
+        footage_source=footage_source,
         text_censor=text_censor,
     )
 

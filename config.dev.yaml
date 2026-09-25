@@ -18,6 +18,11 @@ services:
   captions_config:
     font_path: default_font.ttf
   video_config:
+    # Where the background footage comes from. "youtube" downloads from the
+    # channels below through the cache; "local" concatenates the .mp4 files of
+    # local_footage_dir and never touches the network.
+    # footage_source: youtube
+    # local_footage_dir: assets/backgrounds
     call_to_action_path: assets/call_to_action.png
     # Cover holds the screen alone; the story waits for it (adds to duration).
     cover_duration: 0.5

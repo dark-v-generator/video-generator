@@ -6,6 +6,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
+from ..capabilities.footage import FootageSource
 from ..entities.captions import Captions
 from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
@@ -44,7 +45,7 @@ class SingleVideoResult:
 
 
 class RedditVideoService:
-    """Generates single Reddit-story videos over a YouTube background compilation."""
+    """Generates single Reddit-story videos over footage from a ``FootageSource``."""
 
     def __init__(
         self,
@@ -52,12 +53,14 @@ class RedditVideoService:
         captions_service: CaptionsService,
         cover_service: CoverService,
         video_service: VideoService,
+        footage_source: FootageSource,
         text_censor: Optional[TextCensor] = None,
     ) -> None:
         self._speech_service = speech_service
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
+        self._footage_source = footage_source
         self._text_censor = text_censor or TextCensor()
 
     # ------------------------------------------------------------------
@@ -191,20 +194,14 @@ class RedditVideoService:
     ) -> bytes:
         """Compile a single video and return it as bytes."""
 
-        # Download YouTube compilation background
-        compilation_result = await self._video_service.create_youtube_video_compilation(
+        footage = await self._footage_source.compile(
             min_duration=speech.clip.duration,
             low_quality=low_quality,
         )
-        background_video = compilation_result.clip
 
-        if background_video is None:
-            raise RuntimeError("Failed to create background video compilation.")
-
-        # Compose
         final_video = self._video_service.generate_video(
             audio=speech,
-            background_video=background_video,
+            background_video=footage.clip,
             low_quality=low_quality,
             cover=cover,
             captions=captions_clip_obj,

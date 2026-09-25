@@ -35,7 +35,7 @@ from tests.fakes.proxies import (
     FakeTranscriptionProxy,
 )
 from tests.fakes.publisher import FakePublisher
-from tests.fakes.video import FakeVideoService
+from tests.fakes.video import FakeFootageSource, FakeVideoService
 
 GOLDEN_PATH = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "fixtures", "daily_run_golden.json"
@@ -154,6 +154,7 @@ class _Run:
             providers.Object(FakeTranscriptionProxy())
         )
         container.cover_proxy.override(providers.Object(FakeCoverProxy()))
+        container.footage_source.override(providers.Object(FakeFootageSource()))
         container.video_service.override(providers.Object(FakeVideoService()))
 
         async def no_sleep(delay):

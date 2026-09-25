@@ -76,6 +76,7 @@ Templates: `story.jinja2`, `evaluate_story.jinja2`, `generate_hashtags.jinja2`,
 @dataclass
 class Footage:
     clip: VideoClip            # src/entities/editor/video_clip.py, já com anti-fingerprint
+    sources: list[str]         # ids do YouTube / nomes de arquivo, na ordem usada
 
 class FootageShortfallError(Exception):
     needed: float; got: float
@@ -92,7 +93,12 @@ class FootageSource(Protocol):
   nem o cache cobre (comportamento atual).
 - `LocalFolderFootageSource(directory: str, video: VideoConfig)`: `.mp4` do
   diretório em ordem aleatória, concatenados até `min_duration`, com o mesmo
-  anti-fingerprint; `FootageShortfallError` com o déficit.
+  anti-fingerprint; `FootageShortfallError` com o déficit. Pasta inexistente
+  estoura na construção; um `.mp4` sem duração estoura nomeando o arquivo.
+- `footage_source: local` sem `local_footage_dir` é recusado pelo `VideoConfig`
+  ao carregar o YAML, nomeando a chave; o container só constrói a fonte
+  escolhida (`providers.Selector`), então uma rodada local nunca cria o proxy
+  do YouTube.
 
 ## Renderização — `src/capabilities/rendering/contract.py` (M5)
 

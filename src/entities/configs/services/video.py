@@ -1,5 +1,5 @@
 from typing import List, Literal, Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 from src.entities.base_yaml_model import BaseYAMLModel
 
 
@@ -85,6 +85,17 @@ class VideoConfig(BaseYAMLModel):
             "render time."
         ),
     )
+    footage_source: Literal["youtube", "local"] = Field(
+        "youtube",
+        title=(
+            "Where the background footage comes from: youtube downloads from the "
+            "configured channels through the cache; local concatenates the .mp4 "
+            "files of local_footage_dir and never touches the network."
+        ),
+    )
+    local_footage_dir: Optional[str] = Field(
+        None, title="Directory of .mp4 backgrounds; required with footage_source: local"
+    )
     youtube_channel_url: str = Field(
         "https://www.youtube.com/@FoodieBoyKR",
         title="Fallback YouTube channel url",
@@ -113,3 +124,12 @@ class VideoConfig(BaseYAMLModel):
         default_factory=AntiFingerprintConfig,
         title="Subtle randomized transforms to evade content-fingerprint detection",
     )
+
+    @model_validator(mode="after")
+    def _local_footage_needs_a_directory(self) -> "VideoConfig":
+        if self.footage_source == "local" and not self.local_footage_dir:
+            raise ValueError(
+                "services.video_config.local_footage_dir is required when "
+                "footage_source is 'local'"
+            )
+        return self
