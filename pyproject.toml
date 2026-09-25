@@ -24,72 +24,49 @@ classifiers = [
 ]
 
 dependencies = [
-    # Core Application Dependencies
-    "fastapi==0.115.6",
-    "uvicorn==0.32.1",
+    # Core
     "pydantic>=2.10.6",
     "pydantic-settings==2.7.0",
     "dependency-injector==4.42.0",
-    # AI/ML Services
+    "PyYAML==6.0.2",
+    "typing_extensions==4.15.0",
+    # Language models (writing, grading, hashtags, caption correction)
     "openai>=1.99.2,<2.0.0",
-    "anthropic>=0.58.2,<1.0.0",
-    "ollama>=0.5.1",
+    "litellm>=1.60.0",
+    "dspy-ai>=2.6.27",
+    # litellm's logging path imports its proxy types, which need these
+    "orjson>=3.11.8",
+    "email-validator>=2.3.0",
+    # Speech and transcription
+    "edge-tts>=7.2.7",
     "openai-whisper==20250625",
-    # Speech Services
-    "azure-cognitiveservices-speech==1.42.0",
-    "elevenlabs==0.2.0",
-    "coqui-tts==0.27.0",
-    # Media Processing
+    "torch==2.8.0",
+    # Video
     "moviepy==2.1.2",
     "numpy==2.1.3",
-    "torch==2.8.0",
-    "pydub==0.25.1",
-    # Web Scraping & APIs
+    "proglog==0.1.10",
+    # Reddit, YouTube and cover
     "requests>=2.32.5",
     "aiohttp>=3.12.13",
     "beautifulsoup4==4.12.3",
-    "google-api-python-client>=2.174.0",
     "pytubefix==10.11.0",
-    # Utilities
-    "PyYAML==6.0.2",
     "Unidecode==1.4.0",
-    "proglog==0.1.10",
     "playwright>=1.49.1",
-    # Development
-    "typing_extensions==4.15.0",
-    "python-multipart==0.0.20",
-    "fish-audio-sdk>=2025.6.3",
-    "diffusers>=0.37.0",
-    "transformers>=4.56.0",
-    "accelerate>=1.13.0",
-    "torchvision>=0.23.0",
-    "torchaudio>=2.8.0",
-    "edge-tts>=7.2.7",
-    "litellm>=1.60.0",
-    "dspy-ai>=2.6.27",
+    # Telegram bot
     "python-telegram-bot[job-queue]>=22.0",
+    # TikTok publisher
     "browser-use>=0.7.0,<0.7.2",
     "patchright>=1.59.1",
     "playwright-stealth>=2.0.3",
-    "orjson>=3.11.8",
-    "email-validator>=2.3.0",
 ]
 
-[project.optional-dependencies]
-test = [
-    "pytest==8.4.1",
-    "pytest-asyncio==1.1.0",
-    "pytest-mock==3.14.1",
-    "pytest-cov==6.2.1",
-]
-
+# `uv sync` installs this group; the server's `uv sync --no-dev` leaves it out.
+[dependency-groups]
 dev = [
-    # Include test dependencies
     "pytest==8.4.1",
     "pytest-asyncio==1.1.0",
     "pytest-mock==3.14.1",
     "pytest-cov==6.2.1",
-    # Add any other dev tools here
     "black==26.5.1",
 ]
 
@@ -97,9 +74,6 @@ dev = [
 Homepage = "https://github.com/gustavomarques/video-generator"
 Repository = "https://github.com/gustavomarques/video-generator"
 Issues = "https://github.com/gustavomarques/video-generator/issues"
-
-[project.scripts]
-video-generator = "main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

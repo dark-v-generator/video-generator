@@ -439,6 +439,57 @@ parte da capacidade que o usa. `src/proxies/` continua sendo a borda de I/O e n�
 de contrato, exceto pelo enxugamento de `ILLMProxy`. Prompts sobem para `src/prompts/`
 porque são conteúdo editável, não detalhe do proxy.
 
+## Verificação pós-implementação
+
+Registrada no fim do M7 (2026-09-25), sobre `main` + o PR do M7. Evidência de cada
+milestone em [tasks.md](./tasks.md#notes).
+
+| SC | Resultado | Evidência |
+|----|-----------|-----------|
+| SC-001 | ✅ | `tests/flows/test_daily_run_golden.py` roda os três modos pelo `DailyRun` do container e passa com o fixture gravado no M1 (`git diff main -- tests/fixtures/` vazio). O mesmo fixture passou no código de antes num worktree de `main` (M1) |
+| SC-002 | ✅ | `uv run pytest -q` → 287 passed, sem rede e sem modelo; `tests/flows` inteiro roda com fakes |
+| SC-003 | ✅ | M2: uma palavra editada em `src/prompts/story.jinja2` apareceu no prompt logado, sem código; template quebrado estoura no boot nomeando `story.jinja2` |
+| SC-004 | ✅ | `test_rendering.py::test_three_parts` (capas com ` - Parte N`) e `test_daily_run.py::test_three_part_story_schedules_consecutive_slots` (3 slots consecutivos, 1 na meta); `test_three_part_render_failure_publishes_nothing` |
+| SC-005 | ✅ | Os commits do M4 (`b13388c`) e do M5 (`5031d44`) não tocam `src/capabilities/{discovery,writing}`, `src/storage` nem `src/flows`; registrar uma estratégia ou fonte nova está descrito em `docs/architecture.md` e mexe só no container, no `VideoConfig` e na própria capacidade |
+| SC-006 | ✅ | `test_memory_and_file_stores_record_the_same_run`: `InMemoryRunStore` e `FileRunStore` produzem as mesmas mensagens, manifests e linhas de log |
+| SC-007 | ✅ | `import src.capabilities.discovery` em ~1 s de processo (0,25 s no M3), sem `moviepy`/`whisper`/`torch`/`playwright`; `tests/capabilities/test_import_isolation.py` |
+| SC-008 | ✅ | `scripts/render_story.py` com 60 linhas, só `container.renderer()` e o loader de `Story`; rodado no M5 sobre uma pasta local (composer falso no laptop) |
+| SC-009 | ✅ | `wc -l src/flows/daily_run.py` → 297; sem `telegram`, `argparse`, `os.path`, `open(` (`tests/flows/test_daily_run_shape.py`); `src/flows` não importa `src.proxies` |
+| SC-010 | ✅ | Suíte verde em todos os PRs (201 → 232 → 235 → 246 → 257 → 287); os testes apagados no M1 eram só das features removidas: a lista está em T002–T004 de `tasks.md` (o PR #9 descreve a remoção) |
+| SC-011 | ✅ | grep do quickstart §1 no repositório fora de `specs/` e do §7 em `docs/`, `README.md`, `AGENTS.md` → nenhuma linha |
+| SC-012 | ✅ | `tests/storage/test_file_store.py`: manifest sem `source` e sem `part` carrega |
+
+**M7**: `docs/architecture.md` reescrito (estrutura real, diagrama do `DailyRun`,
+contratos, como registrar estratégia/fonte/store, adaptadores);
+`docs/configuration.md` refeito a partir dos modelos (chaves novas e defaults
+corrigidos, credenciais do Reddit, variáveis `CONFIG_PATH` e
+`TIKTOK_PUBLISH_LOG_PATH`); `docs/quickstart.md` só com a rodada diária e o
+`render-story`; README com links e as seções que faltavam. Saíram 16 dependências
+diretas sem uso (`fastapi`, `uvicorn`, `python-multipart`, `anthropic`, `ollama`,
+`azure-cognitiveservices-speech`, `coqui-tts`, `elevenlabs` — o proxy fala HTTP
+direto —, `google-api-python-client`, `fish-audio-sdk`, `diffusers`,
+`transformers`, `accelerate`, `torchvision`, `torchaudio`, `pydub`): 61 pacotes a
+menos no `uv.lock`, nenhuma versão alterada. `orjson` e `email-validator` ficam: o
+caminho de logging do litellm importa os tipos do proxy dele, que dependem deles.
+As ferramentas de teste foram do extra `test` para o grupo `dev` do uv, então
+`uv sync` as instala e o `uv sync --no-dev` do deploy as deixa de fora; a entrada
+`[project.scripts]` apontava para o `main.py` apagado no M1 e saiu. Revisão contra
+a constituição: nenhum `except Exception` novo que engula erro (os que existem no
+footage do YouTube, no log de publicação e nos pulos por candidata foram movidos
+do código antigo e o golden os fixa); camadas sem violação (`src/flows` não
+importa proxies; nada em `src/` importa `bots` ou `telegram`; entidades não
+importam camadas externas).
+
+**Pendente no servidor** (nada disso roda no laptop, que não renderiza vídeo nem
+publica):
+
+- `just deploy` com o `uv.lock` enxuto e `uv sync --frozen --no-dev`.
+- `just prod-daily-generate 1`: o render real pelo `NarrationOverFootageRenderer`
+  (moviepy sobre footage do YouTube) não foi exercitado desde o M1 — o corpo é o
+  de antes, movido.
+- `/autopost 1` pelo Telegram e o agendamento real no TikTok pelo `DailyRun`.
+- `footage_source: local` com render real (moviepy sobre clipes locais).
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |

@@ -1,6 +1,12 @@
 # Gerador de Vídeos Narrados
 
-Cria vídeos verticais narrados a partir de posts do Reddit e os agenda no TikTok. A rodada diária descobre e avalia histórias, escreve o roteiro com LLM, sintetiza a narração, transcreve legendas, compõe o vídeo sobre uma compilação de fundo do YouTube com a capa do post e agenda a publicação.
+Cria vídeos verticais narrados a partir de posts do Reddit e os agenda no TikTok. A rodada diária descobre e avalia histórias, escreve o roteiro com LLM, sintetiza a narração, transcreve legendas, compõe o vídeo sobre uma compilação de fundo (do YouTube ou de uma pasta local) com a capa do post e agenda a publicação. Uma história pode ter várias partes: cada parte vira um vídeo, agendado no horário seguinte ao da anterior.
+
+Documentação:
+
+- [docs/quickstart.md](docs/quickstart.md) — instalar e rodar a primeira vez
+- [docs/configuration.md](docs/configuration.md) — todas as chaves do `config.yaml` e do `.env`
+- [docs/architecture.md](docs/architecture.md) — capacidades, o fluxo diário e como estender
 
 ## Instalação
 
@@ -16,7 +22,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Dependências
 
 ```bash
-uv sync
+uv sync                              # dependências + ferramentas de teste
+uv run playwright install chromium   # usado para renderizar a capa
 ```
 
 ## Configuração
@@ -35,17 +42,23 @@ cp config.prod.yaml config.yaml
 
 ### Proxies disponíveis
 
-| Proxy | Opções | Notas |
+| Chave | Opções | Notas |
 |-------|--------|-------|
-| `llm_config.type` | `mock`, `prompt`, `dspy` | `mock` não precisa de API key |
-| `speech_config.type` | `edge-tts`, `elevenlabs` | `edge-tts` é gratuito |
-| `transcription_config.type` | `local`, `openai` | `local` usa Whisper (`base`/`small`/`medium`/`large`) |
+| `proxies.llm_config.type` | `mock`, `prompt`, `dspy` | `mock` não precisa de API key; `prompt` usa os templates de `src/prompts/` |
+| `proxies.speech_config.type` | `edge-tts`, `elevenlabs` | `edge-tts` é gratuito |
+| `proxies.transcription_config.type` | `local`, `openai` | `local` usa Whisper (`base`/`small`/`medium`/`large`) |
+| `proxies.reddit_config.type` | `json`, `bs4` | a listagem de subreddits sempre usa a API OAuth do Reddit |
+| `services.video_config.footage_source` | `youtube`, `local` | `local` lê os `.mp4` de `local_footage_dir`, sem rede |
 
-### Anti-fingerprint do background YouTube
+Os prompts dos modelos ficam em `src/prompts/*.jinja2`: editar o arquivo muda o
+texto enviado, sem mexer em código. Um template com erro de sintaxe impede o
+processo de subir e o erro nomeia o arquivo.
+
+### Anti-fingerprint do background
 
 Para reduzir a chance de takedown automático em vídeos derivados de
 conteúdo do YouTube, o pipeline aplica transformações sutis e
-randomizadas em cada compilação (espelha horizontal, dá um leve zoom,
+randomizadas em cada compilação, do YouTube ou da pasta local (espelha horizontal, dá um leve zoom,
 muda brilho/contraste/matiz dentro de uma faixa pequena e altera
 ligeiramente a velocidade). Cada execução produz um conjunto diferente
 de parâmetros, então duas saídas nunca batem com o mesmo hash
@@ -74,10 +87,17 @@ services:
 Crie um arquivo `.env` na raiz ou exporte as variáveis:
 
 ```
-GOOGLE_API_KEY=...        # se llm provider: google
-OPENAI_API_KEY=...        # se llm provider: openai ou transcription: openai
-ELEVENLABS_API_KEY=...    # se speech: elevenlabs
+REDDIT_CLIENT_ID=...               # descoberta (app do tipo "script" em reddit.com/prefs/apps)
+REDDIT_CLIENT_SECRET=...
+OPENROUTER_API_KEY=...             # llm provider: openrouter e o agente do TikTok
+TELEGRAM_SATISFYING_BOT_TOKEN=...  # bot do Telegram
+GOOGLE_API_KEY=...                 # se llm provider: google
+OPENAI_API_KEY=...                 # se llm provider: openai ou transcription: openai
+ELEVENLABS_API_KEY=...             # se speech: elevenlabs
 ```
+
+A lista completa, com `TIKTOK_EMAIL`/`TIKTOK_PASSWORD` e o PO token do YouTube,
+está em [docs/configuration.md](docs/configuration.md#secrets-env).
 
 ## Scripts
 
@@ -90,7 +110,29 @@ just daily-publish 3                  # rodada completa
 ```
 
 No servidor, o bot do Telegram (`python -m bots.satisfying_bot`) roda a mesma
-rodada todo dia no horário configurado e aceita `/autopost [n]`.
+rodada todo dia no horário configurado e aceita `/autopost [n]`; mandar a URL de
+um post do Reddit para o bot devolve a narração e o vídeo daquela história. Os
+`just prod-daily-*` rodam os mesmos comandos no servidor.
+
+### Renderizar uma história escrita à mão
+
+```bash
+just render-story story.json pasta/com/clipes   # grava output/render/part1.mp4, part2.mp4, ...
+```
+
+`story.json` tem `title`, `parts` (uma string por parte), `narrator_gender`,
+`language` e `origin`; o formato completo está em
+[docs/quickstart.md](docs/quickstart.md#render-a-story-by-hand). Usa só o
+renderizador configurado e os clipes da pasta: sem Reddit, sem LLM escrevendo,
+sem YouTube.
+
+### Diagnóstico da descoberta
+
+```bash
+uv run python scripts/find_best_stories.py --top-per-sub 2   # ranking das histórias do dia
+uv run python scripts/evaluate_story.py <url>                # nota de um post
+uv run python scripts/list_posts.py --sub pettyrevenge        # posts recentes (sem --sub: todos do config)
+```
 
 ### Gerar imagem de Call to Action
 
@@ -296,8 +338,11 @@ uv add package-name
 # Atualizar dependências
 uv lock --upgrade
 
-# Executar testes
+# Executar testes (sem rede e sem modelo)
 uv run pytest
+
+# Formatar
+just fmt
 
 # Ver ajuda da rodada diária
 uv run python scripts/daily_auto_publish.py --help

@@ -228,16 +228,16 @@ um `Renderer` escolhido por nome; `RedditVideoService` e `src/services/` deixam 
 **Goal**: a documentação descreve a estrutura que existe; dependências sem uso saem;
 os critérios de sucesso ficam registrados no plano.
 
-- [ ] T051 [P] Reescrever `docs/architecture.md`: árvore real de `src/` (entities, prompts, proxies, capabilities/*, storage, flows), diagrama do `DailyRun`, como registrar uma estratégia de renderização, uma fonte de footage ou um store alternativo, e o papel dos adaptadores
-- [ ] T052 [P] Atualizar `docs/configuration.md` (`footage_source`, `local_footage_dir`, `rendering_strategy`; remover restos de imagem e prepared), `docs/quickstart.md` (só rodada diária e `render-story`) e `README.md` (seções restantes coerentes com as receitas do `Justfile`)
-- [ ] T053 Revisar `pyproject.toml` com `grep -rn "<pacote>" src bots scripts tests` por dependência e remover as sem uso (candidatas: `coqui-tts`, `azure-cognitiveservices-speech`, `fastapi`, `uvicorn`, `python-multipart`, `ollama`, `anthropic`, `google-api-python-client`); `uv lock`; `uv sync`; suíte verde
-- [ ] T054 Revisar o diff acumulado dos PRs 1 a 6 contra a constituição (fail fast: nenhum `except Exception: continue` novo; camadas: `grep -rn "from src.proxies" src/flows` vazio, `grep -rn "from bots\|telegram" src` vazio) e corrigir o que aparecer
-- [ ] T055 Rodar quickstart §7 e registrar em `specs/004-clean-architecture-refactor/plan.md` a seção "Verificação pós-implementação" com a tabela SC-001..SC-012 e o que ficou pendente do servidor
+- [X] T051 [P] Reescrever `docs/architecture.md`: árvore real de `src/` (entities, prompts, proxies, capabilities/*, storage, flows), diagrama do `DailyRun`, como registrar uma estratégia de renderização, uma fonte de footage ou um store alternativo, e o papel dos adaptadores
+- [X] T052 [P] Atualizar `docs/configuration.md` (`footage_source`, `local_footage_dir`, `rendering_strategy`; remover restos de imagem e prepared), `docs/quickstart.md` (só rodada diária e `render-story`) e `README.md` (seções restantes coerentes com as receitas do `Justfile`)
+- [X] T053 Revisar `pyproject.toml` com `grep -rn "<pacote>" src bots scripts tests` por dependência e remover as sem uso (candidatas: `coqui-tts`, `azure-cognitiveservices-speech`, `fastapi`, `uvicorn`, `python-multipart`, `ollama`, `anthropic`, `google-api-python-client`); `uv lock`; `uv sync`; suíte verde
+- [X] T054 Revisar o diff acumulado dos PRs 1 a 6 contra a constituição (fail fast: nenhum `except Exception: continue` novo; camadas: `grep -rn "from src.proxies" src/flows` vazio, `grep -rn "from bots\|telegram" src` vazio) e corrigir o que aparecer
+- [X] T055 Rodar quickstart §7 e registrar em `specs/004-clean-architecture-refactor/plan.md` a seção "Verificação pós-implementação" com a tabela SC-001..SC-012 e o que ficou pendente do servidor
 
 **Live verification (milestone gate)**: quickstart §7. `uv sync` + suíte verde;
 `black --check`; grep SC-011 vazio em `docs/`, `README.md`, `AGENTS.md`.
 
-**Checkpoint**: Milestone 7 DONE
+**Checkpoint**: Milestone 7 DONE ✅ (2026-09-25)
 
 ---
 
@@ -542,6 +542,32 @@ funcionando.
     subi polling aqui); o agendamento real no TikTok não foi exercitado — o
     `just daily-publish-only` de verdade publica. Somam-se aos pendentes de render
     real do M1, M4 e M5.
-- Gate T055: a preencher com data, comando e resultado.
+- Gate M7 (T055, 2026-09-25):
+  - Quickstart §7: `uv sync` (`Audited 175 packages`) → `uv run pytest -q` →
+    **287 passed**; `uv run black --check src scripts tests bots` → 136 arquivos sem
+    mudança; grep do SC-011 em `docs/`, `README.md`, `AGENTS.md` → nenhuma linha
+    (exit 1). O grep do §1 no repositório inteiro fora de `specs/` também → vazio.
+    Golden passa e `git diff main -- tests/fixtures/` vazio.
+  - Dependências (T053): 16 diretas removidas; `uv.lock` perdeu 61 pacotes e
+    nenhuma versão mudou (comparado com o lock de `main`); `uv lock --check` ok.
+    Sem `fastapi` instalado, `litellm.acompletion`/`completion` com `mock_response`
+    passam pelo caminho de logging sem erro; todos os providers do container se
+    constroem com o `config.dev.yaml`; `import bots.satisfying_bot`, `whisper`,
+    `dspy`, `browser_use`, `patchright`, `playwright_stealth` ok;
+    `daily_auto_publish`, `find_best_stories`, `evaluate_story`, `list_posts`,
+    `publish_tiktok` e `tiktok_caption_snippet` respondem `--help`; edge-tts + whisper local transcrevem uma frase curta
+    corretamente.
+  - Achado no caminho: as ferramentas de teste estavam num extra `test`/`dev`, e
+    `uv sync` puro as desinstalava — `uv run pytest` caía num pytest global sem as
+    dependências. Viraram o grupo `dev` do uv (instalado por `uv sync`, excluído
+    pelo `--no-dev` do deploy). A entrada `[project.scripts]` apontando para o
+    `main.py` apagado saiu.
+  - Docs: mantive `docs/*.md` em inglês, como estavam, e o README em português.
+    O campo `CaptionsConfig.upper` não é lido por nada (só `upper_text`) e ficou
+    fora da documentação; `Secrets.youtube_api_key` idem.
+  - Constituição (T054): nada a corrigir; detalhes na seção "Verificação
+    pós-implementação" do `plan.md`.
+  - **Pendente no servidor**: ver a mesma seção do `plan.md` (deploy com o lock
+    enxuto, render real, `/autopost 1`, agendamento real).
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.

@@ -1,131 +1,156 @@
 # Configuration Guide
 
-All configuration is split into two layers:
+Configuration has two layers:
 
-1. **`config.yaml`** — Behavioral settings for proxies and services (providers, models, video dimensions, etc.)
-2. **`.env`** — Secret API keys and sensitive values
+1. **A YAML file** — providers, models, video layout, the daily run's schedule. The
+   process reads the file named by `CONFIG_PATH` (default `config.yaml`). The repo
+   ships `config.dev.yaml` (mock LLM, edge-tts, local Whisper) and
+   `config.prod.yaml` (OpenRouter models) to copy from.
+2. **`.env`** — API keys, tokens and credentials.
 
-Any key omitted from `config.yaml` will use the default value defined in the Pydantic model.
+The YAML is a partial override: any key you omit keeps the Pydantic default, and
+keys the models do not know (for example from features that were removed) are
+ignored. The models live in `src/entities/config.py` and `src/entities/configs/`.
 
 ---
 
 ## Config Structure
 
 ```yaml
+language: pt-br              # output language of scripts, voices and part labels
+
 proxies:
-  transcription_config: { ... }
-  speech_config: { ... }
-  reddit_config: { ... }
   llm_config: { ... }
+  history_adaptation_llm_config: { ... }   # optional
+  speech_config: { ... }
+  transcription_config: { ... }
+  reddit_config: { ... }
   youtube_config: { ... }
   cover_config: { ... }
+  tiktok_publisher_config: { ... }
 
 services:
   video_config: { ... }
   captions_config: { ... }
+  censorship_config: { ... }
 
 bots:
-  satisfying_bot: { ... }
+  satisfying_bot: { ... }    # the daily run: schedule, count, slots, hashtags
+
+evaluation: { ... }          # which subreddits discovery reads
 ```
 
 ---
 
 ## Proxies
 
-### LLM (`llm_config`)
+### LLM (`llm_config`, `history_adaptation_llm_config`)
 
-Controls the language model used for story generation, translation, and transcription enhancement.
-
-**Approach** — choose between `dspy` (structured signatures with few-shot examples) or `prompt` (raw prompt-based):
+`llm_config` grades candidates, suggests hashtags and corrects the Whisper
+transcription against the script. `history_adaptation_llm_config` writes the story
+script; when it is omitted, `llm_config` writes it too.
 
 ```yaml
 llm_config:
-  type: dspy          # or "prompt"
+  type: prompt          # "prompt" | "dspy" | "mock"
   provider_config:
-    provider: ollama   # "ollama" | "openai" | "google"
-    model: gemma3:12b
-    temperature: 0.7
-    max_tokens: 2000
+    provider: openrouter
+    model: deepseek/deepseek-v4-flash
+history_adaptation_llm_config:
+  type: prompt
+  provider_config:
+    provider: openrouter
+    model: moonshotai/kimi-k2.6
+    reasoning_effort: high
+    max_tokens: 12000
 ```
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `type` | `dspy` / `prompt` | `dspy` | LLM approach: DSPy signatures with few-shot learning or raw prompt templates |
-| `provider_config.provider` | `ollama` / `openai` / `google` | `ollama` | Which LLM provider to use |
-| `provider_config.model` | `str` | `gemma3:12b` | Model identifier |
-| `provider_config.temperature` | `float` | `0.7` | Sampling temperature |
-| `provider_config.max_tokens` | `int` | `2000` | Maximum output tokens |
+| `type` | `prompt` / `dspy` / `mock` | `dspy` | `prompt` renders the Jinja2 templates of `src/prompts/` and calls the model through litellm; `dspy` uses DSPy signatures; `mock` returns canned text with no model (dev and tests) |
+| `provider_config.provider` | `openrouter` / `openai` / `google` / `ollama` | `ollama` | Where the model runs |
+| `provider_config.model` | `str` | `gemma3:12b` | Model id for that provider |
+| `provider_config.temperature` | `float?` | provider default | Sampling temperature |
+| `provider_config.max_tokens` | `int?` | provider default | Output token cap |
+| `provider_config.reasoning_effort` | `none` … `high` | unset | OpenRouter only. Reasoning tokens are billed as output |
 
-> **Secrets**: `openai_api_key` (for OpenAI provider), `ollama_base_url` (for Ollama, defaults to `http://localhost:11434`)
+The prompts themselves are files in `src/prompts/` (`story.jinja2`,
+`evaluate_story.jinja2`, `generate_hashtags.jinja2`, `enhance_transcription.jinja2`).
+Edit them directly; a template with broken syntax stops the process at start and
+names the file.
+
+> **Secrets**: `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` or
+> `OLLAMA_BASE_URL`, depending on the provider.
 
 ---
 
 ### Speech (`speech_config`)
 
-Text-to-speech generation.
+Text-to-speech for the narration.
 
 ```yaml
 speech_config:
-  type: edge-tts     # or "elevenlabs"
-  voices:            # optional per-language voice overrides
+  type: edge-tts
+  default_rate: 1.5
+  voices:            # optional per-language overrides (keys: pt, en, es, ...)
     pt:
       male_voice_id: "pt-BR-AntonioNeural"
       female_voice_id: "pt-BR-FranciscaNeural"
 ```
 
-| Provider | `type` value | Requires API Key | Notes |
+| Provider | `type` | API key | Notes |
 |---|---|---|---|
-| Edge TTS | `edge-tts` | No | Free, Microsoft Edge neural voices |
-| ElevenLabs | `elevenlabs` | Yes (`elevenlabs_api_key`) | Premium voice cloning |
+| Edge TTS | `edge-tts` | No | Free Microsoft neural voices. `default_rate` (default `1.0`) multiplies every requested rate: `1.5` is edge-tts `+50%` |
+| ElevenLabs | `elevenlabs` | `ELEVENLABS_API_KEY` | Premium voices |
 
-Both support a `voices` dictionary mapping `Language` enum values to gender-specific voice IDs.
+The voice is picked by the story's narrator gender.
 
 ---
 
 ### Transcription (`transcription_config`)
 
-Speech-to-text with word-level timestamps.
+Speech-to-text with word timestamps, used for the captions.
 
 ```yaml
 transcription_config:
-  type: local         # or "openai"
-  model: base         # whisper model size
+  type: local
+  model: base
 ```
 
-| Provider | `type` | Requires API Key | Notes |
+| Provider | `type` | API key | Notes |
 |---|---|---|---|
-| Local Whisper | `local` | No | Runs locally. Models: `tiny`, `base`, `small`, `medium`, `large` |
-| OpenAI Whisper | `openai` | Yes (`openai_api_key`) | Cloud API, model: `whisper-1` |
-
----
-
-### Cover (`cover_config`)
-
-Reddit-style cover image generation using Playwright.
-
-```yaml
-cover_config:
-  title_font_size: 150
-```
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `title_font_size` | `int` | `150` | Font size for the Reddit post title on the cover |
-
-Currently only `playwright` provider is available.
+| Local Whisper | `local` | No | Models `tiny`, `base`, `small`, `medium`, `large` |
+| OpenAI Whisper | `openai` | `OPENAI_API_KEY` | Model `whisper-1` |
 
 ---
 
 ### Reddit (`reddit_config`)
 
-Reddit post scraping.
+How discovery lists subreddits and reads posts.
 
 ```yaml
 reddit_config:
-  type: bs4
+  type: json
 ```
 
-Currently only `bs4` (BeautifulSoup4 scraping) is available. No API key required.
+| `type` | Default | Notes |
+|---|---|---|
+| `json` | | Reddit's OAuth `.json` endpoints for listing and reading posts. All shipped configs use it |
+| `bs4` | ✓ | Scrapes the post page to read a single post; listing subreddits still goes through the `.json` endpoints |
+
+Either way the daily run lists subreddits over OAuth, so it needs `REDDIT_CLIENT_ID`
+and `REDDIT_CLIENT_SECRET` (an app of type *script* at reddit.com/prefs/apps); a
+missing pair fails naming both variables.
+
+---
+
+### Cover (`cover_config`)
+
+The Reddit-style card shown at the start of the video, rendered with Playwright.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `title_font_size` | `int` | `150` | Font size of the title on the card |
 
 ---
 
@@ -181,112 +206,163 @@ rather than breaking the run.
 
 ---
 
+### TikTok publisher (`tiktok_publisher_config`)
+
+Non-secret settings of the browser agent that schedules the videos. The login
+lives in `.env`; the session lives in the cookies and the Chromium profile.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `agent_model` | `str` | `deepseek/deepseek-v4-flash` | OpenRouter model driving the agent |
+| `cookies_path` | `str` | `.storage/tiktok_cookies.json` | Persisted session |
+| `headless` | `bool` | `false` | Headful is harder to detect; the server runs it under Xvfb |
+| `use_vision` | `bool` | `false` | Send screenshots to the model (needed for image captchas) |
+| `use_thinking` | `bool` | `false` | Ask for the optional thinking field in the agent's replies |
+| `max_steps` | `int` | `60` | Steps before the agent gives up |
+| `capture_raw_llm_failures` | `bool` | `true` | Keep the provider's raw reply when parsing fails |
+| `raw_llm_body_max_chars` | `int` | `65536` | Size cap of that raw reply |
+
+> **Secrets**: `TIKTOK_EMAIL`, `TIKTOK_PASSWORD`, `OPENROUTER_API_KEY`.
+
+---
+
 ## Services
 
 ### Video (`video_config`)
 
-Controls final video composition.
+Where the background comes from, how a story becomes video, and the layout of the
+result.
 
 ```yaml
 video_config:
-  width: 1080
-  height: 1920
-  padding: 60
-  cover_duration: 5
-  end_silece_seconds: 3
-  youtube_channel_url: "https://www.youtube.com/channel/..."
+  footage_source: youtube          # or "local"
+  # local_footage_dir: assets/backgrounds
+  rendering_strategy: narration-over-footage
+  call_to_action_path: assets/call_to_action.png
+  cover_duration: 3
+  fps: 60
   youtube_channel_urls:
-    - "https://www.youtube.com/@channel-one"
-    - "https://www.youtube.com/@channel-two"
-  youtube_channel_strategy: "all"
+    - https://www.youtube.com/@FoodieBoyKR
+    - https://www.youtube.com/@cookming
+  youtube_surface: shorts
+  youtube_channel_strategy: all
   youtube_pool_size: 100
-  watermark_path: null
-  ffmpeg_params: []
+  ffmpeg_params: ["-crf", "23", "-preset", "medium"]
 ```
+
+#### Footage and rendering
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `width` | `int` | `1080` | Output video width (px) |
-| `height` | `int` | `1920` | Output video height (px), 9:16 for TikTok |
-| `padding` | `int` | `60` | Horizontal padding for overlays (cover, watermark) |
-| `cover_duration` | `int` | `5` | Seconds the cover image is shown at the start |
-| `end_silece_seconds` | `int` | `3` | Silent padding appended to the end of the audio |
-| `youtube_channel_url` | `str` | *(see default)* | Fallback YouTube channel for background video compilation |
-| `youtube_channel_urls` | `list[str]` | `[]` | YouTube channels available for background video compilation. When populated, this takes precedence over `youtube_channel_url` |
-| `youtube_channel_strategy` | `"random"` or `"all"` | `"random"` | Whether each compilation uses one random configured channel or merges candidates from all configured channels |
-| `youtube_pool_size` | `int` | `50` | Newest videos/shorts to consider per selected channel. `0` means all returned IDs |
-| `watermark_path` | `str?` | `null` | Path to a watermark image file (loaded at startup) |
-| `ffmpeg_params` | `list[str]` | `[]` | Extra ffmpeg parameters for video encoding |
+| `footage_source` | `youtube` / `local` | `youtube` | `youtube` downloads clips from the channels below through the background cache. `local` concatenates the `.mp4` files of `local_footage_dir` and never touches the network |
+| `local_footage_dir` | `str?` | `null` | Folder of `.mp4` clips. Required with `footage_source: local`: without it the config fails to load, naming the key. The clips are shuffled and joined until they cover the narration; when they cannot, the render fails saying how many seconds are missing |
+| `rendering_strategy` | `narration-over-footage` | `narration-over-footage` | How a story becomes video. The only strategy narrates each part over the footage, with the cover, captions and call to action on top. See [architecture.md](architecture.md#a-rendering-strategy) to add one |
 
-> When `--low-quality` is used, `width`, `height`, and `padding` are proportionally scaled down to a 400px height target.
+#### YouTube backgrounds
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `youtube_channel_urls` | `list[str]` | `[]` | Channels to draw clips from. When set, takes precedence over `youtube_channel_url` |
+| `youtube_channel_url` | `str` | `https://www.youtube.com/@FoodieBoyKR` | Fallback channel |
+| `youtube_channel_strategy` | `random` / `all` | `random` | One random channel per compilation, or candidates from every channel |
+| `youtube_pool_size` | `int` | `50` | Newest videos considered per channel. `0` means all |
+| `youtube_surface` | `videos` / `shorts` | `videos` | Which tab of the channel to list |
+| `anti_fingerprint` | block | see below | Randomised transforms applied to every clip, local or YouTube |
+
+`anti_fingerprint` fields: `enabled` (`true`), `mirror` (`true`), `zoom` (`1.04`),
+`brightness_delta` (`0.02`), `contrast_delta` (`0`), `hue_shift_degrees` (`0`),
+`speed_delta` (`0.02`). Each run samples new values inside those ranges, so two
+outputs never share a perceptual hash.
+
+#### Layout and encoding
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `width` / `height` | `int` | `1080` / `1920` | Output size, 9:16 |
+| `fps` | `int` | `30` | Output frame rate; without it the render would inherit the background's (often 60) |
+| `padding` | `int` | `60` | Horizontal padding of overlays |
+| `cover_width_ratio` | `float` | `0.82` | Cover width as a fraction of the video width |
+| `cover_duration` | `float` | `0.5` | Seconds the cover stays on screen. It overlays the start of the narration and does not lengthen the video |
+| `call_to_action_path` | `str?` | `null` | Overlay image shown from the closing call to action onward |
+| `watermark_path` | `str?` | `null` | Watermark image |
+| `end_silece_seconds` | `int` | `3` | Silence appended after the narration |
+| `ffmpeg_params` | `list[str]` | `[]` | Extra ffmpeg encoding parameters |
+
+With `bots.satisfying_bot.low_quality: true`, width, height and padding are scaled
+down to a 400 px tall preview and YouTube clips are downloaded at low resolution.
 
 ---
 
 ### Captions (`captions_config`)
 
-Controls subtitle/caption rendering.
-
-```yaml
-captions_config:
-  font_path: default_font.ttf
-  font_size: 110
-  color: "#FFFFFF"
-  stroke_color: "#000000"
-  stroke_width: 8
-  upper_text: false
-  marging: 50
-  fade_duration: 0
-```
-
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `font_path` | `str` | `default_font.ttf` | Path to the TTF font file |
-| `font_size` | `int` | `110` | Base font size (auto-scaled in low quality) |
-| `color` | `str` | `#FFFFFF` | Text color (hex) |
-| `stroke_color` | `str` | `#000000` | Text outline color |
-| `stroke_width` | `int` | `8` | Outline thickness (auto-scaled in low quality) |
-| `upper_text` | `bool` | `false` | Force uppercase captions |
+| `font_path` | `str` | `default_font.ttf` | TTF font |
+| `font_size` | `int` | `110` | Base size (scaled in low quality) |
+| `color` / `stroke_color` | `str` | `#FFFFFF` / `#000000` | Text and outline colour |
+| `stroke_width` | `int` | `8` | Outline thickness |
+| `upper_text` | `bool` | `false` | Show the captions in uppercase |
 | `marging` | `int` | `50` | Text margin in pixels |
-| `fade_duration` | `float` | `0` | Fade in/out duration for each word (seconds) |
+| `fade_duration` | `float` | `0` | Fade per word, in seconds |
+| `vertical_position` | `float` | `0.68` | Where captions start, as a fraction of the height (below the cover) |
 
 ---
 
-## Bots
+### Censorship (`censorship_config`)
 
-### Daily run (`bots.satisfying_bot`)
+Captions and the cover title are censored before rendering, so audio-moderated
+words do not appear on screen; the narration is not changed.
 
-The Telegram bot and `scripts/daily_auto_publish.py` both read this block.
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `extra_word_replacements` | `dict[str, str]` | `{}` | Word → replacement pairs added to the built-in list. Keys match ignoring case and accents |
+
+---
+
+## Daily run (`bots.satisfying_bot`)
+
+Read by the Telegram bot and by `scripts/daily_auto_publish.py`; both run the same
+`DailyRun`.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `allowed_user_ids` | `list[int]` | `[]` | Telegram users allowed to talk to the bot; the first one receives the daily run's messages |
-| `low_quality` | `bool` | `false` | Render at preview resolution |
 | `daily_hour_utc` / `daily_minute_utc` | `int` | `17` / `0` | When the bot starts the daily run |
-| `daily_auto_publish_count` | `int` | `4` | Stories to produce and schedule per run |
+| `daily_auto_publish_count` | `int` | `4` | Stories per run. A story in several parts counts once and takes one slot per part |
 | `publish_slots_local` | `list[str]` | `["12:00", "18:00", "19:00", "20:00"]` | Local-time TikTok slots (`HH:MM`) |
 | `publish_min_lead_minutes` | `int` | `30` | Minimum lead time for a slot to be eligible |
 | `publish_hashtags` | `list[str]` | `[]` | Hashtags added to every scheduled video |
+| `low_quality` | `bool` | `false` | Render at preview resolution |
+
+## Discovery (`evaluation`)
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `subreddits` | `list[str]` | 11 subreddits (see `src/entities/config.py`) | Where the daily run looks for stories |
+| `min_chars` / `max_chars` | `int` | `500` / `15000` | Post length accepted as a candidate |
 
 ---
 
 ## Secrets (`.env`)
 
-API keys and sensitive configuration live in a `.env` file at the project root.
+API keys and credentials live in a `.env` file at the project root (or in the
+environment). All are optional; set the ones your providers need.
 
-```env
-OPENAI_API_KEY=sk-...
-YOUTUBE_API_KEY=AIza...
-ELEVENLABS_API_KEY=...
-OLLAMA_BASE_URL=http://localhost:11434
-```
+| Variable | Needed for |
+|---|---|
+| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Discovery (listing subreddits) |
+| `OPENROUTER_API_KEY` | LLM with `provider: openrouter`; the TikTok publisher agent |
+| `OPENAI_API_KEY` | LLM with `provider: openai`; `transcription_config.type: openai` |
+| `GOOGLE_API_KEY` | LLM with `provider: google` |
+| `OLLAMA_BASE_URL` | LLM with `provider: ollama` (default `http://localhost:11434`) |
+| `ELEVENLABS_API_KEY` | `speech_config.type: elevenlabs` |
+| `TELEGRAM_SATISFYING_BOT_TOKEN` | The Telegram bot |
+| `TIKTOK_EMAIL`, `TIKTOK_PASSWORD` | TikTok login (the publisher agent) |
+| `YOUTUBE_PO_TOKEN`, `YOUTUBE_VISITOR_DATA` | Background downloads refused by YouTube's bot detection; set as a pair — see [po-token.md](./po-token.md) |
 
-| Variable | Required For | Default |
+Two more environment variables change where things are read or written:
+
+| Variable | Default | Effect |
 |---|---|---|
-| `OPENAI_API_KEY` | OpenAI transcription / LLM | — |
-| `YOUTUBE_API_KEY` | YouTube API access | — |
-| `ELEVENLABS_API_KEY` | ElevenLabs speech | — |
-| `OLLAMA_BASE_URL` | Ollama LLM provider | `http://localhost:11434` |
-| `YOUTUBE_PO_TOKEN` | Background downloads rejected by YouTube's bot detection — see [po-token.md](./po-token.md) | — |
-| `YOUTUBE_VISITOR_DATA` | Set together with `YOUTUBE_PO_TOKEN`; YouTube only accepts the token alongside the visitor id it was issued for | — |
-
-All secrets are optional — only provide the ones needed by your chosen providers.
+| `CONFIG_PATH` | `config.yaml` | YAML file to load |
+| `TIKTOK_PUBLISH_LOG_PATH` | `.storage/tiktok_publish_log.csv` | Publish log; its `scheduled` rows keep discovery from picking a post twice |
