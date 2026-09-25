@@ -315,3 +315,40 @@ externo (terminal, `ssh`/`scp`, Telegram) fica em `scripts/` e `bots/`.
 | `spec.md` em inglês | Pedido do usuário em inglês; rastreabilidade termo a termo | Traduzir agora só re-escreveria um artefato já validado |
 | Segundo modelo de pacote (`version: 2`) em vez de campos opcionais no primeiro | FR-018/FR-024: o formato tem que ser distinguível pela versão e um servidor antigo tem que recusar o pacote inteiro antes de produzir; `Literal[1]` no modelo antigo faz isso sem código | Campos opcionais num só modelo fariam o servidor antigo aceitar o arquivo e falhar só na geração, depois de gastar tempo e com um erro pior |
 | Duas partes produzidas com dois `PreparedStory` e o método de vídeo único, não com `compose_two_part_video` | FR-021 exige paridade com o vídeo único (censura de legendas, `cta_start`, fundo); o método existente de duas partes não faz nada disso e não tem consumidor | Um método novo de duas partes no serviço duplicaria a etapa de produção e teria que ser mantido em sincronia com a de vídeo único |
+
+## Verificação pós-implementação
+
+**Data**: 2026-09-22, depois dos quatro milestones mergeados (PRs #3, #5, #6, #7) e do
+PR de formatação (#4).
+
+**Testes**: quickstart.md §7 mais `tests/test_publish_slots.py` → **187 passed**.
+Suíte inteira `uv run pytest -q` → `1 failed, 359 passed`; a única falha é
+`tests/test_translation_pipeline.py::test_pipeline`, pré-existente desde a feature 002
+(`PromptLLMProxy` não tem `translate_and_adapt`) e registrada no T001. De 190 testes na
+linha de base para 360: 170 novos, nenhuma regressão. `black --check` limpo.
+
+**Revisão contra a constituição (T040)**: uma violação do princípio I encontrada e
+corrigida — `PreparedStoryQueue.known_post_urls` engolia erros de parse e deixava a
+dedup mais fraca em silêncio; agora lê só `post.url` e falha alto num arquivo
+corrompido. O resto dos diffs está dentro do plano; detalhes na evidência do T040 em
+tasks.md.
+
+**Critérios de sucesso**:
+
+| SC | Situação | Onde |
+|----|----------|------|
+| SC-001 (< 15 min até pacote com áudio) | Verificado no laptop, sem cronômetro formal: o caminho mecânico inteiro (`find` → `prompt` → `validate` → `preview`) roda em segundos; o tempo restante é leitura e escrita, que o critério exclui | T016, T027 |
+| SC-002 (zero chamadas pagas no fluxo local) | Verificado em run real (`grep` de `LiteLLM`/`Evaluating` no log → 0) | T016 |
+| SC-003 (fila vazia = comportamento de antes) | Verificado em run real local; manifesto só ganha `"source": "auto"` | T039 |
+| SC-004 (fila cheia = zero avaliação/roteiro) | Verificado em run real local (`--generate-only`) | T039 |
+| SC-005 (título e roteiro verbatim) | Verificado em run real local (manifesto) e por teste | T039 |
+| SC-006 (nunca publicar duas vezes) | Coberto por teste (fila ∪ publish log `scheduled` em `exclude_urls`) e pela correção do T040; sem observação em produção | T030, T040 |
+| SC-007 (metade local sem deploy) | Verificado com shims de `ssh`/`scp`; **pendente** contra um SSH real | T027, T039b |
+| SC-008 (duas partes verbatim, slots consecutivos) | Coberto por teste; **pendente** no servidor | T046, T039b |
+| SC-009 (servidor antigo recusa `version: 2`) | Coberto por teste (`PreparedStoryPackage` rejeita `version: 2`); **pendente** no servidor | T042, T039b |
+
+**O que segue sem verificação (aceito, registrado)**: tudo o que depende do servidor
+`192.168.1.100`, fora do ar desde o M2 — `just deploy`, `just prod-daily-generate 1`
+e `prod-daily-publish 1` com pacotes versão 1 e 2, `/prepared` pelo Telegram de
+verdade, `mark_done` com `status: "scheduled"`, e `story-ship`/`story-queue` sobre um
+SSH real. Está tudo reunido no T039b, que continua aberto.
