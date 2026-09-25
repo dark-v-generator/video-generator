@@ -1,11 +1,6 @@
 # Gerador de Vídeos Narrados
 
-Cria vídeos verticais narrados a partir de posts do Reddit para redes sociais. O projeto extrai o post, gera um roteiro em duas partes com LLM, sintetiza a narração, transcreve legendas e compõe o vídeo final.
-
-Há dois modos de geração:
-
-- **Two-part history** — vídeo de fundo (compilação YouTube) + narração + legendas + cover.
-- **Image story** — imagens geradas por IA timed com a narração, com introdução (blur + cover), transições e call-to-action.
+Cria vídeos verticais narrados a partir de posts do Reddit e os agenda no TikTok. A rodada diária descobre e avalia histórias, escreve o roteiro com LLM, sintetiza a narração, transcreve legendas, compõe o vídeo sobre uma compilação de fundo do YouTube com a capa do post e agenda a publicação.
 
 ## Instalação
 
@@ -31,10 +26,10 @@ Toda a configuração é feita via `config.yaml` na raiz do projeto. Valores omi
 Existem dois templates de configuração prontos para copiar:
 
 ```bash
-# Dev / teste local (mock LLM, mock images, edge-tts, whisper local)
+# Dev / teste local (mock LLM, edge-tts, whisper local)
 cp config.dev.yaml config.yaml
 
-# Produção (Leonardo Flux Dev, ElevenLabs, Google Gemma, whisper local)
+# Produção (LLM via OpenRouter, ElevenLabs, whisper local)
 cp config.prod.yaml config.yaml
 ```
 
@@ -43,7 +38,6 @@ cp config.prod.yaml config.yaml
 | Proxy | Opções | Notas |
 |-------|--------|-------|
 | `llm_config.type` | `mock`, `prompt`, `dspy` | `mock` não precisa de API key |
-| `image_generation_config.type` | `mock`, `local`, `leonardo` | `leonardo` usa Flux Dev por padrão |
 | `speech_config.type` | `edge-tts`, `elevenlabs` | `edge-tts` é gratuito |
 | `transcription_config.type` | `local`, `openai` | `local` usa Whisper (`base`/`small`/`medium`/`large`) |
 
@@ -83,78 +77,20 @@ Crie um arquivo `.env` na raiz ou exporte as variáveis:
 GOOGLE_API_KEY=...        # se llm provider: google
 OPENAI_API_KEY=...        # se llm provider: openai ou transcription: openai
 ELEVENLABS_API_KEY=...    # se speech: elevenlabs
-LEONARDO_API_KEY=...      # se image_generation: leonardo
 ```
 
 ## Scripts
 
-### Image Story Video (imagens IA + narração)
-
-Gera um vídeo com imagens de IA sincronizadas com a narração. Pipeline completo: scrape Reddit -> roteiro -> speech -> legendas -> LLM gera prompts de imagens -> gera imagens -> compõe vídeo.
+### Rodada diária (descobrir → gerar → agendar)
 
 ```bash
-# Uso básico
-uv run python scripts/image_story_video.py <URL_DO_POST_REDDIT>
-
-# Preview rápido (resolução baixa)
-uv run python scripts/image_story_video.py <URL_DO_POST_REDDIT> --low-quality
-
-# Todas as opções
-uv run python scripts/image_story_video.py <URL_DO_POST_REDDIT> \
-    --output-dir output \
-    --language pt \
-    --gender male \
-    --rate 1.0 \
-    --low-quality
+just daily-generate 1                 # só gera; grava output/daily/story_NN.mp4 + story_NN.json
+just daily-publish-only output/daily  # agenda o que já foi gerado
+just daily-publish 3                  # rodada completa
 ```
 
-Artefatos gerados em `output/`:
-- `part1.mp4`, `part2.mp4` — vídeos finais
-- `audio_part1.mp3`, `audio_part2.mp3` — áudios da narração
-- `captions_part1.json`, `captions_part2.json` — legendas
-- `image_story_part1.json`, `image_story_part2.json` — timeline de imagens
-- `story.md` — roteiro gerado
-- `original_post.md` — post original
-- `cover.png` — capa
-
-### Two-Part History Video (vídeo de fundo YouTube)
-
-Gera um vídeo com compilação de vídeos do YouTube como fundo. Mesmo pipeline de roteiro/speech/legendas, mas com background de gameplay.
-
-```bash
-# Uso básico
-uv run python scripts/reddit_two_part_history.py <URL_DO_POST_REDDIT>
-
-# Preview rápido
-uv run python scripts/reddit_two_part_history.py <URL_DO_POST_REDDIT> --low-quality
-
-# Todas as opções
-uv run python scripts/reddit_two_part_history.py <URL_DO_POST_REDDIT> \
-    --output-dir output \
-    --language pt \
-    --gender female \
-    --rate 1.2 \
-    --low-quality
-```
-
-### Preparar histórias no laptop (sem LLM pago)
-
-Descobre candidatas, rende o prompt editorial do servidor, valida o pacote, gera
-a prévia da narração e envia para a fila do servidor. Nenhuma receita chama um
-modelo pago — quem escreve o roteiro é o assistente do Claude Code, pelo skill
-`/prepare-story`.
-
-```bash
-just story-find                                  # shortlist determinística
-just story-show 1                                # texto original do candidato
-just story-prompt 1                              # prompt editorial exato
-just story-validate output/prepared/<id>.json    # valida o pacote
-just story-preview output/prepared/<id>.json     # ouve a narração
-just story-ship output/prepared/<id>.json        # envia para o servidor
-just story-queue                                 # o que está na fila
-```
-
-Fluxo completo em [docs/prepared-stories.md](./docs/prepared-stories.md).
+No servidor, o bot do Telegram (`python -m bots.satisfying_bot`) roda a mesma
+rodada todo dia no horário configurado e aceita `/autopost [n]`.
 
 ### Gerar imagem de Call to Action
 
@@ -351,16 +287,6 @@ para menos de ~25 min ou mais de 10 dias falha cedo, sem gastar tokens.
   o que vê e para. Faça o switch da conta uma única vez no
   TikTok Studio antes de usar `--schedule-*`.
 
-## Opções comuns dos scripts
-
-| Flag | Descrição | Default |
-|------|-----------|---------|
-| `--output-dir` | Diretório de saída | `output` |
-| `--language` | Idioma do roteiro e narração (`pt`, `en`, etc.) | `pt` |
-| `--gender` | Gênero da voz (`male`/`female`). Auto-detectado se omitido | auto |
-| `--rate` | Velocidade da narração (1.0 = normal) | `1.0` |
-| `--low-quality` | Renderiza em 400px de largura para preview rápido | off |
-
 ## Comandos úteis
 
 ```bash
@@ -373,7 +299,6 @@ uv lock --upgrade
 # Executar testes
 uv run pytest
 
-# Ver ajuda de qualquer script
-uv run python scripts/image_story_video.py --help
-uv run python scripts/reddit_two_part_history.py --help
+# Ver ajuda da rodada diária
+uv run python scripts/daily_auto_publish.py --help
 ```

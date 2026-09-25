@@ -6,13 +6,8 @@ import litellm
 
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import PromptLLMConfig
-from src.entities.image_story import ImageStory
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
-from src.proxies.prompts.render import (
-    render_story_prompt,
-    render_two_part_story_prompt,
-)
 from src.services.tiktok_caption import normalize_hashtags
 import os
 import json
@@ -225,57 +220,20 @@ class PromptLLMProxy(ILLMProxy):
             kwargs.pop("max_completion_tokens", None)
         return kwargs
 
-    async def generate_two_part_story(
-        self, title: str, content: str, target_language: Language
-    ) -> dict:
-        model_str = self._get_model_string()
-        self._logger.info(f"Generating 2-part story via LiteLLM {model_str}")
-
-        prompt = render_two_part_story_prompt(title, content, target_language)
-
-        messages = [
-            {"role": "user", "content": prompt},
-        ]
-
-        response = await litellm.acompletion(
-            model=model_str,
-            messages=messages,
-            api_key=self.config.api_key,
-            temperature=self.config.temperature,
-            **self._get_completion_kwargs(model_str),
-        )
-
-        response_text = response.choices[0].message.content
-
-        if not response_text:
-            self._logger.error(
-                f"LLM returned empty response. "
-                f"Finish reason: {response.choices[0].finish_reason}"
-            )
-            raise RuntimeError(
-                "LLM returned empty content for story generation. "
-                "This may be caused by a safety filter. Check the post content."
-            )
-
-        try:
-            result = json.loads(self._clean_json(response_text))
-            return {
-                "title": result.get("title", ""),
-                "narrator_gender": result.get("narrator_gender", "unknown"),
-                "part1": result.get("part1", ""),
-                "part2": result.get("part2", ""),
-            }
-        except json.JSONDecodeError as e:
-            self._logger.error(f"Failed to parse LLM JSON response: {response_text}")
-            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
-
     async def generate_story(
         self, title: str, content: str, target_language: Language
     ) -> dict:
         model_str = self._get_model_string()
         self._logger.info(f"Generating single story via LiteLLM {model_str}")
 
-        prompt = render_story_prompt(title, content, target_language)
+        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        prompt = env.get_template("story.jinja2").render(
+            target_language=get_language_name(target_language),
+            examples=[],
+            reddit_title=title,
+            reddit_text=content,
+        )
 
         messages = [
             {"role": "user", "content": prompt},
@@ -427,52 +385,6 @@ class PromptLLMProxy(ILLMProxy):
             self._logger.warning("Failed to parse hashtag JSON: %s", response_text)
             return normalize_hashtags([])
 
-    async def revise_story(
-        self, current_script: dict, feedback: str, target_language: Language
-    ) -> dict:
-        model_str = self._get_model_string()
-        self._logger.info(f"Revising story via LiteLLM {model_str}")
-
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("revise_story.jinja2")
-
-        prompt = template.render(
-            current_script=json.dumps(current_script, ensure_ascii=False, indent=2),
-            feedback=feedback,
-            target_language=get_language_name(target_language),
-        )
-
-        messages = [{"role": "user", "content": prompt}]
-
-        response = await litellm.acompletion(
-            model=model_str,
-            messages=messages,
-            api_key=self.config.api_key,
-            temperature=self.config.temperature,
-            **self._get_completion_kwargs(model_str),
-        )
-
-        response_text = response.choices[0].message.content
-
-        if not response_text:
-            raise RuntimeError(
-                "LLM returned empty content for story revision. "
-                "This may be caused by a safety filter."
-            )
-
-        try:
-            result = json.loads(self._clean_json(response_text))
-            return {
-                "title": result.get("title", ""),
-                "narrator_gender": result.get("narrator_gender", "unknown"),
-                "part1": result.get("part1", ""),
-                "part2": result.get("part2", ""),
-            }
-        except json.JSONDecodeError as e:
-            self._logger.error(f"Failed to parse revised story JSON: {response_text}")
-            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
-
     async def enhance_transcription(
         self, base_text: str, raw_transcription: list[dict]
     ) -> list[dict]:
@@ -545,124 +457,3 @@ class PromptLLMProxy(ILLMProxy):
                 f"Failed to parse enhanced transcription JSON: {response_text}"
             )
             raise RuntimeError(f"Could not parse valid JSON from LLM enhancer: {e}")
-
-    async def generate_characters(
-        self, title: str, part1: str, part2: str, target_language: Language
-    ) -> list[dict]:
-        model_str = self._get_model_string()
-        self._logger.info(f"Generating characters via LiteLLM {model_str}")
-
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("generate_characters.jinja2")
-
-        prompt = template.render(
-            title=title,
-            part1=part1,
-            part2=part2,
-            target_language=target_language.value,
-        )
-
-        messages = [{"role": "user", "content": prompt}]
-
-        response = await litellm.acompletion(
-            model=model_str,
-            messages=messages,
-            api_key=self.config.api_key,
-            temperature=self.config.temperature,
-            **self._get_completion_kwargs(model_str),
-        )
-
-        response_text = response.choices[0].message.content
-        if not response_text:
-            raise RuntimeError("LLM returned empty content for character generation.")
-
-        try:
-            data = json.loads(self._clean_json(response_text))
-            if isinstance(data, dict) and "characters" in data:
-                data = data["characters"]
-            elif isinstance(data, dict) and all(
-                k in data for k in ("name", "visual_prompt")
-            ):
-                data = [data]
-            if not isinstance(data, list):
-                raise ValueError(f"Expected list of characters, got {type(data)}")
-            return data
-        except (json.JSONDecodeError, ValueError) as e:
-            self._logger.error(f"Failed to parse characters JSON: {response_text}")
-            raise RuntimeError(f"Could not parse characters from LLM: {e}")
-
-    async def generate_image_story(
-        self,
-        story_text: str,
-        transcription: list[dict],
-        style_context: str | None = None,
-        characters: list[dict] | None = None,
-        introduction_end_time: float = 0.0,
-        call_to_action_start_time: float = 0.0,
-    ) -> ImageStory:
-        model_str = self._get_model_string()
-        self._logger.info(f"Generating image story via LiteLLM {model_str}")
-
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("generate_image_story.jinja2")
-
-        prompt = template.render(
-            story_text=story_text,
-            transcription=json.dumps(transcription, ensure_ascii=False),
-            style_context=style_context,
-            characters=characters,
-        )
-
-        messages = [{"role": "user", "content": prompt}]
-
-        response = await litellm.acompletion(
-            model=model_str,
-            messages=messages,
-            api_key=self.config.api_key,
-            temperature=self.config.temperature,
-            **self._get_completion_kwargs(model_str, default_max_tokens=8192),
-        )
-
-        response_text = response.choices[0].message.content
-        finish_reason = response.choices[0].finish_reason
-
-        if finish_reason == "length":
-            self._logger.warning("Image story response was truncated (hit token limit)")
-
-        if not response_text:
-            self._logger.error(
-                "LLM returned empty response. Finish reason: %s", finish_reason
-            )
-            raise RuntimeError(
-                "LLM returned empty content for image story generation. "
-                "This may be caused by a safety filter. Check the story text."
-            )
-
-        try:
-            cleaned = self._clean_json(response_text)
-            decoder = json.JSONDecoder()
-            data, end = decoder.raw_decode(cleaned)
-            tail = cleaned[end:].strip()
-            if tail:
-                self._logger.warning(
-                    "generate_image_story: ignored %d trailing chars",
-                    len(tail),
-                )
-
-            if isinstance(data, list):
-                data = {"images": data}
-            elif isinstance(data, dict) and "images" not in data:
-                if all(k in data for k in ("start_time", "description", "prompt")):
-                    data = {"images": [data]}
-
-            if not isinstance(data, dict):
-                raise ValueError(f"Expected object or array, got {type(data)}")
-
-            data["introduction_end_time"] = introduction_end_time
-            data["call_to_action_start_time"] = call_to_action_start_time
-            return ImageStory(**data)
-        except (json.JSONDecodeError, ValueError) as e:
-            self._logger.error(f"Failed to parse image story JSON: {response_text}")
-            raise RuntimeError(f"Could not parse valid ImageStory from LLM: {e}")

@@ -1,0 +1,324 @@
+{
+  "auto_publish": {
+    "messages": [
+      "🔄 Busca diária iniciada...",
+      "✅ Busca finalizada: 5 histórias disponíveis. Iniciando geração de vídeo e agendamento.",
+      "🎬 Gerando história #1: \"A vizinha e o bolo\"",
+      "#1 Gerando roteiro...",
+      "#1 Roteiro finalizado. Gerando vídeo...",
+      "#1 Vídeo finalizado. Agendando história...",
+      "❌ #1 Erro ao publicar: publisher failed on call 1. Pulando para uma nova história.",
+      "🎬 Gerando história #2: \"O chefe e a planilha\"",
+      "#2 Gerando roteiro...",
+      "⏳ #2 Erro temporário, tentando de novo em 5s (tentativa 1/3)...",
+      "#2 Gerando roteiro... (tentativa 2/3)",
+      "#2 Roteiro finalizado. Gerando vídeo...",
+      "#2 Vídeo finalizado. Agendando história...",
+      "#2 Agendamento concluído para 25/09 12:00",
+      "🎬 Gerando história #3: \"O primo e o carro\"",
+      "#3 Gerando roteiro...",
+      "⚠️ #3 Bloqueado por filtro de conteúdo, pulando.",
+      "🎬 Gerando história #4: \"A sogra e o almoço\"",
+      "#4 Gerando roteiro...",
+      "#4 Roteiro finalizado. Gerando vídeo...",
+      "#4 Vídeo finalizado. Agendando história...",
+      "#4 Agendamento concluído para 25/09 18:00",
+      "🎬 Gerando história #5: \"O síndico e a garagem\"",
+      "#5 Gerando roteiro...",
+      "#5 Roteiro finalizado. Gerando vídeo...",
+      "#5 Vídeo finalizado. Agendando história...",
+      "#5 Agendamento concluído para 25/09 20:00",
+      "✅ Fluxo finalizado: 3/3 vídeos agendados."
+    ],
+    "manifests": [
+      {
+        "file": "story_01.json",
+        "video_path": "daily/story_01.mp4",
+        "title": "Roteiro: A vizinha e o bolo",
+        "summary": "Resumo de A vizinha e o bolo",
+        "post_url": "https://www.reddit.com/r/contos/comments/p1/",
+        "source": "auto"
+      },
+      {
+        "file": "story_02.json",
+        "video_path": "daily/story_02.mp4",
+        "title": "Roteiro: O chefe e a planilha",
+        "summary": "Resumo de O chefe e a planilha",
+        "post_url": "https://www.reddit.com/r/contos/comments/p2/",
+        "source": "auto"
+      },
+      {
+        "file": "story_04.json",
+        "video_path": "daily/story_04.mp4",
+        "title": "Roteiro: A sogra e o almoço",
+        "summary": "Resumo de A sogra e o almoço",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p4/",
+        "source": "auto"
+      },
+      {
+        "file": "story_05.json",
+        "video_path": "daily/story_05.mp4",
+        "title": "Roteiro: O síndico e a garagem",
+        "summary": "Resumo de O síndico e a garagem",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p5/",
+        "source": "auto"
+      }
+    ],
+    "publish_log_rows": [
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-24T18:00",
+        "video_path": "old/story_01.mp4",
+        "title": "Já publicada antes",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p6/",
+        "hashtags": "#fyp",
+        "publish_result": "ok",
+        "error": ""
+      },
+      {
+        "status": "failed",
+        "scheduled_at": "2026-09-25T12:00",
+        "video_path": "daily/story_01.mp4",
+        "title": "Roteiro: A vizinha e o bolo",
+        "post_url": "https://www.reddit.com/r/contos/comments/p1/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "",
+        "error": "publisher failed on call 1"
+      },
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-25T12:00",
+        "video_path": "daily/story_02.mp4",
+        "title": "Roteiro: O chefe e a planilha",
+        "post_url": "https://www.reddit.com/r/contos/comments/p2/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "https://www.tiktok.com/@fake/video/2",
+        "error": ""
+      },
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-25T18:00",
+        "video_path": "daily/story_04.mp4",
+        "title": "Roteiro: A sogra e o almoço",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p4/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "https://www.tiktok.com/@fake/video/3",
+        "error": ""
+      },
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-25T20:00",
+        "video_path": "daily/story_05.mp4",
+        "title": "Roteiro: O síndico e a garagem",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p5/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "https://www.tiktok.com/@fake/video/4",
+        "error": ""
+      }
+    ],
+    "publisher_calls": [
+      {
+        "video_path": "daily/story_01.mp4",
+        "description": "Roteiro: A vizinha e o bolo",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T12:00"
+      },
+      {
+        "video_path": "daily/story_02.mp4",
+        "description": "Roteiro: O chefe e a planilha",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T12:00"
+      },
+      {
+        "video_path": "daily/story_04.mp4",
+        "description": "Roteiro: A sogra e o almoço",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T18:00"
+      },
+      {
+        "video_path": "daily/story_05.mp4",
+        "description": "Roteiro: O síndico e a garagem",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T20:00"
+      }
+    ]
+  },
+  "generate": {
+    "messages": [
+      "🔄 Busca diária iniciada...",
+      "✅ Busca finalizada: 5 histórias disponíveis. Iniciando geração de 3 vídeos.",
+      "🎬 Gerando história #1: \"A vizinha e o bolo\"",
+      "#1 Gerando roteiro...",
+      "#1 Roteiro finalizado. Gerando vídeo...",
+      "#1 Vídeo finalizado.",
+      "🎬 Gerando história #2: \"O chefe e a planilha\"",
+      "#2 Gerando roteiro...",
+      "⏳ #2 Erro temporário, tentando de novo em 5s (tentativa 1/3)...",
+      "#2 Gerando roteiro... (tentativa 2/3)",
+      "#2 Roteiro finalizado. Gerando vídeo...",
+      "#2 Vídeo finalizado.",
+      "🎬 Gerando história #3: \"O primo e o carro\"",
+      "#3 Gerando roteiro...",
+      "⚠️ #3 Bloqueado por filtro de conteúdo, pulando.",
+      "🎬 Gerando história #4: \"A sogra e o almoço\"",
+      "#4 Gerando roteiro...",
+      "#4 Roteiro finalizado. Gerando vídeo...",
+      "#4 Vídeo finalizado.",
+      "✅ Geração finalizada: 3/3 vídeos prontos."
+    ],
+    "manifests": [
+      {
+        "file": "story_01.json",
+        "video_path": "daily/story_01.mp4",
+        "title": "Roteiro: A vizinha e o bolo",
+        "summary": "Resumo de A vizinha e o bolo",
+        "post_url": "https://www.reddit.com/r/contos/comments/p1/",
+        "source": "auto"
+      },
+      {
+        "file": "story_02.json",
+        "video_path": "daily/story_02.mp4",
+        "title": "Roteiro: O chefe e a planilha",
+        "summary": "Resumo de O chefe e a planilha",
+        "post_url": "https://www.reddit.com/r/contos/comments/p2/",
+        "source": "auto"
+      },
+      {
+        "file": "story_04.json",
+        "video_path": "daily/story_04.mp4",
+        "title": "Roteiro: A sogra e o almoço",
+        "summary": "Resumo de A sogra e o almoço",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p4/",
+        "source": "auto"
+      }
+    ],
+    "publish_log_rows": [
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-24T18:00",
+        "video_path": "old/story_01.mp4",
+        "title": "Já publicada antes",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p6/",
+        "hashtags": "#fyp",
+        "publish_result": "ok",
+        "error": ""
+      }
+    ],
+    "publisher_calls": []
+  },
+  "publish": {
+    "messages": [
+      "📤 Agendando 3 vídeos...",
+      "❌ [#1 — Roteiro: A vizinha e o bolo] Erro: publisher failed on call 1",
+      "#2 Agendamento concluído para 25/09 12:00",
+      "#3 Agendamento concluído para 25/09 18:00",
+      "🏁 Agendamento concluído."
+    ],
+    "manifests": [
+      {
+        "file": "story_01.json",
+        "video_path": "daily/story_01.mp4",
+        "title": "Roteiro: A vizinha e o bolo",
+        "summary": "Resumo de A vizinha e o bolo",
+        "post_url": "https://www.reddit.com/r/contos/comments/p1/",
+        "source": "auto"
+      },
+      {
+        "file": "story_02.json",
+        "video_path": "daily/story_02.mp4",
+        "title": "Roteiro: O chefe e a planilha",
+        "summary": "Resumo de O chefe e a planilha",
+        "post_url": "https://www.reddit.com/r/contos/comments/p2/",
+        "source": "auto"
+      },
+      {
+        "file": "story_04.json",
+        "video_path": "daily/story_04.mp4",
+        "title": "Roteiro: A sogra e o almoço",
+        "summary": "Resumo de A sogra e o almoço",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p4/",
+        "source": "auto"
+      }
+    ],
+    "publish_log_rows": [
+      {
+        "status": "failed",
+        "scheduled_at": "2026-09-25T12:00",
+        "video_path": "daily/story_01.mp4",
+        "title": "Roteiro: A vizinha e o bolo",
+        "post_url": "https://www.reddit.com/r/contos/comments/p1/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "",
+        "error": "publisher failed on call 1"
+      },
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-25T12:00",
+        "video_path": "daily/story_02.mp4",
+        "title": "Roteiro: O chefe e a planilha",
+        "post_url": "https://www.reddit.com/r/contos/comments/p2/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "https://www.tiktok.com/@fake/video/2",
+        "error": ""
+      },
+      {
+        "status": "scheduled",
+        "scheduled_at": "2026-09-25T18:00",
+        "video_path": "daily/story_04.mp4",
+        "title": "Roteiro: A sogra e o almoço",
+        "post_url": "https://www.reddit.com/r/desabafos/comments/p4/",
+        "hashtags": "#fyp #historia #reddit",
+        "publish_result": "https://www.tiktok.com/@fake/video/3",
+        "error": ""
+      }
+    ],
+    "publisher_calls": [
+      {
+        "video_path": "daily/story_01.mp4",
+        "description": "Roteiro: A vizinha e o bolo",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T12:00"
+      },
+      {
+        "video_path": "daily/story_02.mp4",
+        "description": "Roteiro: O chefe e a planilha",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T12:00"
+      },
+      {
+        "video_path": "daily/story_04.mp4",
+        "description": "Roteiro: A sogra e o almoço",
+        "hashtags": [
+          "fyp",
+          "historia",
+          "reddit"
+        ],
+        "schedule_at": "2026-09-25T18:00"
+      }
+    ]
+  }
+}

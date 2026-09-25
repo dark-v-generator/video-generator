@@ -1,20 +1,3 @@
-from src.entities.configs.proxies.image_generation import (
-    ImageGenerationConfigType,
-    LeonardoImageGenerationConfig,
-    LeonardoV2ImageGenerationConfig,
-    MidjourneyImageGenerationConfig,
-    LocalImageGenerationConfig,
-    RunPodImageGenerationConfig,
-    MockImageGenerationConfig,
-)
-from src.proxies.interfaces import IImageGeneratorProxy, ITranscriptionProxy
-from src.proxies.leonardo_proxy import LeonardoImageProxy
-from src.proxies.leonardo_v2_proxy import LeonardoV2ImageProxy
-from src.proxies.midjourney_proxy import MidjourneyImageProxy
-from src.proxies.local_sdxl_proxy import LocalSDXLImageProxy
-from src.proxies.runpod_comfyui_proxy import RunPodComfyUIProxy
-from src.proxies.mock_image_proxy import MockImageGeneratorProxy
-
 from src.entities.configs.proxies.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
@@ -30,7 +13,6 @@ from src.entities.configs.proxies.speech import (
 from src.proxies.edge_tts_proxy import EdgeTTSSpeechProxy
 from src.proxies.elevenlabs_proxy import ElevenLabsSpeechProxy
 from src.proxies.interfaces import (
-    IImageGeneratorProxy,
     ITranscriptionProxy,
     ISpeechProxy,
     IRedditProxy,
@@ -59,57 +41,6 @@ from src.proxies.caching_youtube_proxy import CachingYouTubeProxy
 from src.proxies.interfaces import ICoverProxy
 from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
-
-from src.proxies.interfaces import IVideoGeneratorProxy
-from src.proxies.comfyui_video_proxy import ComfyUIVideoProxy
-from src.entities.configs.proxies.video_generation import (
-    VideoGenerationConfigType,
-    ComfyUIVideoGenerationConfig,
-)
-
-
-class ImageGeneratorFactory:
-    @staticmethod
-    def create_optional(
-        config: ImageGenerationConfigType | None,
-        leonardo_api_key: str = None,
-        runpod_api_key: str = None,
-        legnext_api_key: str = None,
-    ) -> IImageGeneratorProxy | None:
-        if config is None:
-            return None
-        return ImageGeneratorFactory.create(
-            config,
-            leonardo_api_key,
-            runpod_api_key,
-            legnext_api_key,
-        )
-
-    @staticmethod
-    def create(
-        config: ImageGenerationConfigType,
-        leonardo_api_key: str = None,
-        runpod_api_key: str = None,
-        legnext_api_key: str = None,
-    ) -> IImageGeneratorProxy:
-        if isinstance(config, LeonardoImageGenerationConfig):
-            config.api_key = leonardo_api_key
-            return LeonardoImageProxy(config=config)
-        elif isinstance(config, LeonardoV2ImageGenerationConfig):
-            config.api_key = leonardo_api_key
-            return LeonardoV2ImageProxy(config=config)
-        elif isinstance(config, MidjourneyImageGenerationConfig):
-            config.api_key = legnext_api_key
-            return MidjourneyImageProxy(config=config)
-        elif isinstance(config, RunPodImageGenerationConfig):
-            config.api_key = runpod_api_key
-            return RunPodComfyUIProxy(config=config)
-        elif isinstance(config, LocalImageGenerationConfig):
-            return LocalSDXLImageProxy(config=config)
-        elif isinstance(config, MockImageGenerationConfig):
-            return MockImageGeneratorProxy()
-        else:
-            raise ValueError(f"Unknown Image Generation Configuration: {type(config)}")
 
 
 class TranscriptionProxyFactory:
@@ -225,15 +156,6 @@ class YouTubeProxyFactory:
             return proxy
         else:
             raise ValueError(f"Unknown YouTube Configuration: {type(config)}")
-
-
-class VideoGeneratorFactory:
-    @staticmethod
-    def create(config: VideoGenerationConfigType) -> IVideoGeneratorProxy:
-        if isinstance(config, ComfyUIVideoGenerationConfig):
-            return ComfyUIVideoProxy(config=config)
-        else:
-            raise ValueError(f"Unknown Video Generation Configuration: {type(config)}")
 
 
 class CoverProxyFactory:

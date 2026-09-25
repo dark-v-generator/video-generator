@@ -82,7 +82,7 @@ class VideoConfig(BaseYAMLModel):
             "Output frame rate for the YouTube-background videos. Without it "
             "the render inherits the frame rate of whichever background got "
             "downloaded — usually 60, which doubles the frame count and the "
-            "render time. (Image-story videos render at their own fixed 24.)"
+            "render time."
         ),
     )
     youtube_channel_url: str = Field(
@@ -109,10 +109,6 @@ class VideoConfig(BaseYAMLModel):
         title="Which YouTube channel surface to use for background clips",
     )
     ffmpeg_params: List[str] = Field([], title="ffmpeg params")
-    draw_transition_duration: float = Field(
-        1.0,
-        title="Duration (seconds) of the draw-in reveal effect. Set to 0 to use a simple crossfade instead.",
-    )
     anti_fingerprint: AntiFingerprintConfig = Field(
         default_factory=AntiFingerprintConfig,
         title="Subtle randomized transforms to evade content-fingerprint detection",

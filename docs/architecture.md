@@ -23,11 +23,12 @@ src/
 │   ├── captions_service.py  # Caption generation
 │   ├── cover_service.py     # Cover image generation
 │   ├── speech_service.py    # Text-to-speech
-│   ├── prepared_story_queue.py  # Server-side queue of locally prepared stories
-│   └── reddit_video_service.py  # Full Reddit → video pipeline
+│   ├── story_finder_service.py  # Discovery and evaluation of Reddit posts
+│   └── reddit_video_service.py  # Reddit post → single narrated video
+bots/
+│   └── satisfying_bot.py    # Telegram bot and the daily run
 scripts/
-│   ├── prepare_story.py     # CLI for preparing stories on the laptop
-│   └── reddit_two_part_history.py  # CLI script for two-part Reddit videos
+│   └── daily_auto_publish.py  # CLI for the daily run (full, generate-only, publish-only)
 config.yaml                  # Configuration overrides
 .env                         # API keys and secrets
 Justfile                     # Task runner
@@ -56,7 +57,7 @@ To add a new provider:
 
 Configuration uses **Pydantic models with defaults**. `config.yaml` is a partial override file — any omitted field falls back to the Pydantic default. Secrets are loaded separately from `.env` via `pydantic-settings`.
 
-## Pipeline Flow (Reddit Two-Part Video)
+## Pipeline Flow (one story → one video)
 
 ```
 Reddit URL
@@ -80,58 +81,26 @@ Reddit URL
         └────────────────────┴────────────────────┘
                              │
                              ▼
-                      output/part1.mp4
-                      output/part2.mp4
+                   output/daily/story_NN.mp4
 ```
 
 
 ## Daily Job Flow (Satisfying Bot)
 
-The daily run takes the operator's queue before it takes the Reddit. A package
-already carries the script, so the two paid model calls of the pipeline — story
-evaluation and script writing — are skipped for it entirely. Discovery only fills
-the slots the queue left empty, and with an empty queue the run is the one that
-existed before the queue was introduced.
-
 ```
-                 ┌──────────────────────────┐
-                 │ PreparedStoryQueue       │
-                 │ .storage/prepared/inbox/ │
-                 └────────────┬─────────────┘
-                              │ validate (language, censor, gender)
-              ┌───────────────┴───────────────┐
-              │ valid                         │ invalid
-              ▼                               ▼
-        ┌───────────┐                   ┌───────────┐
-        │ work item │                   │  failed/  │
-        │ (prepared)│                   │ + error   │
-        └─────┬─────┘                   └───────────┘
-              │
-              │ short of the daily count?
-              ▼
-    ┌─────────────────────┐   exclude_urls = queue ∪ done ∪ scheduled
-    │ StoryFinderService  │◀──────────────────────────────────────────
+    ┌─────────────────────┐   exclude_urls = posts already scheduled
+    │ StoryFinderService  │◀────────────────── (.storage/tiktok_publish_log.csv)
     │ (score + evaluate)  │
     └──────────┬──────────┘
-               │ work items (auto)
+               │ ranked candidates
                ▼
     ┌──────────────────────────────────────────────┐
-    │ for each item, up to the daily count:        │
-    │   script  — from the package, or from LLM    │
+    │ for each candidate, up to the daily count:   │
+    │   script  — LLM, retried on transient errors │
     │   video   — RedditVideoService               │
     │   publish — TikTok publisher + schedule slot │
-    └──────────────────┬───────────────────────────┘
-                       │
-         ┌─────────────┴─────────────┐
-         ▼                           ▼
-   ┌───────────┐               ┌───────────┐
-   │   done/   │               │  failed/  │
-   │ + outcome │               │ + error   │
-   └───────────┘               └───────────┘
+    └──────────────────────────────────────────────┘
 ```
 
-Each `output/daily/story_NN.json` manifest records which half produced it in a
-`source` field (`prepared` or `auto`). Manifests written before the field existed
-load as `auto`.
-
-The operator-facing walkthrough lives in [prepared-stories.md](./prepared-stories.md).
+Each video leaves an `output/daily/story_NN.json` manifest next to it, with
+`"source": "auto"`; `--publish-only` schedules a directory of them later.

@@ -21,31 +21,20 @@ ollama pull gemma3:12b
 cat > .env << EOF
 OPENAI_API_KEY=sk-...
 ELEVENLABS_API_KEY=...
-LEONARDO_API_KEY=...
 EOF
 ```
 
-## Generate a Reddit Video
+## Run the Daily Pipeline
 
 ```bash
-# Fast preview (low quality, ~400px)
-just generate-reddit-fast https://www.reddit.com/r/pettyrevenge/comments/...
+# Generate one video only (no publishing): output/daily/story_01.mp4 + story_01.json
+just daily-generate 1
 
-# Full quality (1080×1920)
-just generate-reddit https://www.reddit.com/r/pettyrevenge/comments/...
-```
+# Schedule what was generated
+just daily-publish-only output/daily
 
-Output files are saved to `output/part1.mp4` and `output/part2.mp4`.
-
-## CLI Options
-
-```bash
-python scripts/reddit_two_part_history.py <POST_URL> \
-  --output-dir output \
-  --language pt \           # pt, en, es, fr, de, it, ja, ko, zh
-  --gender female \         # male, female (auto-detected if omitted)
-  --rate 1.2 \              # TTS speech rate
-  --low-quality             # fast preview rendering
+# Full run: discover → generate → schedule
+just daily-publish 3
 ```
 
 ## Switching Providers

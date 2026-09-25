@@ -3,14 +3,6 @@
 PROD_HOST := "gustavo@192.168.1.100"
 PROD_DIR  := "~/video-generator"
 
-# Generate a two part reddit video
-generate-reddit url output_dir="output":
-    .venv/bin/python scripts/reddit_two_part_history.py {{url}} --output-dir {{output_dir}}
-
-# Generate a two part reddit video in low quality (fast)
-generate-reddit-fast url output_dir="output":
-    .venv/bin/python scripts/reddit_two_part_history.py {{url}} --output-dir {{output_dir}} --low-quality
-
 # Run the daily auto-publish pipeline locally (find → generate → schedule)
 daily-publish count="":
     #!/usr/bin/env bash
@@ -57,49 +49,6 @@ prod-daily-publish-only dir="output/daily":
     echo "==> Publishing from {{dir}} on {{PROD_HOST}}..."
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
-
-# ============================================================
-# Prepared stories (local flow)
-# ============================================================
-# The creative half of the daily pipeline, run on the laptop with the
-# Claude Code assistant instead of the paid evaluation/scriptwriting
-# models. No recipe below calls an LLM: `find` only ranks posts with the
-# deterministic score, and `prompt` just renders the template the server
-# would have sent. See docs in specs/003-local-story-prep/.
-
-# Rank today's candidates without any model call. Writes output/prepared/candidates.json.
-story-find *args:
-    uv run python scripts/prepare_story.py find {{args}}
-
-# Print the full original text of candidate N (or `--url <reddit-url>`).
-story-show *args:
-    uv run python scripts/prepare_story.py show {{args}}
-
-# Print the exact editorial prompt the server sends for candidate N.
-# Add --two-part for the two-video format.
-story-prompt n *args:
-    uv run python scripts/prepare_story.py prompt {{n}} {{args}}
-
-# Validate prepared packages (missing fields, wrong language, forbidden words).
-story-validate file:
-    uv run python scripts/prepare_story.py validate {{file}}
-
-# List the packages prepared locally.
-story-list:
-    uv run python scripts/prepare_story.py list
-
-# config.prod.yaml carries default_rate, so the preview sounds like the server.
-# Narrate a package with the production voice and speed.
-story-preview file:
-    CONFIG_PATH=config.prod.yaml uv run python scripts/prepare_story.py preview {{file}}
-
-# Validate and copy a package into the server's queue (scp over ssh).
-story-ship file:
-    uv run python scripts/prepare_story.py ship {{file}}
-
-# Show what is waiting in the server's queue.
-story-queue:
-    uv run python scripts/prepare_story.py queue
 
 # Format code
 fmt:
