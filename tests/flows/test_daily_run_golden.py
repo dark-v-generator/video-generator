@@ -1,9 +1,10 @@
 """Golden record of the daily run's observable behaviour in its three modes.
 
 Recorded once from the code as it stood before the capabilities were pulled
-out (feature 004, M1). Every later milestone must reproduce it unchanged: the
-same candidates and the same fake answers have to yield the same progress
-messages, manifests, publish-log rows and publisher calls. A diff here is a
+out (feature 004, M1), when the run still lived in the Telegram bot. It now
+drives ``DailyRun`` through the real container, and must still reproduce it
+unchanged: the same candidates and the same fake answers have to yield the
+same progress messages, manifests, publish-log rows and publisher calls. A diff here is a
 behaviour change, not progress; ``--update-golden`` rewrites the fixture and
 the diff is reviewed in the PR.
 
@@ -17,16 +18,16 @@ import csv
 import datetime as real_datetime
 import json
 import os
-import types
 
 import pytest
 from dependency_injector import providers
 
-from bots import satisfying_bot
 from src.core.container import ApplicationContainer
 from src.entities.config import EvaluationConfig, MainConfig
 from src.entities.configs.bots import BotsConfig, TelegramBotConfig
 from src.entities.reddit_post import RedditPost
+from src.flows import daily_run
+from src.storage import FileRunStore
 from tests.fakes.proxies import (
     FakeCoverProxy,
     FakeLLMProxy,
@@ -108,12 +109,6 @@ LOG_FIELDS = [
 ]
 
 
-class _FrozenDateTime(real_datetime.datetime):
-    @classmethod
-    def now(cls, tz=None):
-        return NOW
-
-
 def _main_config() -> MainConfig:
     return MainConfig(
         language="pt-br",
@@ -132,7 +127,7 @@ def _main_config() -> MainConfig:
 
 
 class _Run:
-    """One mode's worth of fakes, wired into the real container and the bot."""
+    """One mode's worth of fakes, wired into the real container."""
 
     def __init__(self, monkeypatch, tmp_path, *, publish_fail_on=frozenset()):
         self.tmp_path = tmp_path
@@ -157,28 +152,18 @@ class _Run:
         container.footage_source.override(providers.Object(FakeFootageSource()))
         container.video_composer.override(providers.Object(FakeComposer()))
 
+        container.tiktok_publisher.override(providers.Object(self.publisher))
+        self.store = FileRunStore(str(self.log_path))
+        container.run_store.override(providers.Object(self.store))
+        self.container = container
+
         async def no_sleep(delay):
             return None
 
-        monkeypatch.setattr(satisfying_bot, "container", container)
-        monkeypatch.setattr(satisfying_bot, "config", config)
-        monkeypatch.setattr(satisfying_bot, "bot_config", config.bots.satisfying_bot)
-        monkeypatch.setattr(
-            satisfying_bot, "_build_tiktok_publisher", lambda: self.publisher
-        )
-        monkeypatch.setattr(satisfying_bot.asyncio, "sleep", no_sleep)
-        monkeypatch.setattr(
-            satisfying_bot,
-            "datetime",
-            types.SimpleNamespace(
-                datetime=_FrozenDateTime,
-                date=real_datetime.date,
-                time=real_datetime.time,
-                timedelta=real_datetime.timedelta,
-                timezone=real_datetime.timezone,
-            ),
-        )
-        monkeypatch.setenv("TIKTOK_PUBLISH_LOG_PATH", str(self.log_path))
+        monkeypatch.setattr(daily_run.asyncio, "sleep", no_sleep)
+
+    def flow(self) -> daily_run.DailyRun:
+        return self.container.daily_run(progress=self.send_message, now=lambda: NOW)
 
     async def send_message(self, text: str) -> None:
         self.messages.append(text)
@@ -249,16 +234,14 @@ class _Run:
 async def _auto_publish(monkeypatch, tmp_path) -> dict:
     run = _Run(monkeypatch, tmp_path / "auto", publish_fail_on={1})
     run.seed_publish_log()
-    await satisfying_bot.run_daily_auto_publish(
-        run.send_message, output_dir=run.output_dir
-    )
+    await run.flow().run(output_dir=run.output_dir)
     return run.record()
 
 
 async def _generate(monkeypatch, tmp_path) -> dict:
     run = _Run(monkeypatch, tmp_path / "generate")
     run.seed_publish_log()
-    await satisfying_bot.run_daily_generate(run.send_message, output_dir=run.output_dir)
+    await run.flow().generate(output_dir=run.output_dir)
     return run.record()
 
 
@@ -267,14 +250,11 @@ async def _publish(monkeypatch, tmp_path) -> dict:
     # publish run then starts from an empty log, so its rows are only its own.
     source = _Run(monkeypatch, tmp_path / "publish")
     source.seed_publish_log()
-    await satisfying_bot.run_daily_generate(
-        source.send_message, output_dir=source.output_dir
-    )
+    await source.flow().generate(output_dir=source.output_dir)
     os.remove(source.log_path)
 
     run = _Run(monkeypatch, tmp_path / "publish", publish_fail_on={1})
-    videos = satisfying_bot.load_generated_videos(run.output_dir)
-    await satisfying_bot.run_daily_publish(run.send_message, videos)
+    await run.flow().publish(run.store.load_manifests(run.output_dir))
     return run.record()
 
 

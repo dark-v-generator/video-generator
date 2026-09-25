@@ -4,6 +4,7 @@ from dependency_injector import containers, providers
 from .secrets import secrets
 
 from ..capabilities.discovery import RedditStoryDiscovery
+from ..capabilities.publishing import HashtagSuggester
 from ..capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
 from ..capabilities.rendering import NarrationOverFootageRenderer, select_renderer
 from ..capabilities.rendering.captions import CaptionsService
@@ -13,10 +14,15 @@ from ..capabilities.rendering.cover import CoverService
 from ..capabilities.rendering.speech import SpeechService
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
+from ..entities.configs.flows import DailyRunConfig
+from ..flows.daily_run import DailyRun
 from ..prompts import loader as prompts
 from ..proxies import factories as proxies_factories
+from ..proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
+from ..storage import FileRunStore
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
+_DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
 
 
 def _create_llm_proxy(**kwargs):
@@ -28,6 +34,10 @@ def _create_llm_proxy(**kwargs):
 
 def _first_configured(*proxies):
     return next(proxy for proxy in proxies if proxy is not None)
+
+
+def _publish_log_path() -> str:
+    return os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -157,6 +167,41 @@ class ApplicationContainer(containers.DeclarativeContainer):
         select_renderer,
         name=main_config.provided.services.video_config.rendering_strategy,
         renderers=renderers,
+    )
+
+    # Publishing: a new browser agent per run, as the bot always did.
+    tiktok_publisher = providers.Factory(
+        BrowserUseTikTokPublisherProxy,
+        openrouter_api_key=secrets.openrouter_api_key,
+        model=main_config.provided.proxies.tiktok_publisher_config.agent_model,
+        cookies_path=main_config.provided.proxies.tiktok_publisher_config.cookies_path,
+        headless=main_config.provided.proxies.tiktok_publisher_config.headless,
+        max_steps=main_config.provided.proxies.tiktok_publisher_config.max_steps,
+        use_vision=main_config.provided.proxies.tiktok_publisher_config.use_vision,
+    )
+
+    # Flows
+    daily_run_config = providers.Singleton(DailyRunConfig.from_main_config, main_config)
+    hashtag_suggester = providers.Singleton(
+        HashtagSuggester,
+        llm=llm_proxy,
+        defaults=daily_run_config.provided.publish_hashtags,
+        language=main_config.provided.language,
+    )
+    # Read on every call so TIKTOK_PUBLISH_LOG_PATH set after import is honoured.
+    run_store = providers.Factory(
+        FileRunStore, publish_log_path=providers.Callable(_publish_log_path)
+    )
+    # Called with ``progress=``: the adapter decides where the lines go.
+    daily_run = providers.Factory(
+        DailyRun,
+        discovery=story_discovery,
+        writer=story_writer,
+        renderer=renderer,
+        publisher=tiktok_publisher,
+        hashtags=hashtag_suggester,
+        store=run_store,
+        config=daily_run_config,
     )
 
 

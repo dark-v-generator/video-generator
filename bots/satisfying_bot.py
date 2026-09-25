@@ -1,21 +1,21 @@
-"""Telegram bot que gera vídeos com fundo satisfatório a partir de URLs do Reddit."""
+"""Telegram bot that runs the daily flow and turns a Reddit URL into a video.
+
+An adapter: the daily run (``/autopost`` and the daily job) is ``DailyRun`` with
+progress sent to the chat; a Reddit URL goes through discovery, writing and
+rendering on a sequential job queue so the bot stays responsive.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import csv
-import dataclasses
 import datetime
 import logging
-import os
-import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import Message, Update
 from telegram.ext import (
     Application,
-    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     ConversationHandler,
@@ -23,17 +23,9 @@ from telegram.ext import (
     filters,
 )
 
-from src.capabilities.writing import (
-    WriterContentBlockedError,
-    WriterTransientError,
-)
 from src.core.container import container
 from src.core.secrets import secrets
-from src.entities.config import MainConfig
-from src.entities.story import Story
-from src.entities.story_candidate import EvaluatedStory
-from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
-from src.capabilities.publishing.hashtags import normalize_hashtags
+from src.flows.progress import Progress, RunLock, short_error
 
 from bots.base import (
     is_user_allowed,
@@ -48,7 +40,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-config = MainConfig.from_yaml(os.environ.get("CONFIG_PATH", "config.yaml"))
+config = container.main_config()
 bot_config = config.bots.satisfying_bot
 
 WAITING_URL = 0
@@ -59,13 +51,10 @@ WAITING_URL = 0
 # responsive while heavy work runs in the background.
 # ---------------------------------------------------------------------------
 
-RETRY_CALLBACK_PREFIX = "retry:"
-
 
 @dataclass
 class _GenerationJob:
     url: str
-    url_key: str
     reply_message: Message
     status_message: Message
 
@@ -77,17 +66,9 @@ class GenerationQueue:
         self._worker_task: Optional[asyncio.Task] = None
 
     @property
-    def pending(self) -> int:
-        return self._queue.qsize()
-
-    @property
-    def busy(self) -> bool:
-        return self._running
-
-    @property
     def position(self) -> int:
         """Position a newly enqueued job would have (1-based, counting the running job)."""
-        return self.pending + (1 if self._running else 0) + 1
+        return self._queue.qsize() + (1 if self._running else 0) + 1
 
     async def enqueue(self, job: _GenerationJob) -> int:
         """Add a job and return its 1-based queue position."""
@@ -115,8 +96,6 @@ class GenerationQueue:
     async def _process(self, job: _GenerationJob) -> None:
         try:
             await job.status_message.edit_text("⏳ Gerando vídeo...")
-
-            container.wire(modules=[__name__])
 
             origin = container.story_discovery().fetch(job.url)
             story = await container.story_writer().write(
@@ -149,22 +128,8 @@ class GenerationQueue:
 
         except Exception as e:
             logger.exception("Failed to generate video for %s", job.url)
-            retry_keyboard = InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "🔄 Tentar de novo",
-                            callback_data=f"{RETRY_CALLBACK_PREFIX}{job.url_key}",
-                        )
-                    ]
-                ]
-            )
-            error_text = str(e)
-            if len(error_text) > 300:
-                error_text = error_text[:300] + "…"
             await job.status_message.edit_text(
-                f"❌ Erro ao gerar vídeo: {error_text}",
-                reply_markup=retry_keyboard,
+                f"❌ Erro ao gerar vídeo: {short_error(e)}"
             )
 
 
@@ -199,12 +164,8 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("User %s requested satisfying video for: %s", user_id, url)
     status_msg = await update.message.reply_text("⏳ Adicionando à fila...")
 
-    url_key = _store_url(url)
     job = _GenerationJob(
-        url=url,
-        url_key=url_key,
-        reply_message=update.message,
-        status_message=status_msg,
+        url=url, reply_message=update.message, status_message=status_msg
     )
     pos = await generation_queue.enqueue(job)
 
@@ -221,909 +182,20 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-FIND_CALLBACK_PREFIX = "fg:"
-_find_url_store: dict[str, str] = {}
-_find_url_counter = 0
+# ---------------------------------------------------------------------------
+# Daily run: /autopost and the daily job share one run at a time.
+# ---------------------------------------------------------------------------
 
-LLM_LABELS = {
-    "retencao": "Retenção",
-    "qualidade": "Qualidade",
-    "viralizacao": "Viralização",
-    "adequacao_tiktok": "TikTok Fit",
-    "gancho": "Gancho",
-}
+run_lock = RunLock()
 
 
-def _store_url(url: str) -> str:
-    global _find_url_counter
-    _find_url_counter += 1
-    key = str(_find_url_counter)
-    _find_url_store[key] = url
-    return key
-
-
-def _format_bar(value: float, width: int = 10) -> str:
-    filled = round(value / 100 * width)
-    return "▓" * filled + "░" * (width - filled)
-
-
-def _parse_subreddits(args: list[str] | None) -> list[str] | None:
-    if not args:
-        return None
-
-    subreddits = []
-    for arg in args:
-        for item in arg.split(","):
-            name = item.strip().removeprefix("r/").strip("/")
-            if name:
-                subreddits.append(name)
-
-    return subreddits or None
-
-
-def _format_find_message(
-    i: int,
-    story: EvaluatedStory,
-    *,
-    include_scores: bool = True,
-) -> str:
-    """Build the text body for a single story message."""
-    post = story.post
-    sub = post.community.replace("r/", "")
-
-    if include_scores:
-        notas = story.evaluation.get("notas", {})
-        lines = [
-            f"#{i + 1} [{story.veredito}] — {story.nota_geral}/100",
-            f"r/{sub} | {post.score or 0} pts | {post.num_comments or 0} comments",
-            "",
-        ]
-        for key, label in LLM_LABELS.items():
-            entry = notas.get(key, {})
-            nota = entry.get("nota", 0)
-            lines.append(f"  {label}: {_format_bar(nota)} {nota}")
-        lines.append("")
-        lines.append(f"{story.resumo[:400]}")
-    else:
-        lines = [
-            f"#{i + 1} — {post.title}",
-            f"r/{sub}",
-            "",
-            story.resumo[:400],
-        ]
-
-    return "\n".join(lines)
-
-
-async def _discover_stories(
-    subreddits: list[str] | None = None,
-    exclude_urls: set[str] | None = None,
-) -> list[EvaluatedStory]:
-    """Run the story-finder pipeline and return ranked results."""
-    container.wire(modules=[__name__])
-    discovery = container.story_discovery()
-    return await discovery.find_best_stories(
-        sort="top",
-        time_filter="day",
-        top_per_sub=5,
-        language=config.language,
-        subreddits=subreddits,
-        exclude_urls=exclude_urls,
-    )
-
-
-async def _run_find(
-    bot,
-    chat_id: int,
-    subreddits: list[str] | None = None,
-) -> None:
-    """Core /find logic: discover and rank stories, send results with generate buttons."""
-    try:
-        results = await _discover_stories(subreddits)
-    except Exception as e:
-        logger.exception("Failed to find stories")
-        await bot.send_message(chat_id, f"Erro ao buscar histórias: {e}")
+async def _run_daily(progress: Progress, count: int | None = None) -> None:
+    if run_lock.locked:
+        await progress("Já existe um fluxo de auto-post em andamento.")
         return
 
-    if not results:
-        await bot.send_message(chat_id, "Nenhuma história boa encontrada hoje.")
-        return
-
-    for i, story in enumerate(results):
-        text = _format_find_message(i, story, include_scores=True)
-        url_key = _store_url(story.post.url)
-
-        keyboard = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "🎬 Gerar Vídeo",
-                        callback_data=f"{FIND_CALLBACK_PREFIX}{url_key}",
-                    )
-                ]
-            ]
-        )
-
-        await bot.send_message(chat_id, text, reply_markup=keyboard)
-
-    await bot.send_message(
-        chat_id,
-        f"{len(results)} histórias encontradas. Clique em 'Gerar Vídeo' pra criar.",
-    )
-
-
-async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
-        await reject_unauthorized(update)
-        return
-
-    subreddits = _parse_subreddits(context.args)
-    if subreddits:
-        subs_text = ", ".join(f"r/{sub}" for sub in subreddits)
-        await update.message.reply_text(
-            f"Buscando as melhores histórias em {subs_text}... pode demorar um pouco."
-        )
-    else:
-        await update.message.reply_text(
-            "Buscando as melhores histórias do dia... pode demorar um pouco."
-        )
-    await _run_find(context.bot, update.effective_chat.id, subreddits=subreddits)
-
-
-async def handle_find_generate(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    user_id = query.from_user.id
-    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
-        await query.message.reply_text("Sem permissão.")
-        return
-
-    url_key = query.data.removeprefix(FIND_CALLBACK_PREFIX)
-    url = _find_url_store.get(url_key)
-    if not url:
-        await query.message.reply_text("Link expirado. Rode /find de novo.")
-        return
-
-    await query.edit_message_reply_markup(reply_markup=None)
-    status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
-
-    job = _GenerationJob(
-        url=url, url_key=url_key, reply_message=query.message, status_message=status_msg
-    )
-    pos = await generation_queue.enqueue(job)
-
-    if pos > 1:
-        await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
-    else:
-        await status_msg.edit_text("⏳ Gerando vídeo... pode demorar alguns minutos.")
-
-
-async def handle_retry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    user_id = query.from_user.id
-    if not is_user_allowed(user_id, bot_config.allowed_user_ids):
-        await query.message.reply_text("Sem permissão.")
-        return
-
-    url_key = query.data.removeprefix(RETRY_CALLBACK_PREFIX)
-    url = _find_url_store.get(url_key)
-    if not url:
-        await query.message.reply_text("Link expirado. Rode /find de novo.")
-        return
-
-    await query.edit_message_reply_markup(reply_markup=None)
-    status_msg = await query.message.reply_text("⏳ Adicionando à fila...")
-
-    job = _GenerationJob(
-        url=url, url_key=url_key, reply_message=query.message, status_message=status_msg
-    )
-    pos = await generation_queue.enqueue(job)
-
-    if pos > 1:
-        await status_msg.edit_text(f"🕐 Na fila — posição #{pos}. Aguarde...")
-    else:
-        await status_msg.edit_text(
-            "⏳ Tentando de novo... pode demorar alguns minutos."
-        )
-
-
-def _cleanup_temp(path: str | None) -> None:
-    if path and os.path.exists(path):
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
-
-
-def _parse_slot_times(slot_times: list[str]) -> list[datetime.time]:
-    """Parse and sort HH:MM strings into time objects."""
-    parsed = sorted(
-        datetime.time(int(h), int(m)) for h, m in (s.split(":") for s in slot_times)
-    )
-    if not parsed:
-        raise ValueError("publish_slots_local must contain at least one HH:MM entry")
-    return parsed
-
-
-def next_publish_slot(
-    after: datetime.datetime,
-    slot_times: list[str],
-    min_lead_minutes: int,
-    *,
-    _now: datetime.datetime | None = None,
-) -> datetime.datetime:
-    """Return the first eligible slot strictly after *after*.
-
-    Respects *min_lead_minutes* relative to the real clock (now), and
-    also ensures the slot comes after the previous scheduled time so
-    slots never go backwards.
-    """
-    parsed = _parse_slot_times(slot_times)
-    now = _now or datetime.datetime.now()
-    earliest = max(
-        after + datetime.timedelta(minutes=1),
-        now + datetime.timedelta(minutes=min_lead_minutes),
-    )
-    day = earliest.date()
-
-    for _ in range(400):
-        for t in parsed:
-            candidate = datetime.datetime.combine(day, t)
-            if candidate >= earliest:
-                return candidate
-        day += datetime.timedelta(days=1)
-
-    raise RuntimeError("Could not find a valid publish slot within 400 days")
-
-
-def compute_publish_slots(
-    now: datetime.datetime,
-    slot_times: list[str],
-    count: int,
-    min_lead_minutes: int,
-) -> list[datetime.datetime]:
-    """Return the next *count* eligible local-time publish slots starting from *now*.
-
-    Walks configured HH:MM slots forward day-by-day, skipping any slot
-    that falls within *min_lead_minutes* of *now*.
-    """
-    parsed = _parse_slot_times(slot_times)
-    earliest = now + datetime.timedelta(minutes=min_lead_minutes)
-    day = now.date()
-    slots: list[datetime.datetime] = []
-
-    while len(slots) < count:
-        for t in parsed:
-            candidate = datetime.datetime.combine(day, t)
-            if candidate >= earliest and len(slots) < count:
-                slots.append(candidate)
-        day += datetime.timedelta(days=1)
-
-    return slots
-
-
-def _build_tiktok_publisher() -> BrowserUseTikTokPublisherProxy:
-    """Instantiate the TikTok publisher using project config + secrets."""
-    pub_cfg = config.proxies.tiktok_publisher_config
-    return BrowserUseTikTokPublisherProxy(
-        openrouter_api_key=secrets.openrouter_api_key,
-        model=pub_cfg.agent_model,
-        cookies_path=pub_cfg.cookies_path,
-        headless=pub_cfg.headless,
-        max_steps=pub_cfg.max_steps,
-        use_vision=pub_cfg.use_vision,
-    )
-
-
-import json as _json
-
-_DEFAULT_OUTPUT_DIR = "output/daily"
-_DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
-
-
-@dataclass
-class GeneratedVideo:
-    """Metadata for a generated video ready to publish."""
-
-    video_path: str
-    title: str
-    summary: str
-    post_url: str
-    # Every video the daily run produces is "auto"; the field stays in the
-    # manifest so the files keep the shape they have always had.
-    source: str = "auto"
-    # Which part of a multi-part story this is; None for a one-part story.
-    part: Optional[int] = None
-
-
-def _manifest_path(video_path: str, output_dir: str) -> str:
-    base = os.path.splitext(os.path.basename(video_path))[0]
-    return os.path.join(output_dir, f"{base}.json")
-
-
-def _save_manifest(video: GeneratedVideo, output_dir: str) -> str:
-    manifest = {
-        "video_path": video.video_path,
-        "title": video.title,
-        "summary": video.summary,
-        "post_url": video.post_url,
-        "source": video.source,
-    }
-    if video.part is not None:
-        manifest["part"] = video.part
-    path = _manifest_path(video.video_path, output_dir)
-    with open(path, "w") as f:
-        _json.dump(manifest, f, ensure_ascii=False, indent=2)
-    return path
-
-
-def _prepare_publish_hashtags(raw_hashtags: list[str] | None) -> list[str]:
-    configured = bot_config.publish_hashtags or []
-    return normalize_hashtags([*configured, *(raw_hashtags or [])])
-
-
-def _append_publish_log(
-    video: GeneratedVideo,
-    *,
-    status: str,
-    schedule_at: datetime.datetime | None,
-    hashtags: list[str] | None,
-    publish_result: str = "",
-    error: str = "",
-) -> None:
-    path = _publish_log_path()
-    fields = [
-        "created_at",
-        "status",
-        "scheduled_at",
-        "video_path",
-        "title",
-        "post_url",
-        "hashtags",
-        "publish_result",
-        "error",
-    ]
-    row = {
-        "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
-        "status": status,
-        "scheduled_at": (
-            schedule_at.isoformat(timespec="minutes") if schedule_at else ""
-        ),
-        "video_path": video.video_path,
-        "title": video.title,
-        "post_url": video.post_url,
-        "hashtags": " ".join(f"#{tag}" for tag in hashtags or []),
-        "publish_result": publish_result,
-        "error": error,
-    }
-
-    try:
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        file_exists = os.path.exists(path)
-        with open(path, "a", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(row)
-    except Exception:
-        logger.exception("Failed to append TikTok publish log")
-
-
-def load_generated_videos(directory: str) -> list[GeneratedVideo]:
-    """Load previously generated videos from a directory of .json manifests."""
-    videos = []
-    for name in sorted(os.listdir(directory)):
-        if not name.endswith(".json"):
-            continue
-        path = os.path.join(directory, name)
-        with open(path) as f:
-            data = _json.load(f)
-        mp4 = data["video_path"]
-        if not os.path.isabs(mp4):
-            mp4 = os.path.join(directory, os.path.basename(mp4))
-        if not os.path.exists(mp4):
-            logger.warning("Video file missing, skipping: %s", mp4)
-            continue
-        videos.append(
-            GeneratedVideo(
-                video_path=mp4,
-                title=data["title"],
-                summary=data.get("summary", ""),
-                post_url=data.get("post_url", ""),
-                source=data.get("source", "auto"),
-                part=data.get("part"),
-            )
-        )
-    return videos
-
-
-_STORY_RETRY_MAX = 3
-_STORY_RETRY_BASE_DELAY = 5
-_daily_auto_publish_lock: asyncio.Lock | None = None
-
-
-def _truncate_error(exc: Exception, limit: int = 300) -> str:
-    error_text = str(exc)
-    if len(error_text) > limit:
-        error_text = error_text[:limit] + "…"
-    return error_text
-
-
-def _publish_log_path() -> str:
-    return os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
-
-
-def _scheduled_post_urls(path: str) -> set[str]:
-    """Posts already scheduled on TikTok, so discovery does not offer them again.
-
-    Only ``scheduled`` rows count: a failed attempt left the story unpublished
-    and it deserves another shot.
-    """
-    if not os.path.exists(path):
-        return set()
-
-    with open(path, newline="", encoding="utf-8") as f:
-        return {
-            row["post_url"]
-            for row in csv.DictReader(f)
-            if row.get("status") == "scheduled" and row.get("post_url")
-        }
-
-
-async def _collect_candidates() -> list[EvaluatedStory]:
-    """Every ranked candidate discovery found, minus the posts already scheduled.
-
-    All of them, not just ``count``: the loop drops candidates whose script or
-    video fails and needs spares to reach the day's target.
-    """
-    return await _discover_stories(
-        exclude_urls=_scheduled_post_urls(_publish_log_path())
-    )
-
-
-def _requested_count(publish_count: int | None) -> int:
-    if publish_count is not None:
-        return publish_count
-    return bot_config.daily_auto_publish_count
-
-
-async def _prepare_story_with_retries(
-    send_message,
-    discovery,
-    writer,
-    story: EvaluatedStory,
-    *,
-    candidate_number: int,
-    target_count: int,
-) -> Story | None:
-    post = story.post
-    label = f"#{candidate_number}"
-
-    await send_message(f'🎬 Gerando história {label}: "{post.title}"')
-
-    for attempt in range(1, _STORY_RETRY_MAX + 1):
-        try:
-            retry_suffix = (
-                f" (tentativa {attempt}/{_STORY_RETRY_MAX})" if attempt > 1 else ""
-            )
-            await send_message(f"{label} Gerando roteiro...{retry_suffix}")
-            origin = discovery.fetch(post.url)
-            written = await writer.write(origin, language=config.language)
-            await send_message(f"{label} Roteiro finalizado. Gerando vídeo...")
-            return dataclasses.replace(written, summary=story.resumo[:400])
-
-        except WriterContentBlockedError as e:
-            logger.warning("Content filter on %s, skipping: %s", post.url, e)
-            await send_message(f"⚠️ {label} Bloqueado por filtro de conteúdo, pulando.")
-            return None
-
-        except Exception as e:
-            if isinstance(e, WriterTransientError) and attempt < _STORY_RETRY_MAX:
-                delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
-                logger.warning(
-                    "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
-                    post.url,
-                    attempt,
-                    _STORY_RETRY_MAX,
-                    delay,
-                    e,
-                )
-                await send_message(
-                    f"⏳ {label} Erro temporário, tentando de novo em {delay}s "
-                    f"(tentativa {attempt}/{_STORY_RETRY_MAX})..."
-                )
-                await asyncio.sleep(delay)
-                continue
-
-            logger.exception(
-                "Failed to prepare story for %s (attempt %d/%d)",
-                post.url,
-                attempt,
-                _STORY_RETRY_MAX,
-            )
-            await send_message(
-                f"❌ {label} Erro no roteiro: {_truncate_error(e)}. "
-                f"Tentando outra história para completar {target_count}."
-            )
-            return None
-
-    return None
-
-
-async def _generate_video_for_story(
-    send_message,
-    renderer,
-    story: Story,
-    *,
-    output_dir: str,
-    candidate_number: int,
-) -> list[GeneratedVideo] | None:
-    """Produce one video and manifest per part, or None when rendering failed.
-
-    Rendering is all or nothing: nothing is written until every part rendered.
-    """
-    label = f"#{candidate_number}"
-
-    try:
-        rendered = await renderer.render(story, low_quality=bot_config.low_quality)
-    except Exception as e:
-        logger.exception("Failed to generate video for %s", story.origin.url)
-        await send_message(
-            f"❌ {label} Erro na geração de vídeo: {_truncate_error(e)}. "
-            "Pulando para a próxima história."
-        )
-        return None
-
-    videos = []
-    for part in rendered:
-        index = part.part.index
-        suffix = f"_p{index}" if index > 1 else ""
-        video_path = os.path.join(
-            output_dir, f"story_{candidate_number:02d}{suffix}.mp4"
-        )
-        with open(video_path, "wb") as f:
-            f.write(part.video)
-
-        video = GeneratedVideo(
-            video_path=video_path,
-            title=story.cover_title_for(part.part),
-            summary=story.summary,
-            post_url=story.origin.url,
-            part=index if story.is_multipart else None,
-        )
-        _save_manifest(video, output_dir)
-        videos.append(video)
-        if story.is_multipart:
-            await send_message(f"{label} Parte {index} gerada")
-    return videos
-
-
-async def _publish_item(
-    send_message,
-    llm_proxy,
-    publisher,
-    video: GeneratedVideo,
-    *,
-    last_slot: datetime.datetime,
-    candidate_number: int,
-) -> datetime.datetime | None:
-    """Schedule one video in the next slot; None when it could not be scheduled."""
-    label = f"#{candidate_number}"
-    slot: datetime.datetime | None = None
-    hashtags: list[str] = []
-
-    try:
-        slot = next_publish_slot(
-            after=last_slot,
-            slot_times=bot_config.publish_slots_local,
-            min_lead_minutes=bot_config.publish_min_lead_minutes,
-        )
-
-        raw_hashtags = await llm_proxy.generate_hashtags(
-            title=video.title,
-            summary=video.summary,
-            target_language=config.language,
-        )
-        hashtags = _prepare_publish_hashtags(raw_hashtags)
-
-        publish_result = await publisher.publish_video(
-            video_path=video.video_path,
-            description=video.title,
-            hashtags=hashtags,
-            schedule_at=slot,
-        )
-
-        _append_publish_log(
-            video,
-            status="scheduled",
-            schedule_at=slot,
-            hashtags=hashtags,
-            publish_result=publish_result,
-        )
-        await send_message(
-            f"{label} Agendamento concluído para {slot.strftime('%d/%m %H:%M')}"
-        )
-        return slot
-
-    except Exception as e:
-        logger.exception("Failed to publish %s", video.video_path)
-        _append_publish_log(
-            video,
-            status="failed",
-            schedule_at=slot,
-            hashtags=hashtags,
-            error=_truncate_error(e),
-        )
-        await send_message(
-            f"❌ {label} Erro ao publicar: {_truncate_error(e)}. "
-            "Pulando para uma nova história."
-        )
-        return None
-
-
-async def run_daily_generate(
-    send_message,
-    *,
-    publish_count: int | None = None,
-    output_dir: str = _DEFAULT_OUTPUT_DIR,
-) -> list[GeneratedVideo]:
-    """Discover stories, write their scripts and render the day's videos."""
-    await send_message("🔄 Busca diária iniciada...")
-
-    requested = _requested_count(publish_count)
-    try:
-        candidates = await _collect_candidates()
-    except Exception as e:
-        logger.exception("Failed to find stories")
-        await send_message(f"Erro ao buscar histórias: {e}")
-        return []
-
-    if not candidates:
-        await send_message("Nenhuma história boa encontrada hoje.")
-        return []
-
-    count = min(requested, len(candidates))
-    if count == 0:
-        return []
-
-    await send_message(
-        f"✅ Busca finalizada: {len(candidates)} histórias disponíveis. "
-        f"Iniciando geração de {count} vídeo{'s' if count != 1 else ''}."
-    )
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    container.wire(modules=[__name__])
-    renderer = container.renderer()
-    discovery = container.story_discovery()
-    writer = container.story_writer()
-
-    generated: list[GeneratedVideo] = []
-    stories_done = 0
-
-    for candidate_idx, story in enumerate(candidates, start=1):
-        if stories_done >= count:
-            break
-
-        written = await _prepare_story_with_retries(
-            send_message,
-            discovery,
-            writer,
-            story,
-            candidate_number=candidate_idx,
-            target_count=count,
-        )
-        if written is None:
-            continue
-
-        videos = await _generate_video_for_story(
-            send_message,
-            renderer,
-            written,
-            output_dir=output_dir,
-            candidate_number=candidate_idx,
-        )
-        if videos is not None:
-            await send_message(f"#{candidate_idx} Vídeo finalizado.")
-            generated.extend(videos)
-            stories_done += 1
-
-    await send_message(
-        f"✅ Geração finalizada: {stories_done}/{count} vídeos prontos.",
-    )
-    return generated
-
-
-async def run_daily_publish(
-    send_message,
-    videos: list[GeneratedVideo],
-) -> None:
-    """Stage 3: Schedule pre-generated videos on TikTok."""
-    if not videos:
-        await send_message("Nenhum vídeo para publicar.")
-        return
-
-    await send_message(f"📤 Agendando {len(videos)} vídeos...")
-
-    container.wire(modules=[__name__])
-    llm_proxy = container.llm_proxy()
-    publisher = _build_tiktok_publisher()
-
-    last_slot = datetime.datetime.now()
-
-    for idx, video in enumerate(videos):
-        label = f"#{idx + 1} — {video.title[:60]}"
-        slot: datetime.datetime | None = None
-        hashtags: list[str] = []
-
-        try:
-            slot = next_publish_slot(
-                after=last_slot,
-                slot_times=bot_config.publish_slots_local,
-                min_lead_minutes=bot_config.publish_min_lead_minutes,
-            )
-
-            raw_hashtags = await llm_proxy.generate_hashtags(
-                title=video.title,
-                summary=video.summary,
-                target_language=config.language,
-            )
-            hashtags = _prepare_publish_hashtags(raw_hashtags)
-
-            publish_result = await publisher.publish_video(
-                video_path=video.video_path,
-                description=video.title,
-                hashtags=hashtags,
-                schedule_at=slot,
-            )
-
-            last_slot = slot
-
-            _append_publish_log(
-                video,
-                status="scheduled",
-                schedule_at=slot,
-                hashtags=hashtags,
-                publish_result=publish_result,
-            )
-            await send_message(
-                f"#{idx + 1} Agendamento concluído para "
-                f"{slot.strftime('%d/%m %H:%M')}"
-            )
-
-        except Exception as e:
-            logger.exception("Failed to publish %s", video.video_path)
-            error_text = str(e)
-            if len(error_text) > 300:
-                error_text = error_text[:300] + "…"
-            _append_publish_log(
-                video,
-                status="failed",
-                schedule_at=slot,
-                hashtags=hashtags,
-                error=error_text,
-            )
-            await send_message(f"❌ [{label}] Erro: {error_text}")
-
-    await send_message("🏁 Agendamento concluído.")
-
-
-async def run_daily_auto_publish(
-    send_message,
-    *,
-    publish_count: int | None = None,
-    output_dir: str = _DEFAULT_OUTPUT_DIR,
-) -> None:
-    """Full pipeline: for each candidate, run story -> video -> publish."""
-    await send_message("🔄 Busca diária iniciada...")
-
-    requested = _requested_count(publish_count)
-    try:
-        candidates = await _collect_candidates()
-    except Exception as e:
-        logger.exception("Failed to find stories")
-        await send_message(f"Erro ao buscar histórias: {e}")
-        return
-
-    if not candidates:
-        await send_message("Nenhuma história boa encontrada hoje.")
-        return
-
-    count = min(requested, len(candidates))
-    if count == 0:
-        return
-
-    await send_message(
-        f"✅ Busca finalizada: {len(candidates)} histórias disponíveis. "
-        "Iniciando geração de vídeo e agendamento."
-    )
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    container.wire(modules=[__name__])
-    renderer = container.renderer()
-    discovery = container.story_discovery()
-    writer = container.story_writer()
-    llm_proxy = container.llm_proxy()
-    publisher = _build_tiktok_publisher()
-
-    last_slot = datetime.datetime.now()
-    published = 0
-
-    for candidate_idx, story in enumerate(candidates, start=1):
-        if published >= count:
-            break
-
-        written = await _prepare_story_with_retries(
-            send_message,
-            discovery,
-            writer,
-            story,
-            candidate_number=candidate_idx,
-            target_count=count,
-        )
-        if written is None:
-            continue
-
-        videos = await _generate_video_for_story(
-            send_message,
-            renderer,
-            written,
-            output_dir=output_dir,
-            candidate_number=candidate_idx,
-        )
-        if videos is None:
-            continue
-
-        await send_message(f"#{candidate_idx} Vídeo finalizado. Agendando história...")
-        # Part k goes in the slot after part k-1; the next story starts after
-        # the last slot that was actually taken.
-        slot: datetime.datetime | None = last_slot
-        for video in videos:
-            slot = await _publish_item(
-                send_message,
-                llm_proxy,
-                publisher,
-                video,
-                last_slot=last_slot,
-                candidate_number=candidate_idx,
-            )
-            if slot is None:
-                break
-            last_slot = slot
-        if slot is None:
-            continue
-
-        published += 1
-
-    await send_message(f"✅ Fluxo finalizado: {published}/{count} vídeos agendados.")
-
-
-def _get_daily_auto_publish_lock() -> asyncio.Lock:
-    global _daily_auto_publish_lock
-    if _daily_auto_publish_lock is None:
-        _daily_auto_publish_lock = asyncio.Lock()
-    return _daily_auto_publish_lock
-
-
-async def _run_daily_auto_publish_locked(
-    send_message,
-    *,
-    publish_count: int | None = None,
-) -> None:
-    lock = _get_daily_auto_publish_lock()
-    if lock.locked():
-        await send_message("Já existe um fluxo de auto-post em andamento.")
-        return
-
-    async with lock:
-        await run_daily_auto_publish(send_message, publish_count=publish_count)
+    async with run_lock:
+        await container.daily_run(progress=progress).run(count=count)
 
 
 def _parse_optional_count(args: list[str] | None) -> int | None:
@@ -1158,10 +230,6 @@ async def _handle_text_command(
         await cmd_autopost(update, context)
         return True
 
-    if command == "/find":
-        await cmd_find(update, context)
-        return True
-
     return False
 
 
@@ -1172,7 +240,7 @@ async def cmd_autopost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     try:
-        publish_count = _parse_optional_count(context.args)
+        count = _parse_optional_count(context.args)
     except ValueError as e:
         await update.message.reply_text(str(e))
         return
@@ -1183,26 +251,22 @@ async def cmd_autopost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await context.bot.send_message(chat_id, text)
 
     await send_message("🚀 Auto-post manual iniciado.")
-    await _run_daily_auto_publish_locked(
-        send_message,
-        publish_count=publish_count,
-    )
+    await _run_daily(send_message, count=count)
 
 
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Scheduled job: discover stories, send summaries, auto-generate and schedule videos."""
+    """Scheduled job: the full daily run, reported to the first allowed user."""
     chat_id = bot_config.allowed_user_ids[0]
     bot = context.bot
 
     async def send_message(text: str) -> None:
         await bot.send_message(chat_id, text)
 
-    await _run_daily_auto_publish_locked(send_message)
+    await _run_daily(send_message)
 
 
 async def _post_init(application: Application) -> None:
     generation_queue.start()
-    logger.info("Generation queue worker started")
 
 
 def main() -> None:
@@ -1228,14 +292,7 @@ def main() -> None:
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("find", cmd_find))
     app.add_handler(CommandHandler(["autopost", "auto_publish"], cmd_autopost))
-    app.add_handler(
-        CallbackQueryHandler(handle_find_generate, pattern=f"^{FIND_CALLBACK_PREFIX}")
-    )
-    app.add_handler(
-        CallbackQueryHandler(handle_retry, pattern=f"^{RETRY_CALLBACK_PREFIX}")
-    )
 
     schedule_time = datetime.time(
         hour=bot_config.daily_hour_utc,
@@ -1244,7 +301,7 @@ def main() -> None:
     )
     app.job_queue.run_daily(_daily_find, time=schedule_time)
     logger.info(
-        "Daily /find scheduled at %02d:%02d UTC",
+        "Daily run scheduled at %02d:%02d UTC",
         bot_config.daily_hour_utc,
         bot_config.daily_minute_utc,
     )

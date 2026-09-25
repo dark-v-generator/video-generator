@@ -7,6 +7,9 @@ from collections.abc import Iterable
 
 import unidecode
 
+from ...entities.language import Language
+from ...proxies.interfaces import ILLMProxy
+
 DEFAULT_HASHTAGS = ("fyp", "storytime", "reddit")
 MAX_HASHTAGS = 3
 
@@ -53,6 +56,24 @@ def normalize_hashtags(
                 return result
 
     return result
+
+
+class HashtagSuggester:
+    """The hashtags a video is published with: the configured ones, then the model's."""
+
+    def __init__(self, llm: ILLMProxy, defaults: list[str], language: Language):
+        self._llm = llm
+        self._defaults = defaults
+        self._language = language
+
+    async def suggest(self, title: str, summary: str) -> list[str]:
+        raw = await self._llm.generate_hashtags(
+            title=title, summary=summary, target_language=self._language
+        )
+        return self.normalize(raw)
+
+    def normalize(self, raw: list[str] | None) -> list[str]:
+        return normalize_hashtags([*self._defaults, *(raw or [])])
 
 
 def _split_hashtag_tokens(value: str) -> list[str]:

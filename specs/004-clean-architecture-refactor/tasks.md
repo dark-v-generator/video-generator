@@ -201,25 +201,25 @@ um `Renderer` escolhido por nome; `RedditVideoService` e `src/services/` deixam 
 
 ### Armazenamento
 
-- [ ] T039 [P] [US7] Criar `src/entities/generated_video.py` com `GeneratedVideo(video_path, title, summary, post_url, source="auto", part=None)` movido de `bots/satisfying_bot.py`
-- [ ] T040 [US7] Criar `src/storage/__init__.py`, `src/storage/contract.py` (`PublishLogEntry`, `RunStore` Protocol) e `src/storage/files.py` (`FileRunStore(publish_log_path)` com `save_manifest`, `load_manifests`, `append_publish_log`, `scheduled_post_urls` movidos de `_save_manifest`, `load_generated_videos`, `_append_publish_log`, `_scheduled_post_urls` do bot, mesmos caminhos, campos e ordem de colunas)
-- [ ] T041 [P] [US7] Criar `tests/fakes/memory_store.py` (`InMemoryRunStore`), `tests/storage/__init__.py` e `tests/storage/test_file_store.py` (manifest com e sem `part`, manifest antigo sem `source`/`part` carrega, mp4 ausente é pulado, CSV com cabeçalho e ordem de colunas, `scheduled_post_urls` só conta `scheduled`, arquivo ausente → vazio)
+- [X] T039 [P] [US7] Criar `src/entities/generated_video.py` com `GeneratedVideo(video_path, title, summary, post_url, source="auto", part=None)` movido de `bots/satisfying_bot.py`
+- [X] T040 [US7] Criar `src/storage/__init__.py`, `src/storage/contract.py` (`PublishLogEntry`, `RunStore` Protocol) e `src/storage/files.py` (`FileRunStore(publish_log_path)` com `save_manifest`, `load_manifests`, `append_publish_log`, `scheduled_post_urls` movidos de `_save_manifest`, `load_generated_videos`, `_append_publish_log`, `_scheduled_post_urls` do bot, mesmos caminhos, campos e ordem de colunas)
+- [X] T041 [P] [US7] Criar `tests/fakes/memory_store.py` (`InMemoryRunStore`), `tests/storage/__init__.py` e `tests/storage/test_file_store.py` (manifest com e sem `part`, manifest antigo sem `source`/`part` carrega, mp4 ausente é pulado, CSV com cabeçalho e ordem de colunas, `scheduled_post_urls` só conta `scheduled`, arquivo ausente → vazio)
 
 ### Fluxo
 
-- [ ] T042 [P] [US3] Criar `src/flows/__init__.py`, `src/flows/publish_slots.py` (`next_publish_slot`, `compute_publish_slots`, `_parse_slot_times` movidos do bot) e `src/flows/progress.py` (`Progress` type alias, `RunLock` com `locked`/`__aenter__`); mover os testes de slots de `tests/flows/test_publish_slots.py` para importar de `src.flows.publish_slots`
-- [ ] T043 [P] [US3] Adicionar `HashtagSuggester(llm, defaults, language)` com `suggest(title, summary)` e `normalize(raw)` em `src/capabilities/publishing/hashtags.py`; provider `tiktok_publisher` em `src/core/container.py` (construção movida de `_build_tiktok_publisher`) e provider `hashtag_suggester`
-- [ ] T044 [P] [US3] Criar `src/entities/configs/flows.py` com `DailyRunConfig(count, publish_slots_local, publish_min_lead_minutes, publish_hashtags, low_quality, language, story_retry_max=3, story_retry_base_delay=5)` e `from_main_config(config)` lendo `bots.satisfying_bot` e `language`
-- [ ] T045 [US3] Criar `src/flows/daily_run.py` com `DailyRun(discovery, writer, renderer, publisher, hashtags, store, config, progress, now)` e `generate`, `publish`, `run` conforme `contracts/flow.md`: meta, exclusão pelo log, `fetch` + `write` com retry/backoff e skips, `render` tudo-ou-nada, `story_NN[_pk].mp4` + manifest via store, hashtags uma vez por história, parte k no slot seguinte à k-1, linhas `scheduled`/`failed`, mensagens idênticas às do golden; ≤ 300 linhas; sem Telegram, argparse, `os.path` ou `open(`
-- [ ] T046 [US3] Adicionar `daily_run = providers.Factory(DailyRun, ...)` em `src/core/container.py` recebendo `progress` como argumento e `DailyRunConfig.from_main_config(main_config)`
-- [ ] T047 [US3] Reescrever `bots/satisfying_bot.py` como adaptador (~250 linhas): `/start`, URL → vídeo pela fila de jobs (`discovery.fetch` → `writer.write` → `renderer.render` → `send_audio_bytes`/`send_video_bytes`), `/autopost [n]` e `_daily_find` chamando `container.daily_run(progress=send_to_chat).run(count=n)` sob `RunLock` com a mensagem "Já existe um fluxo de auto-post em andamento."; remover `/find`, `handle_find_generate`, `handle_retry`, `_format_find_message`, `_format_bar`, `_parse_subreddits`, `_find_url_store`, `LLM_LABELS`, `run_daily_*`, `load_generated_videos`, `_collect_candidates`, `_ensure_script`, `_generate_video_for_story`, `_publish_*`, `_is_*_error`, `_truncate_error`
-- [ ] T048 [US3] Reescrever `scripts/daily_auto_publish.py` como adaptador: `--count`, `--output-dir`, `--generate-only`, `--publish-only DIR` chamando `container.daily_run(progress=print_line)` nos três modos (`publish` recebe `container.run_store().load_manifests(DIR)`), mesmos códigos de saída
-- [ ] T049 [US3] Testes: apontar `tests/flows/test_daily_run_golden.py` para `DailyRun` com os fakes e `InMemoryRunStore`/`FileRunStore` (fixture inalterado); reescrever `tests/flows/test_daily_run.py` sobre `DailyRun` (generate-only, publish-only, retry transitório, bloqueio por filtro, falha de publicação pula e mantém o cursor de slot, `test_three_part_story_schedules_consecutive_slots`, `test_three_part_render_failure_publishes_nothing`, store em memória vs arquivos); criar `tests/flows/test_adapters.py` com um `DailyRun` falso para `cmd_autopost`, `_daily_find` e o `main()` do CLI; adicionar `tests/flows/test_daily_run_shape.py` (linhas ≤ 300 e grep de termos proibidos)
-- [ ] T050 [US3] Gate M6: quickstart §6 (suíte, `wc -l`, `grep`, `just daily-generate 1`, `just daily-publish-only output/daily`); no servidor quando disponível, `just deploy` e `just prod-daily-generate 1`; registrar em Notes
+- [X] T042 [P] [US3] Criar `src/flows/__init__.py`, `src/flows/publish_slots.py` (`next_publish_slot`, `compute_publish_slots`, `_parse_slot_times` movidos do bot) e `src/flows/progress.py` (`Progress` type alias, `RunLock` com `locked`/`__aenter__`); mover os testes de slots de `tests/flows/test_publish_slots.py` para importar de `src.flows.publish_slots`
+- [X] T043 [P] [US3] Adicionar `HashtagSuggester(llm, defaults, language)` com `suggest(title, summary)` e `normalize(raw)` em `src/capabilities/publishing/hashtags.py`; provider `tiktok_publisher` em `src/core/container.py` (construção movida de `_build_tiktok_publisher`) e provider `hashtag_suggester`
+- [X] T044 [P] [US3] Criar `src/entities/configs/flows.py` com `DailyRunConfig(count, publish_slots_local, publish_min_lead_minutes, publish_hashtags, low_quality, language, story_retry_max=3, story_retry_base_delay=5)` e `from_main_config(config)` lendo `bots.satisfying_bot` e `language`
+- [X] T045 [US3] Criar `src/flows/daily_run.py` com `DailyRun(discovery, writer, renderer, publisher, hashtags, store, config, progress, now)` e `generate`, `publish`, `run` conforme `contracts/flow.md`: meta, exclusão pelo log, `fetch` + `write` com retry/backoff e skips, `render` tudo-ou-nada, `story_NN[_pk].mp4` + manifest via store, hashtags uma vez por história, parte k no slot seguinte à k-1, linhas `scheduled`/`failed`, mensagens idênticas às do golden; ≤ 300 linhas; sem Telegram, argparse, `os.path` ou `open(`
+- [X] T046 [US3] Adicionar `daily_run = providers.Factory(DailyRun, ...)` em `src/core/container.py` recebendo `progress` como argumento e `DailyRunConfig.from_main_config(main_config)`
+- [X] T047 [US3] Reescrever `bots/satisfying_bot.py` como adaptador (~250 linhas): `/start`, URL → vídeo pela fila de jobs (`discovery.fetch` → `writer.write` → `renderer.render` → `send_audio_bytes`/`send_video_bytes`), `/autopost [n]` e `_daily_find` chamando `container.daily_run(progress=send_to_chat).run(count=n)` sob `RunLock` com a mensagem "Já existe um fluxo de auto-post em andamento."; remover `/find`, `handle_find_generate`, `handle_retry`, `_format_find_message`, `_format_bar`, `_parse_subreddits`, `_find_url_store`, `LLM_LABELS`, `run_daily_*`, `load_generated_videos`, `_collect_candidates`, `_ensure_script`, `_generate_video_for_story`, `_publish_*`, `_is_*_error`, `_truncate_error`
+- [X] T048 [US3] Reescrever `scripts/daily_auto_publish.py` como adaptador: `--count`, `--output-dir`, `--generate-only`, `--publish-only DIR` chamando `container.daily_run(progress=print_line)` nos três modos (`publish` recebe `container.run_store().load_manifests(DIR)`), mesmos códigos de saída
+- [X] T049 [US3] Testes: apontar `tests/flows/test_daily_run_golden.py` para `DailyRun` com os fakes e `InMemoryRunStore`/`FileRunStore` (fixture inalterado); reescrever `tests/flows/test_daily_run.py` sobre `DailyRun` (generate-only, publish-only, retry transitório, bloqueio por filtro, falha de publicação pula e mantém o cursor de slot, `test_three_part_story_schedules_consecutive_slots`, `test_three_part_render_failure_publishes_nothing`, store em memória vs arquivos); criar `tests/flows/test_adapters.py` com um `DailyRun` falso para `cmd_autopost`, `_daily_find` e o `main()` do CLI; adicionar `tests/flows/test_daily_run_shape.py` (linhas ≤ 300 e grep de termos proibidos)
+- [X] T050 [US3] Gate M6: quickstart §6 (suíte, `wc -l`, `grep`, `just daily-generate 1`, `just daily-publish-only output/daily`); no servidor quando disponível, `just deploy` e `just prod-daily-generate 1`; registrar em Notes
 
 **Live verification (milestone gate)**: quickstart §6.
 
-**Checkpoint**: Milestone 6 DONE
+**Checkpoint**: Milestone 6 DONE ✅ (2026-09-25)
 
 ---
 
@@ -475,6 +475,73 @@ funcionando.
     foi exercitado no laptop; o corpo é o de `generate_satisfying_video_from_story`
     + `_render_video_to_bytes`, movido. Fica para o servidor (`just deploy` +
     `just prod-daily-generate 1`), junto com os pendentes do M1 e do M4.
-- Gates (T050, T055): a preencher com data, comando e resultado.
+- Gate M6 (T050, 2026-09-25):
+  - `uv run pytest tests/flows tests/storage -q` → **60 passed** (19 de
+    `test_daily_run.py` sobre `DailyRun`, 10 de adaptadores, 2 de forma, 15 de
+    slots, 13 do `FileRunStore`, o golden); `uv run pytest -q` → **287 passed**.
+    `black --check` limpo.
+  - Golden (SC-001): `tests/flows/test_daily_run_golden.py` agora roda
+    `container.daily_run(...)` com o `FileRunStore` real e passa com o fixture do M1
+    intacto (`git diff tests/fixtures/` vazio). Conferido às avessas: trocar
+    "Agendamento concluído para" por outro texto no fluxo derruba o teste.
+  - SC-006: `test_memory_and_file_stores_record_the_same_run` roda o mesmo cenário
+    (história em 2 partes, uma publicação falhando) com `InMemoryRunStore` e com
+    `FileRunStore`: mesmas mensagens, mesmos manifests, mesmas linhas de log.
+  - SC-004 (agendamento): `test_three_part_story_schedules_consecutive_slots` (3
+    vídeos em 12:00/18:00/19:00, 3 linhas `scheduled`, 1 na meta, hashtags pedidas
+    uma vez) e `test_three_part_render_failure_publishes_nothing` (nenhuma
+    publicação, nenhum arquivo, nenhuma linha). Parte 2 falhando ao publicar pula o
+    resto da história e a próxima começa depois do slot da parte 1.
+  - SC-009: `wc -l src/flows/daily_run.py` → **297**; `grep -rn proxies src/flows` → vazio (o contrato `ITikTokPublisherProxy` vem reexportado de `src.capabilities.publishing`);
+    `grep -nE "telegram|argparse|os\.path|open\(" src/flows/daily_run.py` → vazio
+    (também como teste em `tests/flows/test_daily_run_shape.py`).
+  - FR-019/SC-012: manifest sem `source` e sem `part` carrega
+    (`tests/storage/test_file_store.py`).
+  - Adaptadores: `tests/flows/test_adapters.py` com um `DailyRun` que grava cada
+    chamada ligada à assinatura real: `/autopost 2` e `--count 2` →
+    `run(count=2, output_dir="output/daily")`; o job diário e `/autopost` sem
+    número → a mesma chamada; segunda rodada recusada com "Já existe um fluxo de
+    auto-post em andamento."; `--generate-only` → `generate`; `--publish-only DIR`
+    → `publish(run_store().load_manifests(DIR))`; diretório vazio → exit 1.
+  - `daily-generate 1` pelo CLI real (`daily_auto_publish.py --generate-only
+    --count 1`), cópia do `config.dev.yaml` com `footage_source: local` sobre os 7
+    `*-lq.mp4` do cache, proxies reais (Reddit JSON, LLM mock, edge-tts, whisper,
+    Playwright) e só o `VideoComposer` trocado pelo `FakeComposer` (regra de não
+    renderizar no laptop): 36 s, exit 0, 35 candidatas, `Compiled 196.9s of local
+    footage from 5 clip(s)`, mensagens iguais às do M5, `story_01.json` com
+    `source: auto` e sem `part`, 0 menções a YouTube no log.
+  - `daily-publish-only` sobre esse diretório, pelo CLI real com o `FileRunStore`
+    real (log num arquivo do scratch) e só o publisher trocado pelo `FakePublisher`
+    — o agente real agendaria um post de verdade no TikTok: exit 0, `Found 1
+    videos`, `#1 Agendamento concluído para 25/09 18:00`, CSV com cabeçalho e a
+    linha `scheduled` nas colunas de sempre. Diretório sem manifests → exit 1.
+  - Container: `container.tiktok_publisher()` constrói o
+    `BrowserUseTikTokPublisherProxy` com o `config.dev.yaml`; o bot sobe
+    (`main()` com `run_polling` neutralizado) com `ConversationHandler`,
+    `/autopost`/`/auto_publish` e o job `_daily_find`.
+  - Decisões: (1) `DailyRun` é um `@dataclass(kw_only=True)`: mesma assinatura do
+    contrato, sem 20 linhas de `__init__` (o limite de 300 apertou). (2)
+    `publisher` aceita `None`: o CLI `--generate-only` constrói o fluxo com
+    `publisher=None`, porque o construtor do agente exige `OPENROUTER_API_KEY` e
+    gerar nunca exigiu. (3) Hashtags: uma chamada por história no `run`, sobre
+    `story.title`/`story.summary` (em história de 1 parte é o mesmo que o título e o
+    resumo do vídeo, como antes); `story.hashtags`, quando vem, só passa por
+    `normalize`. No `publish` a partir de diretório continua uma por vídeo — o
+    manifest não diz de que história veio. (4) `_truncate_error` virou
+    `short_error` em `src/flows/progress.py`, usada pelo fluxo e pelo bot. (5) O
+    caminho do mp4 é montado com `pathlib` (`str(Path(output_dir) / nome)`), que
+    normaliza `./x` para `x`; nenhum caminho do repositório usa `./`. (6)
+    `run_store` é `providers.Factory` e lê `TIKTOK_PUBLISH_LOG_PATH` a cada
+    construção; `tiktok_publisher` é `Factory` (um agente novo por rodada, como o
+    bot fazia). (7) O bot lê o config por `container.main_config()` e ficou com
+    ~310 linhas (a meta era ~250): a fila de jobs de URL é quase metade. `/find`, os
+    botões "Gerar Vídeo" e "Tentar de novo" saíram (research.md, decisão 7); o erro
+    do job de URL ficou sem botão.
+  - **Pendente**: no servidor, `just deploy`, `just prod-daily-generate 1` e um
+    `/autopost 1` pelo Telegram (o bot de produção usa o mesmo token, então não
+    subi polling aqui); o agendamento real no TikTok não foi exercitado — o
+    `just daily-publish-only` de verdade publica. Somam-se aos pendentes de render
+    real do M1, M4 e M5.
+- Gate T055: a preencher com data, comando e resultado.
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.

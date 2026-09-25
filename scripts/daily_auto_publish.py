@@ -24,12 +24,7 @@ import argparse
 import asyncio
 import sys
 
-from bots.satisfying_bot import (
-    load_generated_videos,
-    run_daily_auto_publish,
-    run_daily_generate,
-    run_daily_publish,
-)
+from src.core.container import container
 
 
 async def _send_to_stdout(text: str) -> None:
@@ -37,28 +32,25 @@ async def _send_to_stdout(text: str) -> None:
 
 
 async def _run_full(count: int | None, output_dir: str) -> None:
-    await run_daily_auto_publish(
-        _send_to_stdout,
-        publish_count=count,
-        output_dir=output_dir,
+    await container.daily_run(progress=_send_to_stdout).run(
+        count=count, output_dir=output_dir
     )
 
 
 async def _run_generate(count: int | None, output_dir: str) -> None:
-    await run_daily_generate(
-        _send_to_stdout,
-        publish_count=count,
-        output_dir=output_dir,
+    # Generate-only never publishes, so it must not need the TikTok agent's key.
+    await container.daily_run(progress=_send_to_stdout, publisher=None).generate(
+        count=count, output_dir=output_dir
     )
 
 
 async def _run_publish(directory: str) -> None:
-    videos = load_generated_videos(directory)
+    videos = container.run_store().load_manifests(directory)
     if not videos:
         print(f"No generated videos found in {directory}", file=sys.stderr)
         raise SystemExit(1)
     print(f"Found {len(videos)} videos in {directory}")
-    await run_daily_publish(_send_to_stdout, videos)
+    await container.daily_run(progress=_send_to_stdout).publish(videos)
 
 
 def main() -> int:

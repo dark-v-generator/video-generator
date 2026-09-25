@@ -6,8 +6,8 @@ from src.entities.base_yaml_model import BaseYAMLModel
 class TelegramBotConfig(BaseYAMLModel):
     allowed_user_ids: List[int] = Field(default_factory=list)
     low_quality: bool = False
-    daily_hour_utc: int = Field(17, title="Hour (UTC) to run daily /find")
-    daily_minute_utc: int = Field(0, title="Minute (UTC) to run daily /find")
+    daily_hour_utc: int = Field(17, title="Hour (UTC) of the daily run")
+    daily_minute_utc: int = Field(0, title="Minute (UTC) of the daily run")
 
     daily_auto_publish_count: int = Field(
         4,
