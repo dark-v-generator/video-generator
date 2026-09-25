@@ -10,9 +10,7 @@ from ..entities.captions import Captions
 from ..entities.cover import RedditCover
 from ..entities.editor import image_clip
 from ..entities.editor.captions_clip import CaptionsClip
-from ..entities.reddit_post import RedditPost
 from ..entities.story import Story
-from ..proxies.interfaces import IRedditProxy
 from .captions_service import CaptionsService
 from .cover_service import CoverService
 from .speech_service import SpeechService
@@ -50,22 +48,17 @@ class RedditVideoService:
 
     def __init__(
         self,
-        reddit_proxy: IRedditProxy,
         speech_service: SpeechService,
         captions_service: CaptionsService,
         cover_service: CoverService,
         video_service: VideoService,
         text_censor: Optional[TextCensor] = None,
     ) -> None:
-        self._reddit_proxy = reddit_proxy
         self._speech_service = speech_service
         self._captions_service = captions_service
         self._cover_service = cover_service
         self._video_service = video_service
         self._text_censor = text_censor or TextCensor()
-
-    def scrape_post(self, url: str) -> RedditPost:
-        return self._reddit_proxy.get_reddit_post(url)
 
     # ------------------------------------------------------------------
     # Public API

@@ -2,10 +2,12 @@ import time
 
 import pytest
 
+from src.capabilities.discovery import RedditStoryDiscovery
 from src.entities.config import EvaluationConfig
+from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
+from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory, StoryCandidate
-from src.services.story_finder_service import StoryFinderService
 
 
 class FailingRedditProxy:
@@ -19,16 +21,16 @@ class UnusedLLMProxy:
 
 @pytest.mark.asyncio
 async def test_find_best_stories_raises_when_all_subreddits_fail():
-    service = StoryFinderService(
-        reddit_proxy=FailingRedditProxy(),
-        llm_proxy=UnusedLLMProxy(),
-        evaluation_config=EvaluationConfig(
+    service = RedditStoryDiscovery(
+        reddit=FailingRedditProxy(),
+        llm=UnusedLLMProxy(),
+        evaluation=EvaluationConfig(
             subreddits=["pettyrevenge", "relacionamentos"],
         ),
     )
 
     with pytest.raises(RuntimeError) as exc:
-        await service.find_best_stories()
+        await service.find_best_stories(language=Language.PORTUGUESE)
 
     assert "nenhum subreddit" in str(exc.value)
     assert "r/pettyrevenge" in str(exc.value)
@@ -80,11 +82,11 @@ def make_post(
     )
 
 
-def build_service(posts_by_sub: dict, subreddits: list[str]) -> StoryFinderService:
-    return StoryFinderService(
-        reddit_proxy=FakeRedditProxy(posts_by_sub),
-        llm_proxy=ForbiddenLLMProxy(),
-        evaluation_config=EvaluationConfig(subreddits=subreddits),
+def build_service(posts_by_sub: dict, subreddits: list[str]) -> RedditStoryDiscovery:
+    return RedditStoryDiscovery(
+        reddit=FakeRedditProxy(posts_by_sub),
+        llm=ForbiddenLLMProxy(),
+        evaluation=EvaluationConfig(subreddits=subreddits),
     )
 
 
@@ -163,10 +165,10 @@ async def test_find_candidates_skips_failing_subreddits_and_keeps_the_others():
 
 @pytest.mark.asyncio
 async def test_find_candidates_raises_when_every_subreddit_fails():
-    service = StoryFinderService(
-        reddit_proxy=FailingRedditProxy(),
-        llm_proxy=ForbiddenLLMProxy(),
-        evaluation_config=EvaluationConfig(subreddits=["pettyrevenge"]),
+    service = RedditStoryDiscovery(
+        reddit=FailingRedditProxy(),
+        llm=ForbiddenLLMProxy(),
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
     )
 
     with pytest.raises(RuntimeError) as exc:
@@ -178,10 +180,10 @@ async def test_find_candidates_raises_when_every_subreddit_fails():
 @pytest.mark.asyncio
 async def test_find_candidates_forwards_the_fetch_parameters():
     proxy = FakeRedditProxy({"Antiwork": [make_post("Antiwork", "ccc", 3000)]})
-    service = StoryFinderService(
-        reddit_proxy=proxy,
-        llm_proxy=ForbiddenLLMProxy(),
-        evaluation_config=EvaluationConfig(
+    service = RedditStoryDiscovery(
+        reddit=proxy,
+        llm=ForbiddenLLMProxy(),
+        evaluation=EvaluationConfig(
             subreddits=["pettyrevenge"], min_chars=500, max_chars=15000
         ),
     )
@@ -219,8 +221,8 @@ class RecordingLLMProxy:
 @pytest.mark.asyncio
 async def test_find_best_stories_still_evaluates_the_candidates():
     llm = RecordingLLMProxy()
-    service = StoryFinderService(
-        reddit_proxy=FakeRedditProxy(
+    service = RedditStoryDiscovery(
+        reddit=FakeRedditProxy(
             {
                 "pettyrevenge": [
                     make_post("pettyrevenge", "aaa", 400),
@@ -228,12 +230,69 @@ async def test_find_best_stories_still_evaluates_the_candidates():
                 ]
             }
         ),
-        llm_proxy=llm,
-        evaluation_config=EvaluationConfig(subreddits=["pettyrevenge"]),
+        llm=llm,
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
     )
 
-    result = await service.find_best_stories()
+    result = await service.find_best_stories(language=Language.PORTUGUESE)
 
     assert sorted(llm.evaluated) == ["Story aaa", "Story bbb"]
     assert [story.veredito for story in result] == ["Excelente", "Excelente"]
     assert all(isinstance(story, EvaluatedStory) for story in result)
+
+
+class FailingLLMProxy:
+    async def evaluate_story(self, *, title, content, target_language):
+        if title == "Story aaa":
+            raise RuntimeError("model down")
+        return {
+            "nota_geral": 70.0,
+            "veredito": "Boa",
+            "resumo": "resumo",
+            "notas": {},
+        }
+
+
+@pytest.mark.asyncio
+async def test_grade_turns_a_failed_evaluation_into_a_zero_instead_of_raising():
+    service = RedditStoryDiscovery(
+        reddit=FakeRedditProxy({}),
+        llm=FailingLLMProxy(),
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
+    )
+    candidates = [
+        StoryCandidate(post=make_post("pettyrevenge", "aaa", 400)),
+        StoryCandidate(post=make_post("pettyrevenge", "bbb", 9000)),
+    ]
+
+    graded = await service.grade(candidates, Language.PORTUGUESE)
+
+    assert [(g.post.title, g.veredito, g.nota_geral) for g in graded] == [
+        ("Story bbb", "Boa", 70.0),
+        ("Story aaa", "Erro", 0.0),
+    ]
+
+
+class SinglePostRedditProxy:
+    def __init__(self, post: RedditPost):
+        self._post = post
+        self.urls: list[str] = []
+
+    def get_reddit_post(self, url):
+        self.urls.append(url)
+        return self._post
+
+
+def test_fetch_reads_the_post_as_a_story_origin():
+    post = make_post("pettyrevenge", "aaa", 400)
+    proxy = SinglePostRedditProxy(post)
+    service = RedditStoryDiscovery(
+        reddit=proxy,
+        llm=ForbiddenLLMProxy(),
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
+    )
+
+    origin = service.fetch(post.url)
+
+    assert proxy.urls == [post.url]
+    assert origin == StoryOrigin.from_post(post)

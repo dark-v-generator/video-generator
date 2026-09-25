@@ -12,6 +12,7 @@ import pytest
 
 from bots import satisfying_bot
 from src.entities.reddit_post import RedditPost
+from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory
 from tests.fakes.publisher import FakePublisher
 from tests.fakes.writer import EchoStoryWriter
@@ -21,14 +22,20 @@ from tests.fakes.writer import EchoStoryWriter
 # --------------------------------------------------------------------------
 
 
+class FakeDiscovery:
+    def __init__(self):
+        self.fetched_urls = []
+
+    def fetch(self, url):
+        self.fetched_urls.append(url)
+        return StoryOrigin.from_post(
+            RedditPost(title=f"auto {url}", content="body", url=url)
+        )
+
+
 class FakeService:
     def __init__(self):
-        self.scraped_urls = []
         self.generated_titles = []
-
-    def scrape_post(self, url):
-        self.scraped_urls.append(url)
-        return RedditPost(title=f"auto {url}", content="body", url=url)
 
     async def generate_satisfying_video_from_story(self, story, *, low_quality):
         self.generated_titles.append(story.title)
@@ -50,6 +57,9 @@ class FakeContainer:
 
     def reddit_video_service(self):
         return self._service
+
+    def story_discovery(self):
+        return FakeDiscovery()
 
     def story_writer(self):
         return EchoStoryWriter()

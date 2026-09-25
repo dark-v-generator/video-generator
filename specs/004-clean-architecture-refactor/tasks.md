@@ -123,14 +123,14 @@ são validados no boot.
 - Num subprocesso, `import src.capabilities.discovery` não carrega `moviepy`, `whisper`, `torch` nem `playwright`, e leva menos de 2 s.
 - Golden verde.
 
-- [ ] T022 [US4] Criar `src/capabilities/discovery/__init__.py`, `src/capabilities/discovery/contract.py` (`StoryDiscovery` Protocol com `fetch`, `find_candidates`, `grade`, `find_best_stories`) e `src/capabilities/discovery/reddit_discovery.py` (`RedditStoryDiscovery(reddit, llm, evaluation)` com o conteúdo de `src/services/story_finder_service.py`, `grade` extraído do loop de avaliação, `fetch` = `reddit.get_reddit_post` → `StoryOrigin`); apagar `src/services/story_finder_service.py`
-- [ ] T023 [US4] Integrar: provider `story_discovery` em `src/core/container.py` (remover `story_finder_service`); `bots/satisfying_bot.py` usa `container.story_discovery()` em `_discover_stories` e `discovery.fetch(url)` no lugar de `service.scrape_post`; `scripts/find_best_stories.py`, `scripts/evaluate_story.py`, `scripts/list_posts.py` passam a usar `container.story_discovery()` (ou `container.reddit_proxy()` onde só listam)
-- [ ] T024 [P] [US4] Mover `tests/services/test_story_finder_service.py` para `tests/capabilities/test_discovery.py` (imports novos, asserções iguais) e criar `tests/capabilities/test_import_isolation.py` (subprocesso `python -c` que importa a descoberta e imprime os módulos carregados; assert de ausência de `moviepy`/`whisper`/`torch`/`playwright` e de tempo < 2 s)
-- [ ] T025 [US4] Gate M3: `specs/004-clean-architecture-refactor/quickstart.md` §3; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
+- [X] T022 [US4] Criar `src/capabilities/discovery/__init__.py`, `src/capabilities/discovery/contract.py` (`StoryDiscovery` Protocol com `fetch`, `find_candidates`, `grade`, `find_best_stories`) e `src/capabilities/discovery/reddit_discovery.py` (`RedditStoryDiscovery(reddit, llm, evaluation)` com o conteúdo de `src/services/story_finder_service.py`, `grade` extraído do loop de avaliação, `fetch` = `reddit.get_reddit_post` → `StoryOrigin`); apagar `src/services/story_finder_service.py`
+- [X] T023 [US4] Integrar: provider `story_discovery` em `src/core/container.py` (remover `story_finder_service`); `bots/satisfying_bot.py` usa `container.story_discovery()` em `_discover_stories` e `discovery.fetch(url)` no lugar de `service.scrape_post`; `scripts/find_best_stories.py`, `scripts/evaluate_story.py`, `scripts/list_posts.py` passam a usar `container.story_discovery()` (ou `container.reddit_proxy()` onde só listam)
+- [X] T024 [P] [US4] Mover `tests/services/test_story_finder_service.py` para `tests/capabilities/test_discovery.py` (imports novos, asserções iguais) e criar `tests/capabilities/test_import_isolation.py` (subprocesso `python -c` que importa a descoberta e imprime os módulos carregados; assert de ausência de `moviepy`/`whisper`/`torch`/`playwright` e de tempo < 2 s)
+- [X] T025 [US4] Gate M3: `specs/004-clean-architecture-refactor/quickstart.md` §3; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
 
 **Live verification (milestone gate)**: quickstart §3.
 
-**Checkpoint**: Milestone 3 DONE
+**Checkpoint**: Milestone 3 DONE ✅ (2026-09-25)
 
 ---
 
@@ -363,6 +363,33 @@ funcionando.
     (2) O `DSPyLLMProxy` passa a carregar os exemplos de correção de transcrição:
     o caminho antigo (`proxies/prompts/examples/`) nunca existiu. Nenhum config do
     repositório usa DSPy.
-- Gates (T025, T030, T038, T050, T055): a preencher com data, comando e resultado.
+- Gate M3 (T025, 2026-09-25):
+  - `uv run pytest tests/capabilities/test_discovery.py
+    tests/capabilities/test_import_isolation.py -q` → **12 passed** (os 9 testes
+    movidos com as asserções iguais, mais `grade` com falha → nota 0 e `Erro`, e
+    `fetch` → `StoryOrigin`); `uv run pytest -q` → **235 passed**. `black --check`
+    limpo.
+  - Golden: `tests/flows/test_daily_run_golden.py` passa com o fixture do M1
+    intacto; ele já passa pela `RedditStoryDiscovery` real do container (busca,
+    avaliação e `fetch`) sobre o `FakeRedditProxy`.
+  - Isolamento (SC-007): `time uv run python -c "import src.capabilities.discovery"`
+    → 0,25 s; `sys.modules` sem `moviepy`/`whisper`/`torch`/`playwright` (`[]`).
+    O teste de isolamento foi conferido às avessas: com `import moviepy` no
+    `__init__` da descoberta ele falha.
+  - `CONFIG_PATH=config.dev.yaml uv run python scripts/find_best_stories.py
+    --top-per-sub 2` contra o Reddit real (proxy JSON, avaliação pelo LLM mock):
+    28 s, exit 0, 15 histórias de 8 subreddits. `scripts/evaluate_story.py <url>`
+    lê o post por `discovery.fetch` e avalia (87/100); de passagem, o `r/r/` duplicado
+    que ele imprimia no nome da comunidade foi corrigido.
+  - Decisões: (1) `RedditVideoService.scrape_post` e o `reddit_proxy` do serviço
+    foram apagados — `discovery.fetch` é o único caminho URL → origem.
+    (2) `find_best_stories` exige `language` (contrato); o default português some.
+    (3) `scripts/evaluate_story.py` usa `fetch` mas chama `llm.evaluate_story`
+    direto, não `grade`: `grade` transforma falha em nota 0 para manter a lista, e
+    num CLI de uma história o operador quer ver o erro. `scripts/list_posts.py` só
+    lista e continua no `reddit_proxy`.
+  - `docs/architecture.md` ainda cita `story_finder_service.py`; a reescrita é do M7
+    (T051).
+- Gates (T030, T038, T050, T055): a preencher com data, comando e resultado.
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.
