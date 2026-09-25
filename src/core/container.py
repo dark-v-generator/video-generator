@@ -3,7 +3,9 @@ import os
 from dependency_injector import containers, providers
 from .secrets import secrets
 
+from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
+from ..prompts import loader as prompts
 from ..services.reddit_video_service import RedditVideoService
 from ..services.text_censor import TextCensor
 from ..services.video_service import VideoService
@@ -14,6 +16,17 @@ from ..services.story_finder_service import StoryFinderService
 from ..proxies import factories as proxies_factories
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
+
+
+def _create_llm_proxy(**kwargs):
+    # A broken prompt template must stop the process here, not halfway
+    # through a run when the first story is written.
+    prompts.validate_all()
+    return proxies_factories.LLMProxyFactory.create(**kwargs)
+
+
+def _first_configured(*proxies):
+    return next(proxy for proxy in proxies if proxy is not None)
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -43,7 +56,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         reddit_user_agent=secrets.reddit_user_agent,
     )
     llm_proxy = providers.Singleton(
-        proxies_factories.LLMProxyFactory.create,
+        _create_llm_proxy,
         config=main_config.provided.proxies.llm_config,
         openai_api_key=secrets.openai_api_key,
         ollama_base_url=secrets.ollama_base_url,
@@ -68,6 +81,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         proxies_factories.CoverProxyFactory.create,
         config=main_config.provided.proxies.cover_config,
     )
+    # Capabilities
+    story_writer = providers.Singleton(
+        ModelStoryWriter,
+        llm=providers.Callable(
+            _first_configured, history_adaptation_llm_proxy, llm_proxy
+        ),
+    )
+
     # Services
     text_censor = providers.Singleton(
         TextCensor,
@@ -100,8 +121,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
     reddit_video_service = providers.Singleton(
         RedditVideoService,
         reddit_proxy=reddit_proxy,
-        llm_proxy=llm_proxy,
-        history_adaptation_llm_proxy=history_adaptation_llm_proxy,
         speech_service=speech_service,
         captions_service=captions_service,
         cover_service=cover_service,

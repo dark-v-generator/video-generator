@@ -9,10 +9,9 @@ from src.entities.configs.proxies.llm import PromptLLMConfig
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
 from src.services.tiktok_caption import normalize_hashtags
-import os
 import json
-import yaml
-from jinja2 import Environment, FileSystemLoader
+
+from src.prompts import loader as prompts
 
 litellm.telemetry = False
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
@@ -226,14 +225,14 @@ class PromptLLMProxy(ILLMProxy):
         model_str = self._get_model_string()
         self._logger.info(f"Generating single story via LiteLLM {model_str}")
 
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        prompt = env.get_template("story.jinja2").render(
+        prompt = prompts.render(
+            "story.jinja2",
             target_language=get_language_name(target_language),
             examples=[],
             reddit_title=title,
             reddit_text=content,
         )
+        self._logger.debug("Story prompt:\n%s", prompt)
 
         messages = [
             {"role": "user", "content": prompt},
@@ -276,11 +275,8 @@ class PromptLLMProxy(ILLMProxy):
         model_str = self._get_model_string()
         self._logger.info(f"Evaluating story via LiteLLM {model_str}")
 
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("evaluate_story.jinja2")
-
-        prompt = template.render(
+        prompt = prompts.render(
+            "evaluate_story.jinja2",
             target_language=get_language_name(target_language),
             reddit_title=title,
             reddit_text=content,
@@ -352,11 +348,8 @@ class PromptLLMProxy(ILLMProxy):
         model_str = self._get_model_string()
         self._logger.info(f"Generating hashtags via LiteLLM {model_str}")
 
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("generate_hashtags.jinja2")
-
-        prompt = template.render(
+        prompt = prompts.render(
+            "generate_hashtags.jinja2",
             target_language=get_language_name(target_language),
             title=title,
             summary=summary,
@@ -391,21 +384,10 @@ class PromptLLMProxy(ILLMProxy):
         model_str = self._get_model_string()
         self._logger.info(f"Enhancing transcription via LiteLLM {model_str}")
 
-        examples = []
-        yaml_path = os.path.join(
-            os.path.dirname(__file__), "examples", "transcription_enhancement.yaml"
-        )
-        if os.path.exists(yaml_path):
-            with open(yaml_path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-                if data:
-                    examples = data
+        examples = prompts.load_examples("transcription_enhancement")
 
-        template_dir = os.path.join(os.path.dirname(__file__), "prompts")
-        env = Environment(loader=FileSystemLoader(template_dir))
-        template = env.get_template("enhance_transcription.jinja2")
-
-        prompt = template.render(
+        prompt = prompts.render(
+            "enhance_transcription.jinja2",
             base_text=base_text,
             raw_transcription=json.dumps(raw_transcription, ensure_ascii=False),
             examples=examples,

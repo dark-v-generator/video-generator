@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import dataclasses
 import datetime
 import logging
 import os
@@ -22,14 +23,16 @@ from telegram.ext import (
     filters,
 )
 
-import litellm
-
+from src.capabilities.writing import (
+    WriterContentBlockedError,
+    WriterTransientError,
+)
 from src.core.container import container
 from src.core.secrets import secrets
 from src.entities.config import MainConfig
+from src.entities.story import Story, StoryOrigin
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
-from src.services.reddit_video_service import PreparedStory
 from src.services.tiktok_caption import normalize_hashtags
 
 from bots.base import (
@@ -116,10 +119,12 @@ class GenerationQueue:
             container.wire(modules=[__name__])
             service = container.reddit_video_service()
 
-            result = await service.generate_satisfying_video(
-                post_url=job.url,
-                language=config.language,
-                low_quality=bot_config.low_quality,
+            origin = StoryOrigin.from_post(service.scrape_post(job.url))
+            story = await container.story_writer().write(
+                origin, language=config.language
+            )
+            result = await service.generate_satisfying_video_from_story(
+                story, low_quality=bot_config.low_quality
             )
 
             await job.status_message.edit_text("📤 Enviando áudio...")
@@ -632,36 +637,6 @@ _STORY_RETRY_BASE_DELAY = 5
 _daily_auto_publish_lock: asyncio.Lock | None = None
 
 
-def _is_transient_error(exc: Exception) -> bool:
-    """Return True for errors that are worth retrying (rate-limits, timeouts, server errors)."""
-    if isinstance(exc, litellm.RateLimitError):
-        return True
-
-    exc_str = str(exc).lower()
-    transient_signals = [
-        "429",
-        "rate limit",
-        "too many requests",
-        "timeout",
-        "503",
-        "502",
-    ]
-    return any(s in exc_str for s in transient_signals)
-
-
-def _is_content_filter_error(exc: Exception) -> bool:
-    """Return True for errors caused by content/safety filters (not worth retrying)."""
-    exc_str = str(exc).lower()
-    filter_signals = [
-        "safety filter",
-        "content filter",
-        "nsfw",
-        "blocked",
-        "content policy",
-    ]
-    return any(s in exc_str for s in filter_signals)
-
-
 def _truncate_error(exc: Exception, limit: int = 300) -> str:
     error_text = str(exc)
     if len(error_text) > limit:
@@ -710,11 +685,12 @@ def _requested_count(publish_count: int | None) -> int:
 async def _prepare_story_with_retries(
     send_message,
     service,
+    writer,
     story: EvaluatedStory,
     *,
     candidate_number: int,
     target_count: int,
-) -> PreparedStory | None:
+) -> Story | None:
     post = story.post
     label = f"#{candidate_number}"
 
@@ -726,22 +702,18 @@ async def _prepare_story_with_retries(
                 f" (tentativa {attempt}/{_STORY_RETRY_MAX})" if attempt > 1 else ""
             )
             await send_message(f"{label} Gerando roteiro...{retry_suffix}")
-            prepared = await service.prepare_satisfying_story(
-                post_url=post.url,
-                language=config.language,
-            )
+            origin = StoryOrigin.from_post(service.scrape_post(post.url))
+            written = await writer.write(origin, language=config.language)
             await send_message(f"{label} Roteiro finalizado. Gerando vídeo...")
-            return prepared
+            return dataclasses.replace(written, summary=story.resumo[:400])
+
+        except WriterContentBlockedError as e:
+            logger.warning("Content filter on %s, skipping: %s", post.url, e)
+            await send_message(f"⚠️ {label} Bloqueado por filtro de conteúdo, pulando.")
+            return None
 
         except Exception as e:
-            if _is_content_filter_error(e):
-                logger.warning("Content filter on %s, skipping: %s", post.url, e)
-                await send_message(
-                    f"⚠️ {label} Bloqueado por filtro de conteúdo, pulando."
-                )
-                return None
-
-            if _is_transient_error(e) and attempt < _STORY_RETRY_MAX:
+            if isinstance(e, WriterTransientError) and attempt < _STORY_RETRY_MAX:
                 delay = _STORY_RETRY_BASE_DELAY * (2 ** (attempt - 1))
                 logger.warning(
                     "Transient error on %s (attempt %d/%d), retrying in %ds: %s",
@@ -776,9 +748,8 @@ async def _prepare_story_with_retries(
 async def _generate_video_for_story(
     send_message,
     service,
-    prepared: PreparedStory,
+    story: Story,
     *,
-    summary: str,
     output_dir: str,
     candidate_number: int,
 ) -> GeneratedVideo | None:
@@ -787,12 +758,10 @@ async def _generate_video_for_story(
 
     try:
         result = await service.generate_satisfying_video_from_story(
-            prepared,
-            language=config.language,
-            low_quality=bot_config.low_quality,
+            story, low_quality=bot_config.low_quality
         )
     except Exception as e:
-        logger.exception("Failed to generate video for %s", prepared.post.url)
+        logger.exception("Failed to generate video for %s", story.origin.url)
         await send_message(
             f"❌ {label} Erro na geração de vídeo: {_truncate_error(e)}. "
             "Pulando para a próxima história."
@@ -806,8 +775,8 @@ async def _generate_video_for_story(
     video = GeneratedVideo(
         video_path=video_path,
         title=result.localized_title,
-        summary=summary,
-        post_url=prepared.post.url,
+        summary=story.summary,
+        post_url=story.origin.url,
     )
     _save_manifest(video, output_dir)
     return video
@@ -910,6 +879,7 @@ async def run_daily_generate(
 
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
+    writer = container.story_writer()
 
     generated: list[GeneratedVideo] = []
 
@@ -917,21 +887,21 @@ async def run_daily_generate(
         if len(generated) >= count:
             break
 
-        prepared = await _prepare_story_with_retries(
+        written = await _prepare_story_with_retries(
             send_message,
             service,
+            writer,
             story,
             candidate_number=candidate_idx,
             target_count=count,
         )
-        if prepared is None:
+        if written is None:
             continue
 
         video = await _generate_video_for_story(
             send_message,
             service,
-            prepared,
-            summary=story.resumo[:400],
+            written,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
@@ -1053,6 +1023,7 @@ async def run_daily_auto_publish(
 
     container.wire(modules=[__name__])
     service = container.reddit_video_service()
+    writer = container.story_writer()
     llm_proxy = container.llm_proxy()
     publisher = _build_tiktok_publisher()
 
@@ -1063,21 +1034,21 @@ async def run_daily_auto_publish(
         if published >= count:
             break
 
-        prepared = await _prepare_story_with_retries(
+        written = await _prepare_story_with_retries(
             send_message,
             service,
+            writer,
             story,
             candidate_number=candidate_idx,
             target_count=count,
         )
-        if prepared is None:
+        if written is None:
             continue
 
         video = await _generate_video_for_story(
             send_message,
             service,
-            prepared,
-            summary=story.resumo[:400],
+            written,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )

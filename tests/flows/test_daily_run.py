@@ -13,8 +13,8 @@ import pytest
 from bots import satisfying_bot
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import EvaluatedStory
-from src.services.reddit_video_service import PreparedStory
 from tests.fakes.publisher import FakePublisher
+from tests.fakes.writer import EchoStoryWriter
 
 # --------------------------------------------------------------------------
 # Fakes
@@ -23,25 +23,16 @@ from tests.fakes.publisher import FakePublisher
 
 class FakeService:
     def __init__(self):
-        self.prepared_urls = []
+        self.scraped_urls = []
         self.generated_titles = []
 
-    async def prepare_satisfying_story(self, *, post_url, language):
-        self.prepared_urls.append(post_url)
-        return PreparedStory(
-            post=RedditPost(title=f"auto {post_url}", content="body", url=post_url),
-            script_text="auto script",
-            story_title=f"auto {post_url}",
-            narrator_gender="unknown",
-            resolved_gender="male",
-            original_post_md="original",
-        )
+    def scrape_post(self, url):
+        self.scraped_urls.append(url)
+        return RedditPost(title=f"auto {url}", content="body", url=url)
 
-    async def generate_satisfying_video_from_story(
-        self, prepared, *, language, low_quality
-    ):
-        self.generated_titles.append(prepared.story_title)
-        return SimpleNamespace(video=b"video", localized_title=prepared.story_title)
+    async def generate_satisfying_video_from_story(self, story, *, low_quality):
+        self.generated_titles.append(story.title)
+        return SimpleNamespace(video=b"video", localized_title=story.title)
 
 
 class FakeLLM:
@@ -59,6 +50,9 @@ class FakeContainer:
 
     def reddit_video_service(self):
         return self._service
+
+    def story_writer(self):
+        return EchoStoryWriter()
 
     def llm_proxy(self):
         return self._llm
