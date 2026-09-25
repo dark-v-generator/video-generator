@@ -4,7 +4,7 @@ from typing import List
 from .interfaces import ILLMProxy
 from ..entities.language import Language, get_language_name
 from ..prompts import loader as prompts
-from ..services.tiktok_caption import normalize_hashtags
+from ..capabilities.publishing.hashtags import normalize_hashtags
 
 MOCK_SINGLE_STORY = {
     "title": "Minha ex reapareceu depois de 10 anos e me chamou de mentiroso quando viu que eu já tinha seguido em frente",

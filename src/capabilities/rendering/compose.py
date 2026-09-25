@@ -1,14 +1,12 @@
-import logging
 from typing import Optional
 
-from ..entities.configs.services.video import VideoConfig
+from ...entities.configs.services.video import VideoConfig
+from ...entities.editor import image_clip, audio_clip, video_clip, captions_clip
 
-from ..entities.editor import image_clip, audio_clip, video_clip, captions_clip
-
-logger = logging.getLogger(__name__)
+CROSSFADE_DURATION = 0.5
 
 
-class VideoService:
+class VideoComposer:
     """Composes narration, footage, cover, CTA, watermark and captions."""
 
     def __init__(self, video_config: VideoConfig):
@@ -23,7 +21,7 @@ class VideoService:
             with open(self._video_config.call_to_action_path, "rb") as f:
                 self._call_to_action_bytes = f.read()
 
-    def generate_video(
+    def compose(
         self,
         audio: audio_clip.AudioClip,
         background_video: video_clip.VideoClip,
@@ -59,7 +57,7 @@ class VideoService:
 
         width, height = background_video.clip.size
         total_duration = audio.clip.duration
-        fade = self.CROSSFADE_DURATION
+        fade = CROSSFADE_DURATION
 
         # --- cover ---
         if cover is not None:
@@ -96,5 +94,3 @@ class VideoService:
         if captions is not None:
             background_video.insert_captions(captions, size_rate=size_rate)
         return background_video
-
-    CROSSFADE_DURATION = 0.5

@@ -62,6 +62,9 @@ services:
     # local_footage_dir and never touches the network.
     # footage_source: youtube
     # local_footage_dir: assets/backgrounds
+    # How a story becomes video. "narration-over-footage" (the only strategy
+    # today) narrates each part over the footage with cover, captions and CTA.
+    # rendering_strategy: narration-over-footage
     call_to_action_path: assets/call_to_action.png
     # How long the cover card stays on screen. It overlays the opening of the
     # story — narration and captions run from the first frame — so this is a

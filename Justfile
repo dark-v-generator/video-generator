@@ -50,6 +50,10 @@ prod-daily-publish-only dir="output/daily":
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
+# Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
+render-story story_json footage_dir:
+    uv run python scripts/render_story.py {{story_json}} {{footage_dir}}
+
 # Format code
 fmt:
     uv run black src scripts tests bots

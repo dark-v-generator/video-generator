@@ -1,9 +1,10 @@
 """Tests for the daily run's modes, its dedup against the publish log and its manifests.
 
-No network: discovery, the video service, the LLM and the publisher are all
+No network: discovery, the renderer, the LLM and the publisher are all
 fakes wired into the bot module.
 """
 
+import dataclasses
 import json
 import os
 from types import SimpleNamespace
@@ -12,9 +13,10 @@ import pytest
 
 from bots import satisfying_bot
 from src.entities.reddit_post import RedditPost
-from src.entities.story import StoryOrigin
+from src.entities.story import StoryOrigin, StoryPart
 from src.entities.story_candidate import EvaluatedStory
 from tests.fakes.publisher import FakePublisher
+from tests.fakes.renderer import EchoRenderer
 from tests.fakes.writer import EchoStoryWriter
 
 # --------------------------------------------------------------------------
@@ -33,30 +35,21 @@ class FakeDiscovery:
         )
 
 
-class FakeService:
-    def __init__(self):
-        self.generated_titles = []
-
-    async def generate_satisfying_video_from_story(self, story, *, low_quality):
-        self.generated_titles.append(story.title)
-        return SimpleNamespace(video=b"video", localized_title=story.title)
-
-
 class FakeLLM:
     async def generate_hashtags(self, *, title, summary, target_language):
         return ["fyp"]
 
 
 class FakeContainer:
-    def __init__(self, service, llm):
-        self._service = service
+    def __init__(self, renderer, llm):
+        self._renderer = renderer
         self._llm = llm
 
     def wire(self, modules):
         return None
 
-    def reddit_video_service(self):
-        return self._service
+    def renderer(self):
+        return self._renderer
 
     def story_discovery(self):
         return FakeDiscovery()
@@ -91,7 +84,7 @@ def auto_stories(n: int) -> list[EvaluatedStory]:
 @pytest.fixture
 def env(monkeypatch, tmp_path):
     """Wire the bot module to fakes and return the handles the tests poke at."""
-    service = FakeService()
+    renderer = EchoRenderer()
     publisher = FakePublisher()
     messages: list[str] = []
     discovery = SimpleNamespace(calls=[], results=auto_stories(3), error=None)
@@ -106,7 +99,7 @@ def env(monkeypatch, tmp_path):
         return discovery.results
 
     monkeypatch.setattr(satisfying_bot, "_discover_stories", discover_stories)
-    monkeypatch.setattr(satisfying_bot, "container", FakeContainer(service, FakeLLM()))
+    monkeypatch.setattr(satisfying_bot, "container", FakeContainer(renderer, FakeLLM()))
     monkeypatch.setattr(satisfying_bot, "_build_tiktok_publisher", lambda: publisher)
     monkeypatch.setenv(
         "TIKTOK_PUBLISH_LOG_PATH", str(tmp_path / "tiktok_publish_log.csv")
@@ -125,7 +118,7 @@ def env(monkeypatch, tmp_path):
     )
 
     return SimpleNamespace(
-        service=service,
+        renderer=renderer,
         publisher=publisher,
         messages=messages,
         discovery=discovery,
@@ -220,6 +213,40 @@ class TestGenerateOnly:
         assert [video.source for video in videos] == ["auto"]
         assert env.discovery.calls == [set()]
         assert env.publisher.calls == []
+        assert "✅ Geração finalizada: 1/1 vídeos prontos." in env.messages
+
+    @pytest.mark.asyncio
+    async def test_a_three_part_story_writes_one_video_per_part(self, env, monkeypatch):
+        class ThreePartWriter(EchoStoryWriter):
+            async def write(self, origin, **kwargs):
+                story = await super().write(origin, **kwargs)
+                parts = [StoryPart(index=i, text=f"parte {i}") for i in (1, 2, 3)]
+                return dataclasses.replace(story, parts=parts)
+
+        monkeypatch.setattr(
+            satisfying_bot.container, "story_writer", ThreePartWriter, raising=False
+        )
+
+        videos = await satisfying_bot.run_daily_generate(
+            env.send_message, publish_count=1, output_dir=env.output_dir
+        )
+
+        assert sorted(os.listdir(env.output_dir)) == [
+            "story_01.json",
+            "story_01.mp4",
+            "story_01_p2.json",
+            "story_01_p2.mp4",
+            "story_01_p3.json",
+            "story_01_p3.mp4",
+        ]
+        assert [(m["part"], m["title"]) for m in manifests(env.output_dir)] == [
+            (1, "auto auto-url-1 - Parte 1"),
+            (2, "auto auto-url-1 - Parte 2"),
+            (3, "auto auto-url-1 - Parte 3"),
+        ]
+        assert [video.part for video in videos] == [1, 2, 3]
+        assert "#1 Parte 3 gerada" in env.messages
+        # The target counts stories, not videos.
         assert "✅ Geração finalizada: 1/1 vídeos prontos." in env.messages
 
 

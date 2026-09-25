@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from ..proxies.interfaces import ICoverProxy
-from ..entities.cover import RedditCover
-from ..entities.editor.image_clip import ImageClip
+from ...proxies.interfaces import ICoverProxy
+from ...entities.cover import RedditCover
+from ...entities.editor.image_clip import ImageClip
 
 
 @dataclass

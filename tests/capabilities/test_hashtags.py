@@ -1,4 +1,7 @@
-from src.services.tiktok_caption import normalize_hashtags, strip_trailing_hashtags
+from src.capabilities.publishing.hashtags import (
+    normalize_hashtags,
+    strip_trailing_hashtags,
+)
 
 
 def test_normalize_hashtags_dedupes_and_caps_repeated_blocks():

@@ -170,18 +170,18 @@ um `Renderer` escolhido por nome; `RedditVideoService` e `src/services/` deixam 
 - `just render-story /tmp/story.json /tmp/bg` produz um mp4 usando só `container.renderer()`; `scripts/render_story.py` ≤ 60 linhas.
 - Golden verde.
 
-- [ ] T031 [P] [US1] Criar `src/entities/rendered.py` com `RenderedPart(part, cover_title, video, audio, captions_json, cover_png)`
-- [ ] T032 [P] [US1] Criar `src/capabilities/rendering/__init__.py`, `src/capabilities/rendering/contract.py` (`Renderer` Protocol com `name` e `render`) e `src/capabilities/rendering/registry.py` (`select_renderer(name, renderers)` com `KeyError` listando os nomes)
-- [ ] T033 [US1] Mover para `src/capabilities/rendering/`: `speech.py` (de `src/services/speech_service.py`), `captions.py` (`captions_service.py`), `cover.py` (`cover_service.py`), `compose.py` (`VideoService.generate_video` como `VideoComposer(video_config)` com `CROSSFADE_DURATION`), `censor.py` (`text_censor.py`), `cta.py` (`_normalize_marker_word`, `CTA_START_WORDS`, `compute_cta_start`); mover `src/services/tiktok_caption.py` para `src/capabilities/publishing/hashtags.py` (`normalize_hashtags` como função; classe vem no M6) com `src/capabilities/publishing/__init__.py`; atualizar imports em `src/core/container.py` e `bots/satisfying_bot.py`
-- [ ] T034 [US1] Criar `src/capabilities/rendering/narration_over_footage.py` (`NarrationOverFootageRenderer(speech, captions, cover, footage, composer, censor, video_config)`, `name = "narration-over-footage"`, `render(story, low_quality)`: para cada parte, fala → legendas corrigidas com `part.text` → `compute_cta_start` → censura de legendas → capa com `censor(story.cover_title_for(part))` e a atribuição da origem → `footage.compile(min_duration=duração da fala)` → `composer.compose(...)` → mp4 em bytes via `tempfile` + `asyncio.to_thread`, fps/ffmpeg da config); corpo movido de `generate_satisfying_video_from_story` + `_render_video_to_bytes`
-- [ ] T035 [US1] Integrar: `rendering_strategy: Literal["narration-over-footage"] = "narration-over-footage"` em `src/entities/configs/services/video.py`; providers `renderers` (dict) e `renderer` (`select_renderer`) em `src/core/container.py`; apagar `src/services/reddit_video_service.py`, `src/services/video_service.py` e o pacote `src/services/`; `bots/satisfying_bot.py` chama `container.renderer().render(story)` em `_generate_video_for_story` e no `GenerationQueue._process` (URL → vídeo), gravando `story_NN.mp4` para a parte 1 e `story_NN_p{k}.mp4` para `k ≥ 2`, manifest com `part` só quando multipart; `SingleVideoResult` some
-- [ ] T036 [P] [US1] Criar `tests/capabilities/test_rendering.py` (1 parte, 3 partes, censura de legendas e título, `cta_start`, `select_renderer` desconhecido) com `FakeSpeechProxy`, `FakeTranscriptionProxy`, `FakeCoverProxy`, `FakeFootageSource` e um `FakeComposer`; mover `tests/services/test_video_clip_duration.py`, `tests/services/test_cover_layout.py`, `tests/services/test_text_censor.py`, `tests/services/test_tiktok_caption.py` e a parte de `generate_video` de `tests/services/test_video_service.py` para `tests/capabilities/` (`test_compose.py`, `test_censor.py`, `test_hashtags.py`, …); mover `tests/services/test_clean_json.py` para `tests/proxies/test_clean_json.py`; apagar `tests/services/`
-- [ ] T037 [US1] Criar `scripts/render_story.py` (≤ 60 linhas: lê um JSON de `Story` conforme quickstart §5, constrói `Story`, chama `container.renderer().render`, grava `output/render/part{k}.mp4`) e a receita `render-story story_json footage_dir` no `Justfile` (exporta `footage_source=local` via `CONFIG_PATH` ou variável de ambiente documentada no script)
-- [ ] T038 [US1] Gate M5: `specs/004-clean-architecture-refactor/quickstart.md` §5; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
+- [X] T031 [P] [US1] Criar `src/entities/rendered.py` com `RenderedPart(part, cover_title, video, audio, captions_json, cover_png)`
+- [X] T032 [P] [US1] Criar `src/capabilities/rendering/__init__.py`, `src/capabilities/rendering/contract.py` (`Renderer` Protocol com `name` e `render`) e `src/capabilities/rendering/registry.py` (`select_renderer(name, renderers)` com `KeyError` listando os nomes)
+- [X] T033 [US1] Mover para `src/capabilities/rendering/`: `speech.py` (de `src/services/speech_service.py`), `captions.py` (`captions_service.py`), `cover.py` (`cover_service.py`), `compose.py` (`VideoService.generate_video` como `VideoComposer(video_config)` com `CROSSFADE_DURATION`), `censor.py` (`text_censor.py`), `cta.py` (`_normalize_marker_word`, `CTA_START_WORDS`, `compute_cta_start`); mover `src/services/tiktok_caption.py` para `src/capabilities/publishing/hashtags.py` (`normalize_hashtags` como função; classe vem no M6) com `src/capabilities/publishing/__init__.py`; atualizar imports em `src/core/container.py` e `bots/satisfying_bot.py`
+- [X] T034 [US1] Criar `src/capabilities/rendering/narration_over_footage.py` (`NarrationOverFootageRenderer(speech, captions, cover, footage, composer, censor, video_config)`, `name = "narration-over-footage"`, `render(story, low_quality)`: para cada parte, fala → legendas corrigidas com `part.text` → `compute_cta_start` → censura de legendas → capa com `censor(story.cover_title_for(part))` e a atribuição da origem → `footage.compile(min_duration=duração da fala)` → `composer.compose(...)` → mp4 em bytes via `tempfile` + `asyncio.to_thread`, fps/ffmpeg da config); corpo movido de `generate_satisfying_video_from_story` + `_render_video_to_bytes`
+- [X] T035 [US1] Integrar: `rendering_strategy: Literal["narration-over-footage"] = "narration-over-footage"` em `src/entities/configs/services/video.py`; providers `renderers` (dict) e `renderer` (`select_renderer`) em `src/core/container.py`; apagar `src/services/reddit_video_service.py`, `src/services/video_service.py` e o pacote `src/services/`; `bots/satisfying_bot.py` chama `container.renderer().render(story)` em `_generate_video_for_story` e no `GenerationQueue._process` (URL → vídeo), gravando `story_NN.mp4` para a parte 1 e `story_NN_p{k}.mp4` para `k ≥ 2`, manifest com `part` só quando multipart; `SingleVideoResult` some
+- [X] T036 [P] [US1] Criar `tests/capabilities/test_rendering.py` (1 parte, 3 partes, censura de legendas e título, `cta_start`, `select_renderer` desconhecido) com `FakeSpeechProxy`, `FakeTranscriptionProxy`, `FakeCoverProxy`, `FakeFootageSource` e um `FakeComposer`; mover `tests/services/test_video_clip_duration.py`, `tests/services/test_cover_layout.py`, `tests/services/test_text_censor.py`, `tests/services/test_tiktok_caption.py` e a parte de `generate_video` de `tests/services/test_video_service.py` para `tests/capabilities/` (`test_compose.py`, `test_censor.py`, `test_hashtags.py`, …); mover `tests/services/test_clean_json.py` para `tests/proxies/test_clean_json.py`; apagar `tests/services/`
+- [X] T037 [US1] Criar `scripts/render_story.py` (≤ 60 linhas: lê um JSON de `Story` conforme quickstart §5, constrói `Story`, chama `container.renderer().render`, grava `output/render/part{k}.mp4`) e a receita `render-story story_json footage_dir` no `Justfile` (exporta `footage_source=local` via `CONFIG_PATH` ou variável de ambiente documentada no script)
+- [X] T038 [US1] Gate M5: `specs/004-clean-architecture-refactor/quickstart.md` §5; golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
 
 **Live verification (milestone gate)**: quickstart §5.
 
-**Checkpoint**: Milestone 5 DONE
+**Checkpoint**: Milestone 5 DONE ✅ (2026-09-25)
 
 ---
 
@@ -427,6 +427,54 @@ funcionando.
     locais) não foi exercitado no laptop; o caminho `youtube` padrão continua o
     mesmo código, movido, e fica para o servidor (`just deploy` +
     `just prod-daily-generate 1`).
-- Gates (T038, T050, T055): a preencher com data, comando e resultado.
+- Gate M5 (T038, 2026-09-25):
+  - `uv run pytest tests/capabilities/test_rendering.py tests/flows/test_daily_run_golden.py -q`
+    → **11 passed** (1 parte com todos os artefatos, `test_three_parts` com
+    ` - Parte N` na capa, censura de título e legendas, falha numa parte derruba o
+    render inteiro, 4 de `compute_cta_start` migrados, `select_renderer`
+    desconhecido e conhecido; o golden). `uv run pytest -q` → **257 passed**.
+    `black --check` limpo. `src/services/` e `tests/services/` não existem mais.
+  - Golden: passa com o fixture do M1 intacto (`git diff tests/fixtures/` vazio); o
+    container agora recebe um `FakeComposer` no lugar do `FakeVideoService`, e o
+    bot passa pelo `NarrationOverFootageRenderer` real.
+  - SC-008: `scripts/render_story.py` tem **60 linhas** e só usa
+    `container.renderer()` e o loader de `Story`. Rodado com `config.dev.yaml` sobre
+    o JSON do quickstart §5 e uma pasta com dois `*-lq.mp4` do cache: edge-tts,
+    whisper local, capa pelo `PlaywrightCoverProxy` (PNG de 74 KB), a
+    `LocalFolderFootageSource` real abrindo os arquivos; só o `VideoComposer`
+    trocado pelo `FakeComposer` (regra de não renderizar no laptop). 5,8 s, exit 0,
+    `output/render/part1.mp4` escrito, narração de 7,39 s, 29 palavras de legenda,
+    `grep -ci "pytube\|youtube"` → 0. O `cta_start` caiu no fallback
+    (antepenúltima palavra, 5,96 s) porque o whisper ouviu "curtei" e o LLM mock
+    não corrige a transcrição; com o LLM real a correção devolve "Curta".
+  - Bot: `daily_auto_publish.py --generate-only --count 1` com proxies reais
+    (Reddit JSON, LLM mock, edge-tts, whisper, Playwright), `footage_source: local`
+    numa cópia do `config.dev.yaml` e só o composer falso: 88 s, exit 0, mensagens
+    iguais às do M4, manifest `story_01.json` com `source: auto` e sem `part`.
+    Uma primeira tentativa por engano com `footage_source: youtube` pegou HTTP 429
+    do YouTube em todas as candidatas e foi interrompida na #13; serviu de prova de
+    que a falha de render pula a candidata sem gravar nada.
+  - SC-005: o diff do M5 não toca `src/capabilities/{discovery,writing,footage}`.
+  - Decisões: (1) `RenderedPart.cover_title` é o título censurado da capa, como
+    o data-model pede; o título do manifest (descrição do TikTok) continua sem
+    censura e vem de `story.cover_title_for(part)` no bot, como antes.
+    (2) `VideoService.generate_video` virou `VideoComposer.compose`;
+    `CROSSFADE_DURATION` virou constante de módulo. (3) O bot já grava
+    `story_NN_p{k}.mp4` e o manifest com `part` só em história multipartes
+    (teste novo em `tests/flows/test_daily_run.py`); a meta conta histórias; no
+    auto-post a parte k vai no slot seguinte ao da k-1 e uma falha pula o resto da
+    história. Hashtags continuam uma chamada por vídeo — uma por história é do M6.
+    (4) O teste único de `tests/services/test_video_service.py` (era de
+    `VideoClip.ajust_duration`, não de `generate_video`) foi para
+    `tests/capabilities/test_video_clip_duration.py`. (5) `render_story.py` troca
+    a fonte de footage sobrescrevendo o `main_config` do container com
+    `footage_source: local` e a pasta do argumento, em vez de variável de
+    ambiente. (6) `log_function_call` e `log_progress_event` de
+    `src/core/logging_config.py`, sem uso e presos a `src.services`, saíram.
+  - **Pendente**: o render real (moviepy) pelo `NarrationOverFootageRenderer` não
+    foi exercitado no laptop; o corpo é o de `generate_satisfying_video_from_story`
+    + `_render_video_to_bytes`, movido. Fica para o servidor (`just deploy` +
+    `just prod-daily-generate 1`), junto com os pendentes do M1 e do M4.
+- Gates (T050, T055): a preencher com data, comando e resultado.
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.

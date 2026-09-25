@@ -2,10 +2,9 @@
 
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List
 
 from src.capabilities.footage import Footage
-from src.entities.configs.services.video import VideoConfig
 
 FAKE_VIDEO_BYTES = b"fake-mp4"
 
@@ -39,14 +38,13 @@ class FakeFootageSource:
 
 
 @dataclass
-class FakeVideoService:
-    """Stands in for ``VideoService``: no moviepy render."""
+class FakeComposer:
+    """Stands in for ``VideoComposer``: no moviepy render."""
 
-    _video_config: VideoConfig = field(default_factory=VideoConfig)
     payload: bytes = FAKE_VIDEO_BYTES
     compositions: List[Composition] = field(default_factory=list)
 
-    def generate_video(
+    def compose(
         self,
         audio,
         background_video,

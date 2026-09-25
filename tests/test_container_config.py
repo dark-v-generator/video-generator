@@ -36,9 +36,7 @@ def test_local_uses_the_folder_and_never_builds_the_youtube_proxy(tmp_path):
     container.youtube_proxy.override(providers.Callable(youtube_must_not_be_built))
 
     assert isinstance(container.footage_source(), LocalFolderFootageSource)
-    assert isinstance(
-        container.reddit_video_service()._footage_source, LocalFolderFootageSource
-    )
+    assert isinstance(container.renderer()._footage, LocalFolderFootageSource)
 
 
 def test_local_without_a_directory_fails_naming_the_key(tmp_path):

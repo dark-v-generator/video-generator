@@ -54,13 +54,6 @@ def _configure_application_loggers() -> None:
     """Configure loggers for our application modules."""
     app_loggers = [
         "src",
-        "src.services",
-        "src.services.history_service",
-        "src.services.config_service",
-        "src.services.video_service",
-        "src.services.speech_service",
-        "src.services.captions_service",
-        "src.services.cover_service",
         "src.api",
         "src.repositories",
         "src.proxies",
@@ -105,45 +98,3 @@ def get_logger(name: str) -> logging.Logger:
         Configured logger instance
     """
     return logging.getLogger(name)
-
-
-def log_function_call(func_name: str, **kwargs) -> None:
-    """
-    Log a function call with its parameters.
-
-    Args:
-        func_name: Name of the function being called
-        **kwargs: Function parameters to log
-    """
-    logger = logging.getLogger("src.services")
-    if logger.isEnabledFor(logging.DEBUG):
-        params = ", ".join(f"{k}={v}" for k, v in kwargs.items())
-        logger.debug(f"Calling {func_name}({params})")
-
-
-def log_progress_event(event, service_name: str = "unknown") -> None:
-    """
-    Log progress events in a consistent format.
-
-    Args:
-        event: Progress event to log
-        service_name: Name of the service generating the event
-    """
-    logger = logging.getLogger(f"src.services.{service_name}")
-
-    if hasattr(event, "status") and hasattr(event, "message"):
-        # This is a ProgressEvent
-        logger.info(f"Progress [{event.status}]: {event.message}")
-        if hasattr(event, "progress") and event.progress is not None:
-            logger.debug(f"Progress: {event.progress}%")
-        if hasattr(event, "details") and event.details:
-            logger.debug(f"Details: {event.details}")
-    else:
-        # Avoid logging raw binary or large payloads; log summary instead
-        try:
-            if isinstance(event, (bytes, bytearray)):
-                logger.info(f"Event: bytes payload ({len(event)} bytes)")
-            else:
-                logger.info(f"Event: {type(event).__name__}")
-        except Exception:
-            logger.info("Event: <unprintable>")

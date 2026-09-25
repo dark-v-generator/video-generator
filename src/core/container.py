@@ -5,15 +5,15 @@ from .secrets import secrets
 
 from ..capabilities.discovery import RedditStoryDiscovery
 from ..capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
+from ..capabilities.rendering import NarrationOverFootageRenderer, select_renderer
+from ..capabilities.rendering.captions import CaptionsService
+from ..capabilities.rendering.censor import TextCensor
+from ..capabilities.rendering.compose import VideoComposer
+from ..capabilities.rendering.cover import CoverService
+from ..capabilities.rendering.speech import SpeechService
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
 from ..prompts import loader as prompts
-from ..services.reddit_video_service import RedditVideoService
-from ..services.text_censor import TextCensor
-from ..services.video_service import VideoService
-from ..services.captions_service import CaptionsService
-from ..services.cover_service import CoverService
-from ..services.speech_service import SpeechService
 from ..proxies import factories as proxies_factories
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
@@ -111,7 +111,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         ),
     )
 
-    # Services
+    # Rendering
     text_censor = providers.Singleton(
         TextCensor,
         extra_mappings=main_config.provided.services.censorship_config.extra_word_replacements,
@@ -134,19 +134,29 @@ class ApplicationContainer(containers.DeclarativeContainer):
         cover_proxy=cover_proxy,
     )
 
-    video_service = providers.Singleton(
-        VideoService,
+    video_composer = providers.Singleton(
+        VideoComposer,
         video_config=main_config.provided.services.video_config,
     )
 
-    reddit_video_service = providers.Singleton(
-        RedditVideoService,
-        speech_service=speech_service,
-        captions_service=captions_service,
-        cover_service=cover_service,
-        video_service=video_service,
-        footage_source=footage_source,
-        text_censor=text_censor,
+    renderers = providers.Dict(
+        {
+            NarrationOverFootageRenderer.name: providers.Singleton(
+                NarrationOverFootageRenderer,
+                speech=speech_service,
+                captions=captions_service,
+                cover=cover_service,
+                footage=footage_source,
+                composer=video_composer,
+                censor=text_censor,
+                video_config=main_config.provided.services.video_config,
+            ),
+        }
+    )
+    renderer = providers.Singleton(
+        select_renderer,
+        name=main_config.provided.services.video_config.rendering_strategy,
+        renderers=renderers,
     )
 
 

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Literal, Optional
 
-from ..proxies.interfaces import ISpeechProxy
-from ..entities.editor.audio_clip import AudioClip
-from ..entities.language import Language
-from ..core.logging_config import get_logger
+from ...proxies.interfaces import ISpeechProxy
+from ...entities.editor.audio_clip import AudioClip
+from ...entities.language import Language
+from ...core.logging_config import get_logger
 
 
 @dataclass

@@ -5,7 +5,7 @@ from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
 from src.core.logging_config import get_logger
-from src.services.tiktok_caption import normalize_hashtags
+from src.capabilities.publishing.hashtags import normalize_hashtags
 
 
 class TikTokStorySignature(dspy.Signature):

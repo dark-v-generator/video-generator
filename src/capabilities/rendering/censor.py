@@ -2,7 +2,7 @@ import re
 import unicodedata
 from typing import Optional
 
-from ..entities.captions import CaptionSegment
+from ...entities.captions import CaptionSegment
 
 _VOWEL_MAP: dict[str, str] = {"a": "4", "e": "3", "i": "1", "o": "0"}
 

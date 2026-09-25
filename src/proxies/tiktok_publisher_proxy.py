@@ -40,7 +40,10 @@ from src.core.logging_config import get_logger
 from src.proxies.interfaces import ITikTokPublisherProxy
 from src.proxies.tiktok_publisher_memory import TikTokPublisherMemory
 from src.proxies.tiktok_publisher_tools import build_tools
-from src.services.tiktok_caption import normalize_hashtags, strip_trailing_hashtags
+from src.capabilities.publishing.hashtags import (
+    normalize_hashtags,
+    strip_trailing_hashtags,
+)
 
 # TikTok only allows scheduling posts up to 10 days in the future via
 # the native scheduler in TikTok Studio (Creator/Business accounts).

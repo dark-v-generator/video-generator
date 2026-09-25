@@ -33,7 +33,7 @@ from src.entities.config import MainConfig
 from src.entities.story import Story
 from src.entities.story_candidate import EvaluatedStory
 from src.proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
-from src.services.tiktok_caption import normalize_hashtags
+from src.capabilities.publishing.hashtags import normalize_hashtags
 
 from bots.base import (
     is_user_allowed,
@@ -117,27 +117,33 @@ class GenerationQueue:
             await job.status_message.edit_text("⏳ Gerando vídeo...")
 
             container.wire(modules=[__name__])
-            service = container.reddit_video_service()
 
             origin = container.story_discovery().fetch(job.url)
             story = await container.story_writer().write(
                 origin, language=config.language
             )
-            result = await service.generate_satisfying_video_from_story(
+            rendered = await container.renderer().render(
                 story, low_quality=bot_config.low_quality
             )
 
-            await job.status_message.edit_text("📤 Enviando áudio...")
-            await send_audio_bytes(job.reply_message, result.audio, "Narração")
-
-            video_mb = len(result.video) / (1024 * 1024)
-            if video_mb > 49:
-                await job.status_message.edit_text(
-                    f"📤 Comprimindo vídeo ({video_mb:.0f} MB)... pode demorar."
+            for part in rendered:
+                suffix = f" — parte {part.part.index}" if story.is_multipart else ""
+                await job.status_message.edit_text(f"📤 Enviando áudio{suffix}...")
+                await send_audio_bytes(
+                    job.reply_message, part.audio, f"Narração{suffix}"
                 )
-            else:
-                await job.status_message.edit_text("📤 Enviando vídeo...")
-            await send_video_bytes(job.reply_message, result.video, "Vídeo pronto")
+
+                video_mb = len(part.video) / (1024 * 1024)
+                if video_mb > 49:
+                    await job.status_message.edit_text(
+                        f"📤 Comprimindo vídeo{suffix} ({video_mb:.0f} MB)... "
+                        "pode demorar."
+                    )
+                else:
+                    await job.status_message.edit_text(f"📤 Enviando vídeo{suffix}...")
+                await send_video_bytes(
+                    job.reply_message, part.video, f"Vídeo pronto{suffix}"
+                )
 
             await job.status_message.edit_text("✅ Vídeo pronto!")
 
@@ -532,6 +538,8 @@ class GeneratedVideo:
     # Every video the daily run produces is "auto"; the field stays in the
     # manifest so the files keep the shape they have always had.
     source: str = "auto"
+    # Which part of a multi-part story this is; None for a one-part story.
+    part: Optional[int] = None
 
 
 def _manifest_path(video_path: str, output_dir: str) -> str:
@@ -547,6 +555,8 @@ def _save_manifest(video: GeneratedVideo, output_dir: str) -> str:
         "post_url": video.post_url,
         "source": video.source,
     }
+    if video.part is not None:
+        manifest["part"] = video.part
     path = _manifest_path(video.video_path, output_dir)
     with open(path, "w") as f:
         _json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -627,6 +637,7 @@ def load_generated_videos(directory: str) -> list[GeneratedVideo]:
                 summary=data.get("summary", ""),
                 post_url=data.get("post_url", ""),
                 source=data.get("source", "auto"),
+                part=data.get("part"),
             )
         )
     return videos
@@ -747,19 +758,20 @@ async def _prepare_story_with_retries(
 
 async def _generate_video_for_story(
     send_message,
-    service,
+    renderer,
     story: Story,
     *,
     output_dir: str,
     candidate_number: int,
-) -> GeneratedVideo | None:
-    """Produce the story's video and its manifest, or None when rendering failed."""
+) -> list[GeneratedVideo] | None:
+    """Produce one video and manifest per part, or None when rendering failed.
+
+    Rendering is all or nothing: nothing is written until every part rendered.
+    """
     label = f"#{candidate_number}"
 
     try:
-        result = await service.generate_satisfying_video_from_story(
-            story, low_quality=bot_config.low_quality
-        )
+        rendered = await renderer.render(story, low_quality=bot_config.low_quality)
     except Exception as e:
         logger.exception("Failed to generate video for %s", story.origin.url)
         await send_message(
@@ -768,18 +780,28 @@ async def _generate_video_for_story(
         )
         return None
 
-    video_path = os.path.join(output_dir, f"story_{candidate_number:02d}.mp4")
-    with open(video_path, "wb") as f:
-        f.write(result.video)
+    videos = []
+    for part in rendered:
+        index = part.part.index
+        suffix = f"_p{index}" if index > 1 else ""
+        video_path = os.path.join(
+            output_dir, f"story_{candidate_number:02d}{suffix}.mp4"
+        )
+        with open(video_path, "wb") as f:
+            f.write(part.video)
 
-    video = GeneratedVideo(
-        video_path=video_path,
-        title=result.localized_title,
-        summary=story.summary,
-        post_url=story.origin.url,
-    )
-    _save_manifest(video, output_dir)
-    return video
+        video = GeneratedVideo(
+            video_path=video_path,
+            title=story.cover_title_for(part.part),
+            summary=story.summary,
+            post_url=story.origin.url,
+            part=index if story.is_multipart else None,
+        )
+        _save_manifest(video, output_dir)
+        videos.append(video)
+        if story.is_multipart:
+            await send_message(f"{label} Parte {index} gerada")
+    return videos
 
 
 async def _publish_item(
@@ -878,14 +900,15 @@ async def run_daily_generate(
     os.makedirs(output_dir, exist_ok=True)
 
     container.wire(modules=[__name__])
-    service = container.reddit_video_service()
+    renderer = container.renderer()
     discovery = container.story_discovery()
     writer = container.story_writer()
 
     generated: list[GeneratedVideo] = []
+    stories_done = 0
 
     for candidate_idx, story in enumerate(candidates, start=1):
-        if len(generated) >= count:
+        if stories_done >= count:
             break
 
         written = await _prepare_story_with_retries(
@@ -899,19 +922,20 @@ async def run_daily_generate(
         if written is None:
             continue
 
-        video = await _generate_video_for_story(
+        videos = await _generate_video_for_story(
             send_message,
-            service,
+            renderer,
             written,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
-        if video is not None:
+        if videos is not None:
             await send_message(f"#{candidate_idx} Vídeo finalizado.")
-            generated.append(video)
+            generated.extend(videos)
+            stories_done += 1
 
     await send_message(
-        f"✅ Geração finalizada: {len(generated)}/{count} vídeos prontos.",
+        f"✅ Geração finalizada: {stories_done}/{count} vídeos prontos.",
     )
     return generated
 
@@ -1023,7 +1047,7 @@ async def run_daily_auto_publish(
     os.makedirs(output_dir, exist_ok=True)
 
     container.wire(modules=[__name__])
-    service = container.reddit_video_service()
+    renderer = container.renderer()
     discovery = container.story_discovery()
     writer = container.story_writer()
     llm_proxy = container.llm_proxy()
@@ -1047,29 +1071,35 @@ async def run_daily_auto_publish(
         if written is None:
             continue
 
-        video = await _generate_video_for_story(
+        videos = await _generate_video_for_story(
             send_message,
-            service,
+            renderer,
             written,
             output_dir=output_dir,
             candidate_number=candidate_idx,
         )
-        if video is None:
+        if videos is None:
             continue
 
         await send_message(f"#{candidate_idx} Vídeo finalizado. Agendando história...")
-        slot = await _publish_item(
-            send_message,
-            llm_proxy,
-            publisher,
-            video,
-            last_slot=last_slot,
-            candidate_number=candidate_idx,
-        )
+        # Part k goes in the slot after part k-1; the next story starts after
+        # the last slot that was actually taken.
+        slot: datetime.datetime | None = last_slot
+        for video in videos:
+            slot = await _publish_item(
+                send_message,
+                llm_proxy,
+                publisher,
+                video,
+                last_slot=last_slot,
+                candidate_number=candidate_idx,
+            )
+            if slot is None:
+                break
+            last_slot = slot
         if slot is None:
             continue
 
-        last_slot = slot
         published += 1
 
     await send_message(f"✅ Fluxo finalizado: {published}/{count} vídeos agendados.")

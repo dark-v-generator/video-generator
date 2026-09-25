@@ -1,5 +1,5 @@
 import pytest
-from src.services.text_censor import TextCensor, _obfuscate
+from src.capabilities.rendering.censor import TextCensor, _obfuscate
 from src.entities.captions import CaptionSegment
 
 

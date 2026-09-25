@@ -1,7 +1,6 @@
 """Tests for the daily auto-publish schedule slot computation."""
 
 import datetime
-from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +9,7 @@ from bots.satisfying_bot import compute_publish_slots, next_publish_slot
 from src.entities.reddit_post import RedditPost
 from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory
+from tests.fakes.renderer import EchoRenderer
 from tests.fakes.writer import EchoStoryWriter
 
 SLOTS = ["12:00", "18:00", "19:00", "20:00"]
@@ -178,14 +178,6 @@ class TestDailyAutoPublishPipeline:
                     next(post for post in posts if post.url == url)
                 )
 
-        class FakeService:
-            def __init__(self):
-                self.generated_titles = []
-
-            async def generate_satisfying_video_from_story(self, story, *, low_quality):
-                self.generated_titles.append(story.title)
-                return SimpleNamespace(video=b"video", localized_title=story.title)
-
         class FakeLLM:
             async def generate_hashtags(self, *, title, summary, target_language):
                 return ["fyp"]
@@ -208,15 +200,15 @@ class TestDailyAutoPublishPipeline:
                 return "scheduled"
 
         class FakeContainer:
-            def __init__(self, service, llm):
-                self._service = service
+            def __init__(self, renderer, llm):
+                self._renderer = renderer
                 self._llm = llm
 
             def wire(self, modules):
                 return None
 
-            def reddit_video_service(self):
-                return self._service
+            def renderer(self):
+                return self._renderer
 
             def story_discovery(self):
                 return discovery
@@ -227,7 +219,7 @@ class TestDailyAutoPublishPipeline:
             def llm_proxy(self):
                 return self._llm
 
-        service = FakeService()
+        renderer = EchoRenderer()
         discovery = FakeDiscovery()
         publisher = FakePublisher()
         messages = []
@@ -248,7 +240,7 @@ class TestDailyAutoPublishPipeline:
         monkeypatch.setattr(
             satisfying_bot,
             "container",
-            FakeContainer(service, FakeLLM()),
+            FakeContainer(renderer, FakeLLM()),
         )
         monkeypatch.setattr(
             satisfying_bot,
@@ -263,7 +255,7 @@ class TestDailyAutoPublishPipeline:
         )
 
         assert discovery.fetched_urls == ["url-1", "url-2", "url-3"]
-        assert service.generated_titles == ["Story 1", "Story 2", "Story 3"]
+        assert [s.title for s in renderer.stories] == ["Story 1", "Story 2", "Story 3"]
         assert [call[1] for call in publisher.calls] == [
             "Story 1",
             "Story 2",

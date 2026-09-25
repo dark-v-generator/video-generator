@@ -96,6 +96,13 @@ class VideoConfig(BaseYAMLModel):
     local_footage_dir: Optional[str] = Field(
         None, title="Directory of .mp4 backgrounds; required with footage_source: local"
     )
+    rendering_strategy: Literal["narration-over-footage"] = Field(
+        "narration-over-footage",
+        title=(
+            "How a story becomes video: narration-over-footage narrates each part "
+            "over the background footage, with the cover, captions and CTA on top."
+        ),
+    )
     youtube_channel_url: str = Field(
         "https://www.youtube.com/@FoodieBoyKR",
         title="Fallback YouTube channel url",
