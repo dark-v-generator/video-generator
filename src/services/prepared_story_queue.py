@@ -99,22 +99,23 @@ class PreparedStoryQueue:
         return self._move(item.path, FAILED, ".error.txt", error)
 
     def known_post_urls(self) -> Set[str]:
-        """Post URLs already queued or produced, to keep discovery off them."""
+        """Post URLs already queued or produced, to keep discovery off them.
+
+        Only ``post.url`` is read, not the whole model: a package of a version
+        this server does not know was still published by someone, and its post
+        must stay excluded. A file that is not even JSON fails the run, since
+        ``list_inbox`` has already moved every unreadable inbox file away and
+        ``done/`` only receives files that parsed.
+        """
         urls: Set[str] = set()
         for state in (INBOX, DONE):
             for name in sorted(os.listdir(self._dir(state))):
                 if not name.endswith(".json") or name.endswith(".outcome.json"):
                     continue
-                path = os.path.join(self._dir(state), name)
-                try:
-                    with open(path, encoding="utf-8") as f:
-                        package = load_package(f.read())
-                except (ValidationError, ValueError, OSError):
-                    # Reporting belongs to list_inbox; here a bad file simply
-                    # excludes nothing.
-                    continue
-                if package.post.url:
-                    urls.add(package.post.url)
+                with open(os.path.join(self._dir(state), name), encoding="utf-8") as f:
+                    url = json.load(f)["post"]["url"]
+                if url:
+                    urls.add(url)
         return urls
 
     def _move(
