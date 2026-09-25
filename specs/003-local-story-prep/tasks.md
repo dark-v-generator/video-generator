@@ -430,7 +430,7 @@ muda.
 
 ## Phase 7: Polish
 
-- [ ] T040 [P] Rodar `uv run black src scripts tests bots` e revisar os diffs dos quatro PRs contra a constituição (fail fast fora dos pontos justificados; nada de I/O em `src/entities`/`src/services` além do diretório da fila)
+- [X] T040 [P] Rodar `uv run black src scripts tests bots` e revisar os diffs dos quatro PRs contra a constituição (fail fast fora dos pontos justificados; nada de I/O em `src/entities`/`src/services` além do diretório da fila)
 
   **Parcial (2026-09-22, PR de polish)**: `black==26.5.1` adicionado ao extra `dev` do
   pyproject (não estava instalado) e `uv run black src scripts tests bots` rodado —
@@ -445,7 +445,42 @@ muda.
   falha na hora é o `validate`, que captura `ValidationError` porque relatar problemas
   de pacote é exatamente o contrato do subcomando. Falta revisar os diffs de M2 e M3,
   que ainda não existem — por isso a tarefa continua aberta.
-- [ ] T041 Rodar o quickstart.md §7 completo e a suíte inteira `uv run pytest -q`; registrar o resultado no plan.md (seção "Verificação pós-implementação", como na feature 002)
+
+  **Fechamento (2026-09-22, PR de revisão)**: `uv run black --check src scripts tests
+  bots` → `118 files would be left unchanged`; nenhum drift desde o PR de formatação.
+  Diffs de M2 (`17f9b1d`), M3 (`e60ef17`) e M4 (`5895aeb`, `168623e`) revistos contra
+  a constituição:
+
+  - *Fail fast*: os `except Exception` do bot por candidata (geração e publicação) já
+    existiam antes da feature com o mesmo alcance; M3/M4 os reorganizaram
+    (`_PublishError` sobe um nível para nomear o slot da parte 1) sem alargar. O
+    `list_inbox` que move para `failed/` é o desvio justificado em Complexity Tracking.
+    As capturas de `ValidationError`/`ValueError` do CLI em `validate` e `ship` são o
+    próprio contrato dos subcomandos. `_load_examples` devolver `[]` sem o YAML é o
+    comportamento que o proxy já tinha, preservado ao extrair.
+  - **Violação encontrada e corrigida**: `PreparedStoryQueue.known_post_urls` validava
+    o modelo inteiro e engolia `ValidationError`/`ValueError`/`OSError`, ou seja, um
+    arquivo que não parseava deixava a dedup mais fraca em silêncio — justamente a
+    degradação silenciosa que o princípio I proíbe, e sem justificativa registrada. Um
+    caso concreto: um pacote `version: 2` em `done/` num servidor que voltasse para
+    antes do M4 sairia da exclusão e o post poderia ser redescoberto. Agora lê só
+    `post.url` do JSON, sem `try`: vale para qualquer versão, e um arquivo corrompido
+    derruba a run com o erro (o `list_inbox` já limpou a inbox antes, e `done/` só
+    recebe arquivos que parsearam). Dois testes novos em
+    tests/test_prepared_story_queue.py, vistos falhando antes da correção.
+  - *Arquitetura*: nenhum I/O novo em `src/entities` (o `json.loads` de `load_package`
+    é sobre texto já lido) nem em `prepared_story_validation.py`; o único serviço que
+    toca disco é a fila, como previsto; `render.py` lê templates e exemplos na borda
+    (`src/proxies`). `RedditVideoService`, `ILLMProxy` e `IRedditProxy` sem mudança de
+    contrato.
+  - *Prompts*: `story.jinja2`, `two_part_story.jinja2` e o SKILL.md sem CAPS de ênfase
+    (só os cabeçalhos de seção dos templates e siglas do Reddit), com o porquê de cada
+    passo.
+- [X] T041 Rodar o quickstart.md §7 completo e a suíte inteira `uv run pytest -q`; registrar o resultado no plan.md (seção "Verificação pós-implementação", como na feature 002)
+
+  **Evidência (2026-09-22)**: quickstart §7 mais `test_publish_slots.py` → **187
+  passed**; suíte inteira → `1 failed, 359 passed` (a falha pré-existente da 002).
+  Registrado em plan.md, "Verificação pós-implementação".
 
 ---
 

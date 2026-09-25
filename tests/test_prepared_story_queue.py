@@ -203,6 +203,25 @@ class TestKnownPostUrls:
     def test_empty_queue_has_no_known_urls(self, tmp_path):
         assert PreparedStoryQueue(str(tmp_path)).known_post_urls() == set()
 
+    def test_a_done_package_of_any_version_still_excludes_its_post(self, tmp_path):
+        # A package produced by a newer server stays in done/ after a rollback;
+        # its post was still published and must stay off discovery.
+        payload = package_payload(version=7)
+        payload["post"] = {**payload["post"], "url": other_post_url("aaa")}
+        os.makedirs(tmp_path / "done")
+        (tmp_path / "done" / "aaa.json").write_text(json.dumps(payload))
+
+        urls = PreparedStoryQueue(str(tmp_path)).known_post_urls()
+
+        assert urls == {other_post_url("aaa")}
+
+    def test_a_corrupt_done_package_fails_loudly(self, tmp_path):
+        os.makedirs(tmp_path / "done")
+        (tmp_path / "done" / "aaa.json").write_text("{not json")
+
+        with pytest.raises(json.JSONDecodeError):
+            PreparedStoryQueue(str(tmp_path)).known_post_urls()
+
 
 class TestTwoPartPackages:
     def test_version_two_is_listed_with_its_own_model(self, tmp_path):
