@@ -1,6 +1,6 @@
-import os
 import json
 import dspy
+from src.prompts import loader as prompts
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
@@ -135,39 +135,21 @@ class DSPyLLMProxy(ILLMProxy):
         enhancer = dspy.Predict(EnhanceTranscriptionSignature)
         examples = []
         try:
-            yaml_path = os.path.join(
-                os.path.dirname(__file__),
-                "prompts",
-                "examples",
-                "transcription_enhancement.yaml",
-            )
+            for entry in prompts.load_examples("transcription_enhancement"):
+                examples.append(
+                    dspy.Example(
+                        base_text=entry.get("base_text", ""),
+                        raw_transcription=entry.get("raw_transcription", ""),
+                        enhanced_transcription=entry.get("enhanced_transcription", ""),
+                    ).with_inputs("base_text", "raw_transcription")
+                )
 
-            if os.path.exists(yaml_path):
-                import yaml
-
-                with open(yaml_path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f)
-
-                    if data:
-                        for entry in data:
-                            examples.append(
-                                dspy.Example(
-                                    base_text=entry.get("base_text", ""),
-                                    raw_transcription=entry.get(
-                                        "raw_transcription", ""
-                                    ),
-                                    enhanced_transcription=entry.get(
-                                        "enhanced_transcription", ""
-                                    ),
-                                ).with_inputs("base_text", "raw_transcription")
-                            )
-
-                if examples:
-                    self._logger.info(
-                        f"Loaded {len(examples)} example(s) for transcription enhancement."
-                    )
-                    teleprompter = dspy.teleprompt.LabeledFewShot(k=len(examples))
-                    enhancer = teleprompter.compile(student=enhancer, trainset=examples)
+            if examples:
+                self._logger.info(
+                    f"Loaded {len(examples)} example(s) for transcription enhancement."
+                )
+                teleprompter = dspy.teleprompt.LabeledFewShot(k=len(examples))
+                enhancer = teleprompter.compile(student=enhancer, trainset=examples)
         except Exception as e:
             self._logger.error(
                 f"Failed to load dspy transcription enhance examples: {e}"

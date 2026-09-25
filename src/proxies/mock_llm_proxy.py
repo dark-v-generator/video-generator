@@ -1,7 +1,9 @@
+import logging
 from typing import List
 
 from .interfaces import ILLMProxy
-from ..entities.language import Language
+from ..entities.language import Language, get_language_name
+from ..prompts import loader as prompts
 from ..services.tiktok_caption import normalize_hashtags
 
 MOCK_SINGLE_STORY = {
@@ -89,12 +91,27 @@ MOCK_EVALUATION = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+
 class MockLLMProxy(ILLMProxy):
-    """Returns a fixed story, evaluation and hashtags without calling any model."""
+    """Returns a fixed story, evaluation and hashtags without calling any model.
+
+    The story prompt is still rendered and logged, so a prompt edit can be
+    seen and exercised in development without paying for a model call.
+    """
 
     async def generate_story(
         self, title: str, content: str, target_language: Language
     ) -> dict:
+        prompt = prompts.render(
+            "story.jinja2",
+            target_language=get_language_name(target_language),
+            examples=[],
+            reddit_title=title,
+            reddit_text=content,
+        )
+        logger.info("Mock LLM story prompt:\n%s", prompt)
         return dict(MOCK_SINGLE_STORY)
 
     async def evaluate_story(

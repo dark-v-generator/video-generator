@@ -92,24 +92,24 @@ são validados no boot.
 
 ### Modelo
 
-- [ ] T014 [P] [US2] Criar `src/entities/story.py` com `StoryOrigin` (`from_post`, `original_markdown`), `StoryPart`, `Story` (`is_multipart`, `cover_title_for`, `story_markdown`, validação de partes não vazias e índices contíguos) e `part_label(language, index)` conforme `data-model.md`
-- [ ] T015 [P] [US6] Criar `tests/entities/__init__.py` e `tests/entities/test_story.py`: `cover_title_for` com 1 e 3 partes, `part_label` para `pt-br` e `en`, `from_post`, validação (partes vazias, índice fora de ordem)
+- [X] T014 [P] [US2] Criar `src/entities/story.py` com `StoryOrigin` (`from_post`, `original_markdown`), `StoryPart`, `Story` (`is_multipart`, `cover_title_for`, `story_markdown`, validação de partes não vazias e índices contíguos) e `part_label(language, index)` conforme `data-model.md`
+- [X] T015 [P] [US6] Criar `tests/entities/__init__.py` e `tests/entities/test_story.py`: `cover_title_for` com 1 e 3 partes, `part_label` para `pt-br` e `en`, `from_post`, validação (partes vazias, índice fora de ordem)
 
 ### Prompts
 
-- [ ] T016 [US2] Criar `src/prompts/` movendo `story.jinja2`, `evaluate_story.jinja2`, `generate_hashtags.jinja2`, `enhance_transcription.jinja2` de `src/proxies/prompts/` e `examples/transcription_enhancement.yaml` de `src/proxies/examples/`; criar `src/prompts/__init__.py` e `src/prompts/loader.py` (`render(template_name, **variables)`, `load_examples(name)`, `validate_all()` estourando `TemplateSyntaxError` com o nome do arquivo); apontar `src/proxies/llm_prompt_proxy.py`, `src/proxies/llm_dspy_proxy.py` e `src/proxies/mock_llm_proxy.py` para o loader; apagar `src/proxies/prompts/` e `src/proxies/examples/`
-- [ ] T017 [P] [US2] Criar `tests/prompts/__init__.py` e `tests/prompts/test_loader.py`: `render` de cada template com variáveis mínimas, `validate_all` verde com os templates reais, `validate_all` estourando com um template inválido num `tmp_path` apontado via monkeypatch do diretório
+- [X] T016 [US2] Criar `src/prompts/` movendo `story.jinja2`, `evaluate_story.jinja2`, `generate_hashtags.jinja2`, `enhance_transcription.jinja2` de `src/proxies/prompts/` e `examples/transcription_enhancement.yaml` de `src/proxies/examples/`; criar `src/prompts/__init__.py` e `src/prompts/loader.py` (`render(template_name, **variables)`, `load_examples(name)`, `validate_all()` estourando `TemplateSyntaxError` com o nome do arquivo); apontar `src/proxies/llm_prompt_proxy.py`, `src/proxies/llm_dspy_proxy.py` e `src/proxies/mock_llm_proxy.py` para o loader; apagar `src/proxies/prompts/` e `src/proxies/examples/`
+- [X] T017 [P] [US2] Criar `tests/prompts/__init__.py` e `tests/prompts/test_loader.py`: `render` de cada template com variáveis mínimas, `validate_all` verde com os templates reais, `validate_all` estourando com um template inválido num `tmp_path` apontado via monkeypatch do diretório
 
 ### Escrita
 
-- [ ] T018 [US2] Criar `src/capabilities/__init__.py`, `src/capabilities/writing/__init__.py`, `src/capabilities/writing/contract.py` (`StoryWriter` Protocol, `WriterError`, `WriterTransientError`, `WriterContentBlockedError`), `src/capabilities/writing/model_writer.py` (`ModelStoryWriter(llm)`: `generate_story` → `Story` de 1 parte; resolução de gênero; classificação de erro movida de `_is_transient_error`/`_is_content_filter_error` do bot, incluindo `litellm.RateLimitError`) e `src/capabilities/writing/static_writer.py` (`StaticStoryWriter(stories: dict[str, Story])`)
-- [ ] T019 [P] [US2] Criar `tests/capabilities/__init__.py` e `tests/capabilities/test_writing.py` cobrindo os critérios de escrita acima com `FakeLLMProxy`
-- [ ] T020 [US2] Integrar: provider `story_writer` em `src/core/container.py` (usa `history_adaptation_llm_proxy` ou `llm_proxy`, e chama `validate_all()` ao construir `llm_proxy`); `bots/satisfying_bot.py` chama `container.story_writer().write(origin)` em `_prepare_story_with_retries` (retry sobre `WriterTransientError`, skip sobre `WriterContentBlockedError`, sem `import litellm`) e monta `origin` com `StoryOrigin.from_post(service.scrape_post(url))`; `RedditVideoService.generate_satisfying_video_from_story` recebe `Story` (usa `parts[0].text`, `cover_title_for`) e `PreparedStory` + `prepare_satisfying_story` são apagados; atualizar `tests/fakes/` e `tests/flows/` para o novo tipo
-- [ ] T021 [US2] Gate M2: `specs/004-clean-architecture-refactor/quickstart.md` §2 (suíte, edição de prompt visível no log, template quebrado estoura no boot); golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
+- [X] T018 [US2] Criar `src/capabilities/__init__.py`, `src/capabilities/writing/__init__.py`, `src/capabilities/writing/contract.py` (`StoryWriter` Protocol, `WriterError`, `WriterTransientError`, `WriterContentBlockedError`), `src/capabilities/writing/model_writer.py` (`ModelStoryWriter(llm)`: `generate_story` → `Story` de 1 parte; resolução de gênero; classificação de erro movida de `_is_transient_error`/`_is_content_filter_error` do bot, incluindo `litellm.RateLimitError`) e `src/capabilities/writing/static_writer.py` (`StaticStoryWriter(stories: dict[str, Story])`)
+- [X] T019 [P] [US2] Criar `tests/capabilities/__init__.py` e `tests/capabilities/test_writing.py` cobrindo os critérios de escrita acima com `FakeLLMProxy`
+- [X] T020 [US2] Integrar: provider `story_writer` em `src/core/container.py` (usa `history_adaptation_llm_proxy` ou `llm_proxy`, e chama `validate_all()` ao construir `llm_proxy`); `bots/satisfying_bot.py` chama `container.story_writer().write(origin)` em `_prepare_story_with_retries` (retry sobre `WriterTransientError`, skip sobre `WriterContentBlockedError`, sem `import litellm`) e monta `origin` com `StoryOrigin.from_post(service.scrape_post(url))`; `RedditVideoService.generate_satisfying_video_from_story` recebe `Story` (usa `parts[0].text`, `cover_title_for`) e `PreparedStory` + `prepare_satisfying_story` são apagados; atualizar `tests/fakes/` e `tests/flows/` para o novo tipo
+- [X] T021 [US2] Gate M2: `specs/004-clean-architecture-refactor/quickstart.md` §2 (suíte, edição de prompt visível no log, template quebrado estoura no boot); golden verde; registrar em Notes de `specs/004-clean-architecture-refactor/tasks.md`
 
 **Live verification (milestone gate)**: quickstart §2.
 
-**Checkpoint**: Milestone 2 DONE
+**Checkpoint**: Milestone 2 DONE ✅ (2026-09-25)
 
 ---
 
@@ -338,6 +338,31 @@ funcionando.
   - **Pendente**: o render real (footage do YouTube + moviepy) não foi exercitado
     neste gate; fica para o servidor (`just deploy` + `just prod-daily-generate 1`)
     quando o PR for aceito.
-- Gates (T021, T025, T030, T038, T050, T055): a preencher com data, comando e resultado.
+- Gate M2 (T021, 2026-09-25):
+  - `uv run pytest tests/capabilities/test_writing.py tests/flows -q` → **45 passed**;
+    `uv run pytest -q` → **232 passed** (201 do M1 + 10 de `Story`, 7 do loader,
+    14 da escrita). `black --check` limpo.
+  - Golden: `tests/flows/test_daily_run_golden.py` passa com o fixture do M1
+    intacto. Ele já passa pelo `ModelStoryWriter` real do container sobre o
+    `FakeLLMProxy`, então cobre a classificação de erro (429 → retry,
+    "content filter" → pula) de ponta a ponta.
+  - Prompt editável (SC-003): `# VOICE` → `# VOICE PORTAOMARCADOR` em
+    `src/prompts/story.jinja2`; `daily_auto_publish.py --generate-only --count 1`
+    com `config.dev.yaml` e proxies reais (Reddit JSON, LLM mock, edge-tts, whisper,
+    Playwright), só o `VideoService` trocado pelo `FakeVideoService` (regra de não
+    renderizar no laptop): 33 s, 34 candidatas, a palavra aparece 1× no log
+    (`Mock LLM story prompt:`). O `MockLLMProxy` agora renderiza e loga o prompt de
+    história para isso ser visível em dev; o `PromptLLMProxy` loga em DEBUG.
+    Manifest com `source: auto`, sem `part`, `summary` vindo da avaliação.
+  - Template quebrado: `printf '{%% if %%}' >> src/prompts/story.jinja2` →
+    `container.llm_proxy()` estoura `TemplateSyntaxError: story.jinja2: Expected an
+    expression...` (arquivo e linha 74), exit 1.
+  - Mudanças de comportamento conscientes: (1) um erro ao reler o post do Reddit
+    antes de escrever não é mais re-tentado, só `WriterTransientError` é
+    (`contracts/flow.md` §3); antes, um 429 do Reddit nessa leitura era re-tentado.
+    (2) O `DSPyLLMProxy` passa a carregar os exemplos de correção de transcrição:
+    o caminho antigo (`proxies/prompts/examples/`) nunca existiu. Nenhum config do
+    repositório usa DSPy.
+- Gates (T025, T030, T038, T050, T055): a preencher com data, comando e resultado.
 - O golden é regravado apenas com `--update-golden` e com o diff revisado no PR; um
   fixture alterado no M6 é sinal de mudança de comportamento, não de progresso.

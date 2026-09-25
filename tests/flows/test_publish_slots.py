@@ -9,7 +9,7 @@ from bots import satisfying_bot
 from bots.satisfying_bot import compute_publish_slots, next_publish_slot
 from src.entities.reddit_post import RedditPost
 from src.entities.story_candidate import EvaluatedStory
-from src.services.reddit_video_service import PreparedStory
+from tests.fakes.writer import EchoStoryWriter
 
 SLOTS = ["12:00", "18:00", "19:00", "20:00"]
 
@@ -172,30 +172,13 @@ class TestDailyAutoPublishPipeline:
                 self.prepared_urls = []
                 self.generated_titles = []
 
-            async def prepare_satisfying_story(self, *, post_url, language):
-                self.prepared_urls.append(post_url)
-                post = next(post for post in posts if post.url == post_url)
-                return PreparedStory(
-                    post=post,
-                    script_text="script",
-                    story_title=post.title,
-                    narrator_gender="unknown",
-                    resolved_gender="male",
-                    original_post_md="original",
-                )
+            def scrape_post(self, url):
+                self.prepared_urls.append(url)
+                return next(post for post in posts if post.url == url)
 
-            async def generate_satisfying_video_from_story(
-                self,
-                prepared,
-                *,
-                language,
-                low_quality,
-            ):
-                self.generated_titles.append(prepared.story_title)
-                return SimpleNamespace(
-                    video=b"video",
-                    localized_title=prepared.story_title,
-                )
+            async def generate_satisfying_video_from_story(self, story, *, low_quality):
+                self.generated_titles.append(story.title)
+                return SimpleNamespace(video=b"video", localized_title=story.title)
 
         class FakeLLM:
             async def generate_hashtags(self, *, title, summary, target_language):
@@ -228,6 +211,9 @@ class TestDailyAutoPublishPipeline:
 
             def reddit_video_service(self):
                 return self._service
+
+            def story_writer(self):
+                return EchoStoryWriter()
 
             def llm_proxy(self):
                 return self._llm
