@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import sys
 from datetime import datetime
 from typing import Callable, Optional
@@ -184,7 +185,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"{len(rows)} vídeos gravados em {args.csv}")
         else:
             print(render_table(rows))
-            print(f"\n{len(rows)} vídeos")
+            print(f"\n{len(rows)} vídeos", flush=True)
+    except BrokenPipeError:
+        # Piped into head: the reader has what it wanted. Point stdout at
+        # /dev/null so the exit flush does not raise again.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
     except UnknownColumnError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
