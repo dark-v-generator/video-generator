@@ -1,8 +1,9 @@
-"""The bot and the command line are adapters: both call the same ``DailyRun``.
+"""The bot and the command line are adapters: both call the same ``DailyRun``
+and the same ``PerformanceCollection``.
 
-A recording ``DailyRun`` stands in for the real one; each call is bound
-against the real method's signature, so a call the real flow would reject
-fails here too, and defaults are filled in before comparing.
+Recording flows stand in for the real ones; each call is bound against the
+real method's signature, so a call the real flow would reject fails here too,
+and defaults are filled in before comparing.
 """
 
 import asyncio
@@ -13,8 +14,9 @@ from types import SimpleNamespace
 import pytest
 
 from bots import satisfying_bot
-from scripts import daily_auto_publish
+from scripts import collect_performance, daily_auto_publish
 from src.entities.generated_video import GeneratedVideo
+from src.flows.collect_performance import PerformanceCollection
 from src.flows.daily_run import DailyRun
 from src.flows.progress import RunLock
 
@@ -47,9 +49,35 @@ class RecordingDailyRun:
         self._record("publish", *args, **kwargs)
 
 
+class RecordingCollection:
+    def __init__(self):
+        self.calls: list[tuple[str, dict]] = []
+        self.progress = None
+        self.error: Exception | None = None
+
+    def _record(self, name, *args, **kwargs):
+        bound = inspect.signature(getattr(PerformanceCollection, name)).bind(
+            self, *args, **kwargs
+        )
+        bound.apply_defaults()
+        arguments = dict(bound.arguments)
+        arguments.pop("self")
+        self.calls.append((name, arguments))
+
+    async def collect(self, *args, **kwargs):
+        self._record("collect", *args, **kwargs)
+        await self.progress("progresso da coleta")
+        if self.error is not None:
+            raise self.error
+
+    def assign(self, *args, **kwargs):
+        self._record("assign", *args, **kwargs)
+
+
 class FakeContainer:
     def __init__(self, manifests=None):
         self.flow = RecordingDailyRun()
+        self.collection = RecordingCollection()
         self.builds: list[dict] = []
         self.loaded_from: list[str] = []
         self._manifests = manifests or []
@@ -58,6 +86,10 @@ class FakeContainer:
         self.builds.append(kwargs)
         self.flow.progress = kwargs["progress"]
         return self.flow
+
+    def performance_collection(self, **kwargs):
+        self.collection.progress = kwargs["progress"]
+        return self.collection
 
     def run_store(self):
         container = self
@@ -151,10 +183,55 @@ class TestBot:
         await first
 
         assert len(bot.flow.calls) == 1
-        assert context.bot.sent[-1] == (
-            500,
-            "Já existe um fluxo de auto-post em andamento.",
+        assert context.bot.sent[-1] == (500, "Já existe um fluxo em andamento.")
+
+    @pytest.mark.asyncio
+    async def test_collect_with_days_runs_the_collection_and_reports_to_the_chat(
+        self, bot
+    ):
+        update, context, _ = telegram(args=["30"])
+
+        await satisfying_bot.cmd_collect(update, context)
+
+        assert bot.collection.calls == [("collect", {"lookback_days": 30})]
+        assert context.bot.sent == [
+            (500, "📊 Coleta de desempenho iniciada."),
+            (500, "progresso da coleta"),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_collect_without_days_uses_the_configured_window(self, bot):
+        update, context, _ = telegram(args=None)
+
+        await satisfying_bot.cmd_collect(update, context)
+
+        assert bot.collection.calls == [("collect", {"lookback_days": None})]
+
+    @pytest.mark.asyncio
+    async def test_collect_is_refused_while_a_daily_run_is_going(self, bot):
+        bot.flow.hold = asyncio.Event()
+        daily = asyncio.create_task(
+            satisfying_bot._daily_find(SimpleNamespace(bot=FakeBot()))
         )
+        await asyncio.sleep(0)
+        update, context, _ = telegram(args=["30"])
+
+        await satisfying_bot.cmd_collect(update, context)
+        bot.flow.hold.set()
+        await daily
+
+        assert bot.collection.calls == []
+        assert context.bot.sent == [(500, "Já existe um fluxo em andamento.")]
+
+    @pytest.mark.asyncio
+    async def test_a_failed_collection_is_reported_and_frees_the_lock(self, bot):
+        bot.collection.error = RuntimeError("sessão expirada")
+        update, context, _ = telegram(args=None)
+
+        await satisfying_bot.cmd_collect(update, context)
+
+        assert context.bot.sent[-1] == (500, "❌ Coleta falhou: sessão expirada")
+        assert not satisfying_bot.run_lock.locked
 
     @pytest.mark.asyncio
     async def test_a_bad_count_is_answered_and_nothing_runs(self, bot):
@@ -229,3 +306,53 @@ class TestCommandLine:
         cli(monkeypatch)
 
         assert "progresso do fluxo" in capsys.readouterr().out
+
+
+def collect_cli(monkeypatch, *argv) -> tuple[FakeContainer, int]:
+    container = FakeContainer()
+    monkeypatch.setattr(collect_performance, "container", container)
+    monkeypatch.setattr(sys, "argv", ["collect_performance.py", *argv])
+    return container, collect_performance.main()
+
+
+class TestCollectCommandLine:
+    @pytest.mark.asyncio
+    async def test_lookback_days_collects_like_the_bot(self, monkeypatch, bot):
+        update, context, _ = telegram(args=["30"])
+        await satisfying_bot.cmd_collect(update, context)
+
+        container, code = await asyncio.to_thread(
+            collect_cli, monkeypatch, "--lookback-days", "30"
+        )
+
+        assert code == 0
+        assert container.collection.calls == bot.collection.calls
+
+    def test_without_arguments_the_window_comes_from_config(self, monkeypatch):
+        container, code = collect_cli(monkeypatch)
+
+        assert code == 0
+        assert container.collection.calls == [("collect", {"lookback_days": None})]
+
+    def test_assign_attaches_a_video_to_a_record(self, monkeypatch, capsys):
+        container, code = collect_cli(monkeypatch, "--assign", "7412", "42")
+
+        assert code == 0
+        assert container.collection.calls == [
+            ("assign", {"tiktok_video_id": "7412", "record_id": 42})
+        ]
+        assert "Registro 42 ↔ TikTok 7412" in capsys.readouterr().out
+
+    def test_a_failed_collection_exits_1(self, monkeypatch, capsys):
+        container = FakeContainer()
+        container.collection.error = RuntimeError("sessão expirada")
+        monkeypatch.setattr(collect_performance, "container", container)
+        monkeypatch.setattr(sys, "argv", ["collect_performance.py"])
+
+        assert collect_performance.main() == 1
+        assert "Fatal: sessão expirada" in capsys.readouterr().err
+
+    def test_progress_goes_to_stdout(self, monkeypatch, capsys):
+        collect_cli(monkeypatch)
+
+        assert "progresso da coleta" in capsys.readouterr().out

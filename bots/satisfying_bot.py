@@ -1,8 +1,9 @@
 """Telegram bot that runs the daily flow and turns a Reddit URL into a video.
 
-An adapter: the daily run (``/autopost`` and the daily job) is ``DailyRun`` with
-progress sent to the chat; a Reddit URL goes through discovery, writing and
-rendering on a sequential job queue so the bot stays responsive.
+An adapter: the daily run (``/autopost`` and the daily job) is ``DailyRun`` and
+``/collect`` is ``PerformanceCollection``, both with progress sent to the chat;
+a Reddit URL goes through discovery, writing and rendering on a sequential job
+queue so the bot stays responsive.
 """
 
 from __future__ import annotations
@@ -183,29 +184,49 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Daily run: /autopost and the daily job share one run at a time.
+# /autopost, the daily job and /collect: one flow at a time. The publisher and
+# the Studio reader open the same Chromium profile.
 # ---------------------------------------------------------------------------
 
 run_lock = RunLock()
+BUSY = "Já existe um fluxo em andamento."
 
 
 async def _run_daily(progress: Progress, count: int | None = None) -> None:
     if run_lock.locked:
-        await progress("Já existe um fluxo de auto-post em andamento.")
+        await progress(BUSY)
         return
 
     async with run_lock:
         await container.daily_run(progress=progress).run(count=count)
 
 
-def _parse_optional_count(args: list[str] | None) -> int | None:
+async def _run_collection(progress: Progress, lookback_days: int | None) -> None:
+    if run_lock.locked:
+        await progress(BUSY)
+        return
+
+    async with run_lock:
+        await progress("📊 Coleta de desempenho iniciada.")
+        try:
+            await container.performance_collection(progress=progress).collect(
+                lookback_days=lookback_days
+            )
+        except Exception as e:
+            logger.exception("Performance collection failed")
+            await progress(f"❌ Coleta falhou: {short_error(e)}")
+
+
+def _parse_optional_count(
+    args: list[str] | None, usage: str = "Use /autopost ou /autopost 2"
+) -> int | None:
     if not args:
         return None
 
     try:
         count = int(args[0])
     except ValueError as exc:
-        raise ValueError("Use /autopost ou /autopost 2") from exc
+        raise ValueError(usage) from exc
 
     if count < 1:
         raise ValueError("A quantidade precisa ser maior que zero.")
@@ -230,6 +251,10 @@ async def _handle_text_command(
         await cmd_autopost(update, context)
         return True
 
+    if command == "/collect":
+        await cmd_collect(update, context)
+        return True
+
     return False
 
 
@@ -252,6 +277,25 @@ async def cmd_autopost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await send_message("🚀 Auto-post manual iniciado.")
     await _run_daily(send_message, count=count)
+
+
+async def cmd_collect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_user_allowed(update.effective_user.id, bot_config.allowed_user_ids):
+        await reject_unauthorized(update)
+        return
+
+    try:
+        days = _parse_optional_count(context.args, usage="Use /collect ou /collect 30")
+    except ValueError as e:
+        await update.message.reply_text(str(e))
+        return
+
+    chat_id = update.effective_chat.id
+
+    async def send_message(text: str) -> None:
+        await context.bot.send_message(chat_id, text)
+
+    await _run_collection(send_message, days)
 
 
 async def _daily_find(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -293,6 +337,7 @@ def main() -> None:
 
     app.add_handler(conv_handler)
     app.add_handler(CommandHandler(["autopost", "auto_publish"], cmd_autopost))
+    app.add_handler(CommandHandler("collect", cmd_collect))
 
     schedule_time = datetime.time(
         hour=bot_config.daily_hour_utc,
