@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from ..entities.history import (
+    CROSSED_COLUMNS,
     Collection,
+    CrossedRow,
     ModelGrade,
     PerformanceMetrics,
     PerformanceSnapshot,
@@ -24,7 +26,11 @@ from ..entities.history import (
     RunSummary,
     VideoRecord,
 )
-from .history_contract import HistoryConflictError, HistoryError
+from .history_contract import (
+    HistoryConflictError,
+    HistoryError,
+    check_crossed_columns,
+)
 
 # The daily run writes to the same output/daily/story_NN.mp4 every day, so a
 # path names a video only until the next run: it is not unique.
@@ -68,6 +74,10 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
   tiktok_video_id TEXT NOT NULL, views INTEGER, likes INTEGER, comments INTEGER,
   shares INTEGER, saves INTEGER, avg_watch_seconds REAL, full_watch_ratio REAL,
   tiktok_created_at TEXT);
+CREATE INDEX IF NOT EXISTS reddit_snapshots_by_record ON reddit_snapshots (record_id);
+CREATE INDEX IF NOT EXISTS publish_attempts_by_record ON publish_attempts (record_id);
+CREATE INDEX IF NOT EXISTS performance_snapshots_by_record
+  ON performance_snapshots (record_id);
 """
 
 _GRADE_FIELDS = ["retention", "quality", "virality", "tiktok_fit", "hook"]
@@ -100,6 +110,62 @@ _COLLECTION_FIELDS = [
 ]
 
 
+_REDDIT_FIELDS = [
+    "taken_at",
+    "source",
+    "score",
+    "num_comments",
+    "upvote_ratio",
+    "available",
+]
+_ATTEMPT_FIELDS = [
+    "attempted_at",
+    "status",
+    "scheduled_at",
+    "hashtags",
+    "publish_result",
+    "error",
+]
+_PERFORMANCE_FIELDS = [
+    "taken_at",
+    "tiktok_video_id",
+    *_METRIC_FIELDS,
+    "tiktok_created_at",
+]
+
+# The crossed view joins each record to the newest of its snapshots and
+# attempts, under these aliases and column prefixes.
+_CROSSED_JOINS = {
+    "d": ("reddit_snapshots", _REDDIT_FIELDS, " AND source = 'discovery'"),
+    "c": ("reddit_snapshots", _REDDIT_FIELDS, " AND source = 'collection'"),
+    "p": ("performance_snapshots", _PERFORMANCE_FIELDS, ""),
+    "a": ("publish_attempts", _ATTEMPT_FIELDS, ""),
+}
+_CROSSED_FROM = "FROM video_records r" + "".join(
+    f" LEFT JOIN {table} {alias} ON {alias}.id = (SELECT max(id) FROM {table}"
+    f" WHERE record_id = r.id{condition})"
+    for alias, (table, _, condition) in _CROSSED_JOINS.items()
+)
+_CROSSED_SELECT = "SELECT r.*, " + ", ".join(
+    f"{alias}.{f} AS {alias}_{f}"
+    for alias, (_, columns, _) in _CROSSED_JOINS.items()
+    for f in columns
+)
+_REDDIT_NUMBERS = ["score", "num_comments", "upvote_ratio", "taken_at"]
+# Each crossed column as SQL; the rest are video_records' own columns. Only
+# these fixed strings reach the query, never a name the user typed.
+_CROSSED_SQL = {
+    **{name: f"r.{name}" for name in CROSSED_COLUMNS},
+    "last_attempt_status": "a.status",
+    "last_scheduled_at": "a.scheduled_at",
+    **{f"discovery_{f}": f"d.{f}" for f in _REDDIT_NUMBERS},
+    **{f"latest_reddit_{f}": f"c.{f}" for f in _REDDIT_NUMBERS},
+    "latest_reddit_available": "c.available",
+    **{f"latest_{f}": f"p.{f}" for f in _METRIC_FIELDS},
+    "latest_taken_at": "p.taken_at",
+}
+
+
 def _to_iso(value: Optional[datetime]) -> Optional[str]:
     return value.astimezone(timezone.utc).isoformat() if value else None
 
@@ -114,6 +180,44 @@ def _tags_text(tags: list[str]) -> str:
 
 def _tags_list(text: str) -> list[str]:
     return [tag.lstrip("#") for tag in text.split()]
+
+
+def _number(text: str) -> Optional[float]:
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _reddit_snapshot(row: sqlite3.Row, prefix: str = "") -> RedditSnapshot:
+    return RedditSnapshot(
+        taken_at=_from_iso(row[f"{prefix}taken_at"]),
+        source=row[f"{prefix}source"],
+        score=row[f"{prefix}score"],
+        num_comments=row[f"{prefix}num_comments"],
+        upvote_ratio=row[f"{prefix}upvote_ratio"],
+        available=bool(row[f"{prefix}available"]),
+    )
+
+
+def _publish_attempt(row: sqlite3.Row, prefix: str = "") -> PublishAttempt:
+    return PublishAttempt(
+        attempted_at=_from_iso(row[f"{prefix}attempted_at"]),
+        status=row[f"{prefix}status"],
+        scheduled_at=_from_iso(row[f"{prefix}scheduled_at"]),
+        hashtags=_tags_list(row[f"{prefix}hashtags"]),
+        publish_result=row[f"{prefix}publish_result"],
+        error=row[f"{prefix}error"],
+    )
+
+
+def _performance_snapshot(row: sqlite3.Row, prefix: str = "") -> PerformanceSnapshot:
+    return PerformanceSnapshot(
+        taken_at=_from_iso(row[f"{prefix}taken_at"]),
+        tiktok_video_id=row[f"{prefix}tiktok_video_id"],
+        metrics=PerformanceMetrics(**{f: row[f"{prefix}{f}"] for f in _METRIC_FIELDS}),
+        tiktok_created_at=_from_iso(row[f"{prefix}tiktok_created_at"]),
+    )
 
 
 class SqliteHistoryStore:
@@ -288,17 +392,7 @@ class SqliteHistoryStore:
             "SELECT * FROM reddit_snapshots WHERE record_id = ? ORDER BY id",
             (record_id,),
         ).fetchall()
-        return [
-            RedditSnapshot(
-                taken_at=_from_iso(row["taken_at"]),
-                source=row["source"],
-                score=row["score"],
-                num_comments=row["num_comments"],
-                upvote_ratio=row["upvote_ratio"],
-                available=bool(row["available"]),
-            )
-            for row in rows
-        ]
+        return [_reddit_snapshot(row) for row in rows]
 
     @staticmethod
     def _record(row: sqlite3.Row) -> VideoRecord:
@@ -363,17 +457,7 @@ class SqliteHistoryStore:
             "SELECT * FROM publish_attempts WHERE record_id = ? ORDER BY id",
             (record_id,),
         ).fetchall()
-        return [
-            PublishAttempt(
-                attempted_at=_from_iso(row["attempted_at"]),
-                status=row["status"],
-                scheduled_at=_from_iso(row["scheduled_at"]),
-                hashtags=_tags_list(row["hashtags"]),
-                publish_result=row["publish_result"],
-                error=row["error"],
-            )
-            for row in rows
-        ]
+        return [_publish_attempt(row) for row in rows]
 
     def video_record(self, record_id: int) -> VideoRecord:
         row = self._conn.execute(
@@ -453,15 +537,7 @@ class SqliteHistoryStore:
             "SELECT * FROM performance_snapshots WHERE record_id = ? ORDER BY id",
             (record_id,),
         ).fetchall()
-        return [
-            PerformanceSnapshot(
-                taken_at=_from_iso(row["taken_at"]),
-                tiktok_video_id=row["tiktok_video_id"],
-                metrics=PerformanceMetrics(**{f: row[f] for f in _METRIC_FIELDS}),
-                tiktok_created_at=_from_iso(row["tiktok_created_at"]),
-            )
-            for row in rows
-        ]
+        return [_performance_snapshot(row) for row in rows]
 
     def collections(self) -> list[Collection]:
         rows = self._conn.execute("SELECT * FROM collections ORDER BY id").fetchall()
@@ -470,6 +546,52 @@ class SqliteHistoryStore:
                 started_at=_from_iso(row["started_at"]),
                 finished_at=_from_iso(row["finished_at"]),
                 **{f: row[f] for f in _COLLECTION_FIELDS},
+            )
+            for row in rows
+        ]
+
+    def crossed_view(
+        self,
+        *,
+        since: Optional[datetime] = None,
+        filters: Optional[dict[str, str]] = None,
+        sort: Optional[tuple[str, bool]] = None,
+    ) -> list[CrossedRow]:
+        filters = filters or {}
+        check_crossed_columns([*filters, *([sort[0]] if sort else [])])
+        where, params = ["(? IS NULL OR r.created_at >= ?)"], [_to_iso(since)] * 2
+        for name, wanted in filters.items():
+            column = _CROSSED_SQL[name]
+            # A number matches as a number (82 finds 82.0), anything else as text.
+            where.append(
+                f"CASE WHEN typeof({column}) IN ('integer', 'real')"
+                f" THEN {column} = ? ELSE CAST({column} AS TEXT) = ? END"
+            )
+            params += [_number(wanted), wanted]
+        order = "r.id"
+        if sort:
+            column, descending = _CROSSED_SQL[sort[0]], sort[1]
+            order = (
+                f"{column} IS NULL, {column} {'DESC' if descending else 'ASC'}, r.id"
+            )
+        rows = self._conn.execute(
+            f"{_CROSSED_SELECT} {_CROSSED_FROM}"
+            f" WHERE {' AND '.join(where)} ORDER BY {order}",
+            params,
+        ).fetchall()
+        return [
+            CrossedRow(
+                record=self._record(row),
+                discovery=_reddit_snapshot(row, "d_") if row["d_taken_at"] else None,
+                latest_reddit=(
+                    _reddit_snapshot(row, "c_") if row["c_taken_at"] else None
+                ),
+                latest_performance=(
+                    _performance_snapshot(row, "p_") if row["p_taken_at"] else None
+                ),
+                last_attempt=(
+                    _publish_attempt(row, "a_") if row["a_attempted_at"] else None
+                ),
             )
             for row in rows
         ]

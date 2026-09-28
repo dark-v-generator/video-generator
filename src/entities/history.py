@@ -5,7 +5,7 @@ The model's reasoning, rendered prompts, drafts and traces are process and stay
 out, so the history can be read years later without knowing how the run worked.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -196,12 +196,100 @@ class CollectionReport:
     ambiguous: list[tuple[TikTokVideoStats, list[int]]]
 
 
+_RECORD_COLUMNS = (
+    "id",
+    "created_at",
+    "run_id",
+    "video_path",
+    "title",
+    "summary",
+    "post_url",
+    "community",
+    "author",
+    "post_created_utc",
+    "part_index",
+    "part_count",
+    "language",
+    "duration_seconds",
+)
+_GRADE_COLUMNS = ("overall", "verdict", *_CRITERIA)
+_RECIPE_COLUMNS = tuple(f.name for f in fields(ProductionRecipe))
+_REDDIT_COLUMNS = ("score", "num_comments", "upvote_ratio", "taken_at")
+_METRIC_COLUMNS = tuple(f.name for f in fields(PerformanceMetrics))
+
+# The crossed view's columns by name, in the order a table or CSV shows them;
+# the names sorting and filtering accept.
+CROSSED_COLUMNS: tuple[str, ...] = (
+    *_RECORD_COLUMNS,
+    *(f"grade_{name}" for name in _GRADE_COLUMNS),
+    "deterministic_score",
+    *_RECIPE_COLUMNS,
+    "hashtags",
+    "imported",
+    "last_attempt_status",
+    "last_scheduled_at",
+    *(f"discovery_{name}" for name in _REDDIT_COLUMNS),
+    *(f"latest_reddit_{name}" for name in _REDDIT_COLUMNS),
+    "latest_reddit_available",
+    "tiktok_video_id",
+    *(f"latest_{name}" for name in _METRIC_COLUMNS),
+    "latest_taken_at",
+)
+
+
 @dataclass(frozen=True)
 class CrossedRow:
-    """One video across the history: record, grade, recipe and latest numbers."""
+    """One video across the history: record, grade, recipe and latest numbers.
+
+    ``latest_reddit`` is the newest snapshot a collection took, not the one
+    from discovery: a video never collected has no "now" yet.
+    """
 
     record: VideoRecord
     discovery: Optional[RedditSnapshot]
     latest_reddit: Optional[RedditSnapshot]
     latest_performance: Optional[PerformanceSnapshot]
     last_attempt: Optional[PublishAttempt]
+
+    def columns(self) -> dict[str, object]:
+        """The row flattened into CROSSED_COLUMNS; None where a part is missing."""
+        record, grade, recipe = self.record, self.record.grade, self.record.recipe
+        performance, attempt = self.latest_performance, self.last_attempt
+        return {
+            **{name: getattr(record, name) for name in _RECORD_COLUMNS},
+            **{
+                f"grade_{name}": getattr(grade, name) if grade else None
+                for name in _GRADE_COLUMNS
+            },
+            "deterministic_score": record.deterministic_score,
+            **{
+                name: getattr(recipe, name) if recipe else None
+                for name in _RECIPE_COLUMNS
+            },
+            "hashtags": " ".join(f"#{tag}" for tag in record.hashtags),
+            "imported": record.imported,
+            "last_attempt_status": attempt.status if attempt else None,
+            "last_scheduled_at": attempt.scheduled_at if attempt else None,
+            **_snapshot_columns("discovery", self.discovery),
+            **_snapshot_columns("latest_reddit", self.latest_reddit),
+            "latest_reddit_available": (
+                self.latest_reddit.available if self.latest_reddit else None
+            ),
+            "tiktok_video_id": record.tiktok_video_id,
+            **{
+                f"latest_{name}": (
+                    getattr(performance.metrics, name) if performance else None
+                )
+                for name in _METRIC_COLUMNS
+            },
+            "latest_taken_at": performance.taken_at if performance else None,
+        }
+
+
+def _snapshot_columns(
+    prefix: str, snapshot: Optional[RedditSnapshot]
+) -> dict[str, object]:
+    return {
+        f"{prefix}_{name}": getattr(snapshot, name) if snapshot else None
+        for name in _REDDIT_COLUMNS
+    }

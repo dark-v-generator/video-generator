@@ -6,6 +6,7 @@ from typing import Optional
 
 from src.entities.history import (
     Collection,
+    CrossedRow,
     PerformanceSnapshot,
     PublishAttempt,
     PublishedRecord,
@@ -15,10 +16,26 @@ from src.entities.history import (
     VideoRecord,
 )
 from src.storage import HistoryConflictError
+from src.storage.history_contract import check_crossed_columns
 
 
 def _utc(value: Optional[datetime]) -> Optional[datetime]:
     return value.astimezone(timezone.utc) if value else None
+
+
+def _matches(value: object, wanted: str) -> bool:
+    """SQLite's rule in the crossed view: numbers as numbers, the rest as the
+    text the database holds (dates as UTC ISO 8601)."""
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        try:
+            return value == float(wanted)
+        except ValueError:
+            return False
+    if isinstance(value, datetime):
+        return value.isoformat() == wanted
+    return str(value) == wanted
 
 
 class InMemoryHistoryStore:
@@ -198,3 +215,38 @@ class InMemoryHistoryStore:
 
     def collections(self) -> list[Collection]:
         return list(self.collection_rows)
+
+    def crossed_view(
+        self,
+        *,
+        since: Optional[datetime] = None,
+        filters: Optional[dict[str, str]] = None,
+        sort: Optional[tuple[str, bool]] = None,
+    ) -> list[CrossedRow]:
+        filters = filters or {}
+        check_crossed_columns([*filters, *([sort[0]] if sort else [])])
+        rows = []
+        for record_id, record in sorted(self.records.items()):
+            if since and record.created_at < _utc(since):
+                continue
+            snapshots = self.snapshots[record_id]
+            discovery = [s for s in snapshots if s.source == "discovery"]
+            collected = [s for s in snapshots if s.source == "collection"]
+            row = CrossedRow(
+                record=record,
+                discovery=discovery[-1] if discovery else None,
+                latest_reddit=collected[-1] if collected else None,
+                latest_performance=(self.performance.get(record_id) or [None])[-1],
+                last_attempt=(self.attempts[record_id] or [None])[-1],
+            )
+            columns = row.columns()
+            if all(_matches(columns[name], wanted) for name, wanted in filters.items()):
+                rows.append((columns, row))
+        if sort:
+            name, descending = sort
+            present = [pair for pair in rows if pair[0][name] is not None]
+            missing = [pair for pair in rows if pair[0][name] is None]
+            # Stable, so ties keep the id order in both directions.
+            present.sort(key=lambda pair: pair[0][name], reverse=descending)
+            rows = present + missing
+        return [row for _, row in rows]

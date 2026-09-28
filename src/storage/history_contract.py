@@ -6,10 +6,12 @@ product: a run whose videos are not recorded went wrong.
 """
 
 from datetime import datetime
-from typing import Optional, Protocol
+from typing import Iterable, Optional, Protocol
 
 from ..entities.history import (
+    CROSSED_COLUMNS,
     Collection,
+    CrossedRow,
     PerformanceSnapshot,
     PublishAttempt,
     PublishedRecord,
@@ -27,6 +29,20 @@ class HistoryError(Exception):
 class HistoryConflictError(HistoryError):
     """A write clashed with what is already recorded: a publish attempt or
     a TikTok video id recorded twice, or a record that does not exist."""
+
+
+class UnknownColumnError(ValueError):
+    """A sort or filter named a column the crossed view does not have."""
+
+
+def check_crossed_columns(names: Iterable[str]) -> None:
+    """Refuse any name outside CROSSED_COLUMNS before it gets near a query."""
+    unknown = [name for name in names if name not in CROSSED_COLUMNS]
+    if unknown:
+        raise UnknownColumnError(
+            f"Unknown column {', '.join(unknown)}. "
+            f"Valid columns: {', '.join(CROSSED_COLUMNS)}"
+        )
 
 
 class HistoryStore(Protocol):
@@ -94,3 +110,19 @@ class HistoryStore(Protocol):
     def performance_snapshots(self, record_id: int) -> list[PerformanceSnapshot]: ...
 
     def collections(self) -> list[Collection]: ...
+
+    def crossed_view(
+        self,
+        *,
+        since: Optional[datetime] = None,
+        filters: Optional[dict[str, str]] = None,
+        sort: Optional[tuple[str, bool]] = None,
+    ) -> list[CrossedRow]:
+        """One row per record created at or after *since*, whether or not it
+        has TikTok numbers yet.
+
+        *filters* keeps the rows whose column equals the text given (as a
+        number when both are numbers); *sort* is ``(column, descending)``, with
+        empty values last either way and ties by record id. Any name outside
+        CROSSED_COLUMNS raises UnknownColumnError listing the valid ones."""
+        ...

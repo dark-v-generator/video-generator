@@ -1,11 +1,13 @@
 """The history contract, held by the SQLite store and the in-memory fake alike."""
 
+import dataclasses
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from src.entities.history import (
+    CROSSED_COLUMNS,
     Collection,
     ModelGrade,
     PerformanceMetrics,
@@ -16,7 +18,7 @@ from src.entities.history import (
     RunSummary,
     VideoRecord,
 )
-from src.storage import HistoryConflictError, SqliteHistoryStore
+from src.storage import HistoryConflictError, SqliteHistoryStore, UnknownColumnError
 from src.storage.sqlite_history import SCHEMA
 from tests.fakes.memory_history import InMemoryHistoryStore
 
@@ -439,3 +441,159 @@ def test_one_tiktok_video_on_two_records_raises(store):
 def test_assigning_a_video_to_a_missing_record_raises(store):
     with pytest.raises(HistoryConflictError):
         store.assign_tiktok_video(42, "v1")
+
+
+def graded(overall: float, verdict: str, prompt: str = "v1") -> dict:
+    return dict(
+        grade=ModelGrade(overall=overall, verdict=verdict),
+        recipe=dataclasses.replace(
+            ProductionRecipe.empty(), story_prompt_version=prompt, writer_model="m"
+        ),
+    )
+
+
+@pytest.fixture
+def crossed(store):
+    """Four videos: two collected (twice for the first), one published but not
+    collected yet, and one imported from before the history."""
+    loved = store.add_video_record(
+        record("out/loved.mp4", **graded(90, "Excelente")), discovery(score=100)
+    )
+    flopped = store.add_video_record(
+        record("out/flopped.mp4", **graded(60, "Mediana", prompt="v2")),
+        discovery(score=40),
+    )
+    waiting = store.add_video_record(
+        record("out/waiting.mp4", **graded(85, "Excelente")), discovery(score=70)
+    )
+    imported = store.add_video_record(
+        record(
+            "out/imported.mp4",
+            created_at=T0 - timedelta(days=30),
+            grade=None,
+            recipe=None,
+        ),
+        None,
+    )
+    for minutes, record_id in enumerate([loved, flopped, waiting, imported]):
+        store.add_publish_attempt(record_id, attempt("failed", minutes=minutes))
+    store.add_publish_attempt(loved, attempt(minutes=10))
+    store.record_collection(
+        collection(matched=2),
+        {loved: performance("v1", views=300), flopped: performance("v2", views=9000)},
+        {loved: refreshed(score=120), flopped: refreshed(score=45)},
+    )
+    store.record_collection(
+        collection(matched=1),
+        {loved: performance("v1", views=500)},
+        {loved: refreshed(score=150)},
+    )
+    return dict(loved=loved, flopped=flopped, waiting=waiting, imported=imported)
+
+
+def ids(rows) -> list[int]:
+    return [row.record.id for row in rows]
+
+
+def test_the_crossed_view_has_every_video_with_its_newest_numbers(store, crossed):
+    rows = {row.record.id: row for row in store.crossed_view()}
+
+    assert list(rows) == list(crossed.values())
+    loved = rows[crossed["loved"]]
+    assert loved.discovery == discovery(score=100)
+    assert loved.latest_reddit == refreshed(score=150)
+    assert loved.latest_performance == performance("v1", views=500)
+    assert loved.last_attempt == attempt(minutes=10)
+    assert loved.record.tiktok_video_id == "v1"
+    assert loved.columns()["latest_views"] == 500
+    assert loved.columns()["discovery_score"] == 100
+    assert loved.columns()["latest_reddit_score"] == 150
+    assert loved.columns()["last_attempt_status"] == "scheduled"
+
+
+def test_a_video_without_a_collection_is_there_with_empty_numbers(store, crossed):
+    rows = {row.record.id: row for row in store.crossed_view()}
+
+    waiting = rows[crossed["waiting"]].columns()
+    assert waiting["grade_overall"] == 85 and waiting["discovery_score"] == 70
+    assert waiting["latest_views"] is None and waiting["latest_reddit_score"] is None
+    assert waiting["last_attempt_status"] == "failed"
+    imported = rows[crossed["imported"]].columns()
+    assert imported["imported"] is True
+    assert imported["discovery_score"] is None and imported["grade_overall"] is None
+    assert imported["story_prompt_version"] is None
+
+
+def test_sorting_by_grade_puts_the_ungraded_last(store, crossed):
+    rows = store.crossed_view(sort=("grade_overall", True))
+
+    assert ids(rows) == [
+        crossed[k] for k in ("loved", "waiting", "flopped", "imported")
+    ]
+
+
+def test_sorting_by_views_puts_the_uncollected_last_in_either_order(store, crossed):
+    uncollected = [crossed["waiting"], crossed["imported"]]
+
+    assert ids(store.crossed_view(sort=("latest_views", False))) == [
+        crossed["loved"],
+        crossed["flopped"],
+        *uncollected,
+    ]
+    assert ids(store.crossed_view(sort=("latest_views", True))) == [
+        crossed["flopped"],
+        crossed["loved"],
+        *uncollected,
+    ]
+
+
+def test_ties_keep_the_record_order(store, crossed):
+    rows = store.crossed_view(sort=("grade_verdict", True))
+
+    assert ids(rows) == [
+        crossed[k] for k in ("flopped", "loved", "waiting", "imported")
+    ]
+
+
+def test_filters_keep_the_rows_whose_column_equals_the_text(store, crossed):
+    assert ids(store.crossed_view(filters={"story_prompt_version": "v2"})) == [
+        crossed["flopped"]
+    ]
+    assert ids(
+        store.crossed_view(filters={"grade_verdict": "Excelente", "writer_model": "m"})
+    ) == [crossed["loved"], crossed["waiting"]]
+    # Numbers match as numbers, booleans as 1 and 0.
+    assert ids(store.crossed_view(filters={"grade_overall": "90"})) == [
+        crossed["loved"]
+    ]
+    assert ids(store.crossed_view(filters={"imported": "1"})) == [crossed["imported"]]
+    assert ids(store.crossed_view(filters={"tiktok_video_id": "v2"})) == [
+        crossed["flopped"]
+    ]
+    assert store.crossed_view(filters={"latest_views": "abc"}) == []
+
+
+def test_since_leaves_out_older_records(store, crossed):
+    assert crossed["imported"] not in ids(store.crossed_view(since=T0))
+    assert len(store.crossed_view(since=T0 - timedelta(days=31))) == 4
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        dict(sort=("views", True)),
+        dict(filters={"grade": "90"}),
+        dict(filters={"title; DROP TABLE video_records": "x"}),
+    ],
+)
+def test_an_unknown_column_raises_naming_the_valid_ones(store, crossed, call):
+    with pytest.raises(UnknownColumnError) as error:
+        store.crossed_view(**call)
+
+    assert "latest_views" in str(error.value) and "grade_overall" in str(error.value)
+    assert len(store.crossed_view()) == 4
+
+
+def test_a_crossed_row_flattens_into_the_crossed_columns(store, crossed):
+    for row in store.crossed_view():
+        assert tuple(row.columns()) == CROSSED_COLUMNS
