@@ -1,4 +1,10 @@
+import os
+
 import pytest
+
+# Some tests import litellm before any src module that sets this: keep the
+# suite offline and fast whatever the collection order.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
 def pytest_addoption(parser):

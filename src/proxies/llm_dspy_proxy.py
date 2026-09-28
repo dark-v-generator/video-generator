@@ -1,4 +1,9 @@
 import json
+import os
+
+# dspy imports litellm: keep that import offline, see llm_prompt_proxy.py.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
 import dspy
 from src.prompts import loader as prompts
 from src.proxies.interfaces import ILLMProxy

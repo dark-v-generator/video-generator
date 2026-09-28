@@ -1,6 +1,10 @@
 """Writes a one-part story by asking a language model to adapt the origin."""
 
+import os
 from typing import Optional
+
+# Keep litellm's import offline: see src/proxies/llm_prompt_proxy.py.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 import litellm
 

@@ -1,6 +1,12 @@
 import logging
+import os
 import sys
 import types
+
+# litellm downloads its model cost map on every import (~4 s, and startup
+# then depends on the network). Nothing here reads costs, and the bundled map
+# builds the same requests, so use it unless the environment says otherwise.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 import litellm
 
