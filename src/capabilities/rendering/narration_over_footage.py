@@ -109,6 +109,7 @@ class NarrationOverFootageRenderer:
             audio=speech.bytes,
             captions_json=json.dumps(censored_words, ensure_ascii=False, indent=2),
             cover_png=cover.bytes,
+            duration_seconds=video.clip.duration,
         )
 
     def _write_mp4(self, clip) -> bytes:

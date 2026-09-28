@@ -10,8 +10,9 @@ FAKE_VIDEO_BYTES = b"fake-mp4"
 
 
 class _FakeRenderedClip:
-    def __init__(self, payload: bytes):
+    def __init__(self, payload: bytes, duration: float):
         self._payload = payload
+        self.duration = duration
 
     def write_videofile(self, path: str, fps=None, ffmpeg_params=None, **_) -> None:
         with open(path, "wb") as f:
@@ -63,4 +64,6 @@ class FakeComposer:
                 low_quality=low_quality,
             )
         )
-        return SimpleNamespace(clip=_FakeRenderedClip(self.payload))
+        return SimpleNamespace(
+            clip=_FakeRenderedClip(self.payload, duration=audio.clip.duration)
+        )

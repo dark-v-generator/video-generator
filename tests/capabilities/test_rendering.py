@@ -106,6 +106,7 @@ async def test_one_part_renders_every_artifact():
     assert part.audio == _fixture_bytes("silence_1s.mp3")
     assert part.cover_png == _fixture_bytes("cover.png")
     assert part.cover_title == "A vizinha e o bolo"
+    assert part.duration_seconds > 0
     assert rig.cover.titles == ["A vizinha e o bolo"]
     assert [w["word"] for w in json.loads(part.captions_json)] == (
         FAKE_TRANSCRIPT.split()

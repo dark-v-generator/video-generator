@@ -18,3 +18,5 @@ class RenderedPart:
     # JSON list of censored {word, start, end} dicts.
     captions_json: str
     cover_png: Optional[bytes]
+    # How long the finished video runs, narration plus the closing silence.
+    duration_seconds: float

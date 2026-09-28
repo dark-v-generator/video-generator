@@ -24,6 +24,7 @@ class EchoRenderer:
                 audio=b"audio",
                 captions_json="[]",
                 cover_png=None,
+                duration_seconds=1.0,
             )
             for part in story.parts
         ]
