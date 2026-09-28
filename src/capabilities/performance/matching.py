@@ -1,14 +1,19 @@
 """Which record each TikTok video came from, by caption and slot.
 
 The caption TikTok shows is the record's title plus hashtags, so the two are
-compared with the hashtags stripped. A story published again after a failure
-has two records with the same title; the slot each was scheduled for tells
-them apart. What still cannot be told apart is reported, never guessed.
+compared with the hashtags stripped, and with accents, quotes and punctuation
+folded: on the server's account "café" came back "cafe" and curly quotes came
+back straight. A story published again after a failure has two records with
+the same title; the slot each was scheduled for tells them apart. What still
+cannot be told apart is reported, never guessed.
 """
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta
+
+import unidecode
 
 from ...entities.history import PublishedRecord, TikTokVideoStats
 from ..publishing import strip_trailing_hashtags
@@ -25,7 +30,8 @@ class MatchResult:
 
 
 def normalize_caption(text: str) -> str:
-    return " ".join(strip_trailing_hashtags(text).split()).casefold()
+    folded = unidecode.unidecode(strip_trailing_hashtags(text)).casefold()
+    return " ".join(re.sub(r"[^\w\s]", " ", folded).split())
 
 
 def match(

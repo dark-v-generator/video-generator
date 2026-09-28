@@ -42,10 +42,30 @@ def video(video_id, description, *, posted=SLOT):
 def test_the_caption_loses_its_trailing_hashtags_spaces_and_case():
     assert (
         normalize_caption("Minha mãe  botou o volume no TALO  #fyp #storytime")
-        == "minha mãe botou o volume no talo"
+        == "minha mae botou o volume no talo"
     )
     # A hashtag inside the sentence is part of the title.
-    assert normalize_caption("O #1 da turma #fyp") == "o #1 da turma"
+    assert normalize_caption("O #1 da turma #fyp") == "o 1 da turma"
+
+
+def test_accents_and_quotes_tiktok_changed_still_match():
+    """Seen on the server: "café" came back "cafe", ‘curly’ came back 'straight'."""
+    records = [
+        published(1, "Um cara me tacou café gelado no peito"),
+        published(2, "Me ignoraram dizendo que meu conselho era ‘caro demais’."),
+    ]
+
+    result = match(
+        records,
+        [
+            video("v1", "Um cara me tacou cafe gelado no peito" + TAGS),
+            video(
+                "v2", "Me ignoraram dizendo que meu conselho era 'caro demais'." + TAGS
+            ),
+        ],
+    )
+
+    assert {r: v.video_id for r, v in result.matched.items()} == {1: "v1", 2: "v2"}
 
 
 def test_a_record_that_knows_its_video_id_matches_it_whatever_the_caption():

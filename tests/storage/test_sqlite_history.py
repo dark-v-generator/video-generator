@@ -317,20 +317,45 @@ def scheduled_record(store, path, *, slot_hours=2, status="scheduled") -> int:
     return record_id
 
 
-def test_published_records_are_those_scheduled_since_with_their_newest_slot(store):
+def test_published_records_are_those_with_a_slot_since_and_their_newest_slot(store):
     recent = scheduled_record(store, "out/a.mp4", slot_hours=2)
     store.add_publish_attempt(
         recent,
         attempt(minutes=90, scheduled_at=T0 + timedelta(hours=26)),
     )
     scheduled_record(store, "out/old.mp4", slot_hours=-72)
-    scheduled_record(store, "out/failed.mp4", status="failed")
     store.add_video_record(record("out/never.mp4"), discovery())
+    no_slot = store.add_video_record(record("out/no_slot.mp4"), discovery())
+    store.add_publish_attempt(no_slot, attempt("failed", scheduled_at=None))
 
     published = store.published_records(T0)
 
     assert [(p.record.id, p.scheduled_at) for p in published] == [
         (recent, T0 + timedelta(hours=26))
+    ]
+
+
+def test_a_failed_attempt_for_a_slot_is_published_since_tiktok_may_have_taken_it(
+    store,
+):
+    """Seen on the server: the publisher logged failures for videos TikTok
+    scheduled at exactly that slot."""
+    failed = scheduled_record(store, "out/failed.mp4", slot_hours=5, status="failed")
+    retried = scheduled_record(store, "out/retried.mp4", slot_hours=5, status="failed")
+    store.add_publish_attempt(
+        retried, attempt(minutes=60, scheduled_at=T0 + timedelta(hours=3))
+    )
+    store.add_publish_attempt(
+        retried,
+        attempt("failed", minutes=120, scheduled_at=T0 + timedelta(hours=9)),
+    )
+
+    published = store.published_records(T0)
+
+    # The slot of a scheduled attempt wins over a later failed one.
+    assert [(p.record.id, p.scheduled_at) for p in published] == [
+        (failed, T0 + timedelta(hours=5)),
+        (retried, T0 + timedelta(hours=3)),
     ]
 
 

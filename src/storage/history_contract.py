@@ -66,9 +66,13 @@ class HistoryStore(Protocol):
     def video_record(self, record_id: int) -> VideoRecord: ...
 
     def published_records(self, since: datetime) -> list[PublishedRecord]:
-        """What a collection can match: the records scheduled for a slot at or
-        after ``since``, plus every record that already knows its TikTok video
-        so it keeps gaining snapshots."""
+        """What a collection can match: the records with an attempt for a slot
+        at or after ``since``, plus every record that already knows its TikTok
+        video so it keeps gaining snapshots.
+
+        A failed attempt counts: the publisher sometimes reports a failure for
+        a video TikTok did schedule. The slot is the newest scheduled
+        attempt's, or else the newest attempt's."""
         ...
 
     def record_collection(

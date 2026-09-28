@@ -130,14 +130,14 @@ class InMemoryHistoryStore:
         since = _utc(since)
         published = []
         for record_id, record in self.records.items():
-            slots = [
-                a.scheduled_at
-                for a in self.attempts[record_id]
-                if a.status == "scheduled" and a.scheduled_at is not None
-            ]
-            if record.tiktok_video_id or any(slot >= since for slot in slots):
+            with_slot = [a for a in self.attempts[record_id] if a.scheduled_at]
+            if record.tiktok_video_id or any(
+                a.scheduled_at >= since for a in with_slot
+            ):
+                scheduled = [a for a in with_slot if a.status == "scheduled"]
+                newest = (scheduled or with_slot or [None])[-1]
                 published.append(
-                    PublishedRecord(record, slots[-1] if slots else None)
+                    PublishedRecord(record, newest.scheduled_at if newest else None)
                 )
         return published
 

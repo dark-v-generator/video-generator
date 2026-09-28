@@ -386,11 +386,11 @@ class SqliteHistoryStore:
     def published_records(self, since: datetime) -> list[PublishedRecord]:
         rows = self._conn.execute(
             "SELECT r.*, (SELECT a.scheduled_at FROM publish_attempts a"
-            "  WHERE a.record_id = r.id AND a.status = 'scheduled'"
-            "  ORDER BY a.id DESC LIMIT 1) AS last_slot"
+            "  WHERE a.record_id = r.id AND a.scheduled_at IS NOT NULL"
+            "  ORDER BY a.status = 'scheduled' DESC, a.id DESC LIMIT 1) AS last_slot"
             " FROM video_records r WHERE r.tiktok_video_id IS NOT NULL"
             " OR EXISTS (SELECT 1 FROM publish_attempts a WHERE a.record_id = r.id"
-            "  AND a.status = 'scheduled' AND a.scheduled_at >= ?)"
+            "  AND a.scheduled_at >= ?)"
             " ORDER BY r.id",
             (_to_iso(since),),
         ).fetchall()
