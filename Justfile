@@ -32,6 +32,7 @@ prod-daily-publish count="":
     echo "==> Running daily auto-publish on {{PROD_HOST}}..."
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-daily.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/daily_auto_publish.py $args 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
+    just sync-history
 
 # Generate videos only on the prod server (saves to output/daily/).
 prod-daily-generate count="":
@@ -49,6 +50,7 @@ prod-daily-publish-only dir="output/daily":
     echo "==> Publishing from {{dir}} on {{PROD_HOST}}..."
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
+    just sync-history
 
 # Import the publish log and manifests into the history (idempotent).
 import-history *args="--manifests output/daily":
@@ -60,6 +62,42 @@ prod-import-history *args="--manifests output/daily":
     set -euo pipefail
     echo "==> Importing the publish log into the history on {{PROD_HOST}}..."
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml uv run --no-dev python scripts/import_history.py {{args}} 2>&1"
+
+# Usage: just collect-performance [DAYS | --assign TIKTOK_ID RECORD_ID]
+# Needs a TikTok session, so in practice it is prod-collect-performance.
+#
+# Collect TikTok and Reddit numbers for the published videos, locally.
+collect-performance *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args="{{args}}"
+    if [[ "$args" =~ ^[0-9]+$ ]]; then args="--lookback-days $args"; fi
+    uv run python scripts/collect_performance.py $args
+
+# The Studio shares the publisher's profile: never while a publish runs.
+# Usage:
+#   just prod-collect-performance            # the config's lookback_days
+#   just prod-collect-performance 30
+#   just prod-collect-performance "--assign 7412345678901234567 42"
+#
+# Collect performance on the prod server under Xvfb, then pull the history here.
+prod-collect-performance *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args="{{args}}"
+    if [[ "$args" =~ ^[0-9]+$ ]]; then args="--lookback-days $args"; fi
+    echo "==> Collecting performance on {{PROD_HOST}}..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-collect.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/collect_performance.py $args 2>&1 | tee \$RUN_LOG"
+    just sync-history
+
+# The server's copy is the only one written to. Local -wal/-shm go first so a
+# stale journal never pairs with the new file.
+#
+# Pull the server's history here (server -> local only).
+sync-history:
+    @mkdir -p .storage
+    rm -f .storage/history.sqlite-wal .storage/history.sqlite-shm
+    rsync -avz '{{PROD_HOST}}:{{PROD_DIR}}/.storage/history.sqlite*' ./.storage/
 
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
 render-story story_json footage_dir:
