@@ -17,7 +17,6 @@ from typing import AsyncIterator
 from urllib.parse import urlparse
 
 from patchright.async_api import BrowserContext, Page, async_playwright
-from playwright_stealth import Stealth
 
 from src.core.logging_config import get_logger
 from src.proxies.interfaces import TikTokSessionExpiredError
@@ -35,11 +34,15 @@ CLOSE_TIMEOUT_SECONDS = 15.0
 async def studio_page(
     user_data_dir: Path, *, headless: bool, page_timeout_seconds: int
 ) -> AsyncIterator[Page]:
-    """A page in the publisher's profile, with the stealth script loaded.
+    """A page in the publisher's profile.
 
     Uses the installed Chrome, the same binary the publisher drives, so the
     profile is never opened by an older Chromium than the one that wrote it.
     A profile already open in another Chrome fails here, before any page.
+
+    No playwright-stealth script, unlike the publisher: patchright hides the
+    automation itself, and its init-script injection made every navigation
+    fail with ERR_NAME_NOT_RESOLVED on the server.
     """
     async with async_playwright() as playwright:
         context = await playwright.chromium.launch_persistent_context(
@@ -51,7 +54,6 @@ async def studio_page(
             no_viewport=True,
         )
         try:
-            await context.add_init_script(Stealth().script_payload)
             page = context.pages[0] if context.pages else await context.new_page()
             page.set_default_timeout(page_timeout_seconds * 1000)
             yield page
