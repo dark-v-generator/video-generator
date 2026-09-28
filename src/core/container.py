@@ -1,6 +1,7 @@
 import os
 
 from dependency_injector import containers, providers
+from .paths import history_db_path
 from .recipe import build_production_recipe
 from .secrets import secrets
 
@@ -26,7 +27,6 @@ from ..storage import FileRunStore, SqliteHistoryStore
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 _DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
-_DEFAULT_HISTORY_DB_PATH = ".storage/history.sqlite"
 
 
 def _create_llm_proxy(**kwargs):
@@ -42,10 +42,6 @@ def _first_configured(*proxies):
 
 def _publish_log_path() -> str:
     return os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
-
-
-def _history_db_path() -> str:
-    return os.environ.get("HISTORY_DB_PATH", _DEFAULT_HISTORY_DB_PATH)
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -212,7 +208,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
     # Same for HISTORY_DB_PATH; each run gets its own connection.
     history_store = providers.Factory(
-        SqliteHistoryStore, path=providers.Callable(_history_db_path)
+        SqliteHistoryStore, path=providers.Callable(history_db_path)
     )
     # Fixed for the process; each run fills in the narrator's voice per story.
     production_recipe = providers.Singleton(build_production_recipe, main_config)
