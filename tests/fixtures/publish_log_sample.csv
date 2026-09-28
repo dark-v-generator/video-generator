@@ -1,0 +1,9 @@
+created_at,status,scheduled_at,video_path,title,post_url,hashtags,publish_result,error
+2026-05-28T10:06:11,failed,2026-05-28T12:00,/private/var/folders/sc/T/pytest-of-user/pytest-6/test_full_pipeline0/story_01.mp4,Story 1,url-1,#fyp #storytime #reddit,,non retryable browser failure
+2026-05-28T19:49:21,failed,2026-05-29T12:00,output/daily/story_01.mp4,A vizinha e o bolo,https://www.reddit.com/r/contos/comments/aaa/vizinha/,#fyp #storytime #reddit,,browser crashed
+2026-05-28T20:10:02,scheduled,2026-05-29T12:00,output/daily/story_01.mp4,A vizinha e o bolo,https://www.reddit.com/r/contos/comments/aaa/vizinha/,#fyp #storytime #reddit #vizinha,"✅ Video scheduled successfully on TikTok!
+
+- Schedule: May 29, 2026 at 12:00 PM
+- URL after submission: https://www.tiktok.com/tiktokstudio/content",
+2026-05-29T19:30:00,scheduled,2026-05-30T12:00,output/daily/story_01.mp4,"O chefe, a planilha e eu",https://www.reddit.com/r/contos/comments/bbb/chefe/,#fyp #storytime,scheduled,
+2026-05-29T19:40:00,scheduled,2026-05-30T17:30,output/daily/story_02_p2.mp4,O casamento - Parte 2,https://www.reddit.com/r/contos/comments/ccc/casamento/,#fyp,scheduled,

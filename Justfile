@@ -50,6 +50,17 @@ prod-daily-publish-only dir="output/daily":
     ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
+# Import the publish log and manifests into the history (idempotent).
+import-history *args="--manifests output/daily":
+    uv run python scripts/import_history.py {{args}}
+
+# Import the server's publish log into the server's history, once after deploy.
+prod-import-history *args="--manifests output/daily":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Importing the publish log into the history on {{PROD_HOST}}..."
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml uv run --no-dev python scripts/import_history.py {{args}} 2>&1"
+
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
 render-story story_json footage_dir:
     uv run python scripts/render_story.py {{story_json}} {{footage_dir}}
