@@ -60,6 +60,11 @@ class ISpeechProxy(ABC):
         ...
 
     @abstractmethod
+    def voice_id(self, gender: Literal["male", "female"], language: Language) -> str:
+        """The voice ``generate_speech`` narrates with, without an override."""
+        ...
+
+    @abstractmethod
     def list_voices(self) -> List[SpeechVoice]:
         """List all available voices"""
         ...

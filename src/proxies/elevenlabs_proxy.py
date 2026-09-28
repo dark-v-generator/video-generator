@@ -15,15 +15,7 @@ class ElevenLabsSpeechProxy(ISpeechProxy):
         if not self.api_key:
             raise ValueError("ElevenLabs API key is not set")
 
-    def _get_voice_id(
-        self,
-        gender: Literal["male", "female"],
-        language: Language,
-        override_voice_id: Optional[str] = None,
-    ) -> str:
-        if override_voice_id:
-            return override_voice_id
-
+    def voice_id(self, gender: Literal["male", "female"], language: Language) -> str:
         voice_config = self.config.voices.get(language)
         if not voice_config:
             # Fallback default elevenlabs ids
@@ -44,7 +36,7 @@ class ElevenLabsSpeechProxy(ISpeechProxy):
         override_voice_id: Optional[str] = None,
     ) -> bytes:
 
-        voice_id = self._get_voice_id(gender, language, override_voice_id)
+        voice_id = override_voice_id or self.voice_id(gender, language)
 
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 

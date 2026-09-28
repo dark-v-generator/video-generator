@@ -10,15 +10,7 @@ class EdgeTTSSpeechProxy(ISpeechProxy):
         self.logger = get_logger(__name__)
         self.config = config
 
-    def _get_voice_id(
-        self,
-        gender: Literal["male", "female"],
-        language: Language,
-        override_voice_id: Optional[str] = None,
-    ) -> str:
-        if override_voice_id:
-            return override_voice_id
-
+    def voice_id(self, gender: Literal["male", "female"], language: Language) -> str:
         voice_config = self.config.voices.get(language)
         if not voice_config:
             # Fallback default if not in config
@@ -46,7 +38,7 @@ class EdgeTTSSpeechProxy(ISpeechProxy):
     ) -> bytes:
         import edge_tts
 
-        voice_id = self._get_voice_id(gender, language, override_voice_id)
+        voice_id = override_voice_id or self.voice_id(gender, language)
 
         effective_rate = rate * self.config.default_rate
 

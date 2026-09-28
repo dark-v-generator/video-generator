@@ -124,6 +124,9 @@ class FakeSpeechProxy(ISpeechProxy):
         self.texts.append(text)
         return _fixture_bytes("silence_1s.mp3")
 
+    def voice_id(self, gender: Literal["male", "female"], language: Language) -> str:
+        return f"fake-{gender}-{language.value}"
+
     def list_voices(self) -> List[SpeechVoice]:
         return []
 
