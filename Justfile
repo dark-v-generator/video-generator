@@ -30,7 +30,7 @@ prod-daily-publish count="":
     args=""
     if [ -n "{{count}}" ]; then args="--count {{count}}"; fi
     echo "==> Running daily auto-publish on {{PROD_HOST}}..."
-    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-daily.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py $args 2>&1 | tee \$RUN_LOG"
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-daily.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/daily_auto_publish.py $args 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
 # Generate videos only on the prod server (saves to output/daily/).
@@ -40,14 +40,14 @@ prod-daily-generate count="":
     args="--generate-only"
     if [ -n "{{count}}" ]; then args="$args --count {{count}}"; fi
     echo "==> Generating videos on {{PROD_HOST}}..."
-    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml uv run python scripts/daily_auto_publish.py $args 2>&1"
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml uv run --no-dev python scripts/daily_auto_publish.py $args 2>&1"
 
 # Publish pre-generated videos on the prod server.
 prod-daily-publish-only dir="output/daily":
     #!/usr/bin/env bash
     set -euo pipefail
     echo "==> Publishing from {{dir}} on {{PROD_HOST}}..."
-    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish-only.log && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/daily_auto_publish.py --publish-only {{dir}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
@@ -64,9 +64,13 @@ deploy:
     set -euo pipefail
 
     echo "==> Syncing files to {{PROD_HOST}}:{{PROD_DIR}}..."
+    # __pycache__ is perishable: it is never sent, but it does not keep a
+    # deleted package's directory alive on the server either.
     rsync -avz --delete \
         --exclude '.venv/' \
-        --exclude '__pycache__/' \
+        --filter '-p __pycache__/' \
+        --exclude '.claude/' \
+        --exclude '.pytest_cache/' \
         --exclude '.env' \
         --exclude 'output/' \
         --exclude '.storage/' \
@@ -93,7 +97,7 @@ deploy:
 
 # One-time: install Playwright system deps (needs sudo)
 prod-setup-deps:
-    ssh -t {{PROD_HOST}} 'cd {{PROD_DIR}} && sudo env PATH="$HOME/.local/bin:$PATH" uv run playwright install-deps'
+    ssh -t {{PROD_HOST}} 'cd {{PROD_DIR}} && sudo env PATH="$HOME/.local/bin:$PATH" uv run --no-dev playwright install-deps'
 
 # Start prod bot (without deploying)
 prod-start:
@@ -134,7 +138,7 @@ prod-tiktok-setup:
     echo "==> Installing xvfb + x11vnc on {{PROD_HOST}} (sudo password prompt)..."
     ssh -t {{PROD_HOST}} 'sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb x11vnc'
     echo "==> Installing patchright Chromium on {{PROD_HOST}}..."
-    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv run python -m patchright install chromium'
+    ssh {{PROD_HOST}} 'cd {{PROD_DIR}} && export PATH="$HOME/.local/bin:$PATH" && uv run --no-dev python -m patchright install chromium'
     echo "==> Verifying..."
     ssh {{PROD_HOST}} 'which xvfb-run && which x11vnc && ls ~/.cache/ms-playwright | grep chromium- | tail -3'
     echo "==> Done. Next: just prod-tiktok-bootstrap-vnc output/part1.mp4"
@@ -193,7 +197,7 @@ prod-tiktok-repl:
     else
         echo "==> Open vnc://localhost:5900 in your VNC client once Xvfb starts."
     fi
-    ssh -t -L 5900:localhost:5900 {{PROD_HOST}} 'export PATH="$HOME/.local/bin:$PATH" && cd {{PROD_DIR}} && (kill $(cat /tmp/.X98-lock 2>/dev/null) 2>/dev/null || true) && rm -f /tmp/.X98-lock /tmp/.X11-unix/X98 2>/dev/null; Xvfb :98 -screen 0 1920x1080x24 -nolisten tcp & XVFB_PID=$!; sleep 1; x11vnc -display :98 -localhost -passwd tiktok -forever -shared -q & VNC_PID=$!; sleep 1; DISPLAY=:98 uv run python scripts/tiktok_repl.py; kill $VNC_PID $XVFB_PID 2>/dev/null'
+    ssh -t -L 5900:localhost:5900 {{PROD_HOST}} 'export PATH="$HOME/.local/bin:$PATH" && cd {{PROD_DIR}} && (kill $(cat /tmp/.X98-lock 2>/dev/null) 2>/dev/null || true) && rm -f /tmp/.X98-lock /tmp/.X11-unix/X98 2>/dev/null; Xvfb :98 -screen 0 1920x1080x24 -nolisten tcp & XVFB_PID=$!; sleep 1; x11vnc -display :98 -localhost -passwd tiktok -forever -shared -q & VNC_PID=$!; sleep 1; DISPLAY=:98 uv run --no-dev python scripts/tiktok_repl.py; kill $VNC_PID $XVFB_PID 2>/dev/null'
 
 # X11-forwarding alternative (requires XQuartz on macOS). Kept for
 # power users; prefer prod-tiktok-bootstrap-vnc.
@@ -209,7 +213,7 @@ prod-tiktok-bootstrap-x11 video_path="output/part1.mp4" schedule_in="30m" descri
     rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
     REMOTE_VIDEO="output/$(basename {{video_path}})"
     echo "==> Starting headful login on server (window appears on YOUR Mac)..."
-    ssh -Y {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && uv run python scripts/publish_tiktok.py $REMOTE_VIDEO --description '{{description}}' --schedule-in {{schedule_in}}"
+    ssh -Y {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && uv run --no-dev python scripts/publish_tiktok.py $REMOTE_VIDEO --description '{{description}}' --schedule-in {{schedule_in}}"
 
 # Daily-cron-style publish on the server. No display needed:
 # Xvfb provides a virtual screen for headful Chromium. Assumes the
@@ -228,7 +232,7 @@ prod-tiktok-publish video_path="output/part1.mp4" extra_args="--schedule-in 30m 
     rsync -avz --progress {{video_path}} {{PROD_HOST}}:{{PROD_DIR}}/output/
     REMOTE_VIDEO="output/$(basename {{video_path}})"
     echo "==> Running xvfb-run + publisher on server..."
-    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish.log && OPENAI_LOG=debug LITELLM_LOG=DEBUG xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run python scripts/publish_tiktok.py $REMOTE_VIDEO {{extra_args}} 2>&1 | tee \$RUN_LOG"
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && mkdir -p .storage/tiktok_runs && RUN_LOG=.storage/tiktok_runs/\$(date -u +%Y%m%dT%H%M%S)-publish.log && OPENAI_LOG=debug LITELLM_LOG=DEBUG xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/publish_tiktok.py $REMOTE_VIDEO {{extra_args}} 2>&1 | tee \$RUN_LOG"
     just sync-tiktok-runs
 
 # Inspect the persisted TikTok session on the server.
