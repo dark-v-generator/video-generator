@@ -142,10 +142,14 @@ Independente de `VideoRecord` (FR-007b): nenhuma FK de `run_summaries` para
 ## CrossedRow (M5)
 
 Projeção, não tabela: campos de `VideoRecord` + `ModelGrade` + `ProductionRecipe`
-achatados, `discovery_*` (score, comentários, ratio do snapshot `discovery`),
-`latest_reddit_*` (último snapshot), `latest_*` (último `PerformanceSnapshot`,
-`None` quando não há), `last_attempt_status`, `last_scheduled_at`. Colunas
-ordenáveis e filtráveis por nome.
+achatados, `discovery_*` (score, comentários, ratio e data do snapshot `discovery`),
+`latest_reddit_*` (último snapshot `collection`: vídeo nunca coletado não tem
+"agora"; mais `latest_reddit_available`), `latest_*` (último `PerformanceSnapshot`,
+`None` quando não há), `last_attempt_status`, `last_scheduled_at` (da última
+tentativa). `CrossedRow.columns()` achata a linha em `CROSSED_COLUMNS` (53 nomes,
+em `src/entities/history.py`, reexportada por `src/storage`), que são os nomes
+aceitos por `--sort`/`--filter` e as colunas do CSV. Vazios ordenam no fim nos dois
+sentidos, empates por id; filtro compara número como número e o resto como texto.
 
 ## Esquema SQLite (M1, M4)
 
@@ -183,6 +187,10 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
   collection_id INTEGER NOT NULL REFERENCES collections(id), taken_at TEXT NOT NULL,
   tiktok_video_id TEXT NOT NULL, views INTEGER, likes INTEGER, comments INTEGER, shares INTEGER, saves INTEGER,
   avg_watch_seconds REAL, full_watch_ratio REAL, tiktok_created_at TEXT);
+-- M5: "último snapshot/tentativa por registro" na visão cruzada
+CREATE INDEX IF NOT EXISTS reddit_snapshots_by_record ON reddit_snapshots (record_id);
+CREATE INDEX IF NOT EXISTS publish_attempts_by_record ON publish_attempts (record_id);
+CREATE INDEX IF NOT EXISTS performance_snapshots_by_record ON performance_snapshots (record_id);
 ```
 
 A receita é achatada em `video_records` (uma linha por vídeo, sem tabela de

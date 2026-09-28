@@ -63,8 +63,11 @@ exceção antes de `record_collection` sai sem gravar (FR-014).
   imprime "X registros criados, Y tentativas, Z já existiam".
 - `scripts/tiktok_studio_probe.py` (M3): sem argumentos além de `--out`.
 
-Todos leem o container (`container.history_store()`, etc.); `performance_report`
-não constrói proxies (só o store), para rodar no laptop sem chaves.
+Todos leem o container (`container.history_store()`, etc.), exceto
+`performance_report`, que abre `SqliteHistoryStore(history_db_path())`
+(`src/core/paths.py`) sem importar o container: roda no laptop sem chaves, e
+importar o container custa ~7 s (o `litellm` baixa a tabela de preços a cada
+import), o que deixaria SC-004 na margem.
 
 ## Bot (M4)
 

@@ -216,7 +216,7 @@ documentação descreve o histórico e a coleta.
   - Ao vivo sobre o SQLite do servidor (`just sync-history`, 444 registros, 84 com `tiktok_video_id`, 4 coletas): `just report --sort grade_overall:desc` em 0,98 s e `--sort latest_views:desc` em 0,91 s (SC-004), 444 linhas; o topo por views é o 370 (11 765 views, 5,0 % até o fim, 29 826 upvotes agora), conferido em SQL contra o último `performance_snapshots` e o último `reddit_snapshots` `collection`; importados aparecem com `up desc.` vazio e post removido como `indisp.`; os 360 vídeos sem coleta vêm no fim, com as colunas do TikTok vazias. `--since 2026-09-01 --sort latest_views:desc --csv` → 108 linhas × 53 colunas, as mesmas 108 da tabela; `--columns` → 53; `--sort views:desc` → código 2 listando as válidas. `just report | head` dava `BrokenPipeError` (código 120); corrigido, sai 0.
   - **Não verificado ao vivo**: a metade de SC-003 que depende da nota. O histórico do servidor ainda não tem registro com nota (os 444 vieram da importação; `run_summaries` vazio, nenhuma rodada diária com o M1 no ar até a sincronização), então `--sort grade_overall:desc` sai em ordem de id e `--filter grade_verdict=Mediana` sai vazio. A ordenação por nota com views baixas no topo está coberta por `tests/scripts/test_performance_report.py` e `tests/storage/test_sqlite_history.py`; sobre dados reais, só depois de rodadas com nota e de uma coleta dias depois.
 
-**Checkpoint**: Milestone 5 DONE
+**Checkpoint**: Milestone 5 DONE ✅
 
 ---
 
@@ -226,7 +226,7 @@ documentação descreve o histórico e a coleta.
 - [X] T050 [P] Atualizar `docs/configuration.md`: seção `### TikTok Studio (tiktok_studio_config)` com as chaves e defaults, e `HISTORY_DB_PATH` na seção de variáveis de ambiente
 - [X] T051 [P] Atualizar `README.md` com a seção "Histórico e desempenho": o que é gravado, `just prod-import-history` (uma vez), quando rodar `just prod-collect-performance` (alguns dias após publicar, repetir para acompanhar), como resolver "sem par" com `--assign`, `just sync-history` e `just report`, e a restrição de não rodar coleta e publicação ao mesmo tempo
 - [X] T052 Adicionar o bloco comentado `tiktok_studio_config` a `config.yaml`, `config.prod.yaml` e `config.dev.yaml` e `HISTORY_DB_PATH` a `env.example`
-- [ ] T053 Rodar `just fmt`, `uv run pytest -q` e a verificação final do [quickstart](./quickstart.md) (`git diff --stat main -- tests/fixtures/daily_run_golden.json` vazio; `grep -rn "sqlite3" src` só em `src/storage/sqlite_history.py`; `grep -rn "patchright" src` só em `src/proxies/`); registrar o resultado na seção Notes
+- [X] T053 Rodar `just fmt`, `uv run pytest -q` e a verificação final do [quickstart](./quickstart.md) (`git diff --stat main -- tests/fixtures/daily_run_golden.json` vazio; `grep -rn "sqlite3" src` só em `src/storage/sqlite_history.py`; `grep -rn "patchright" src` só em `src/proxies/`); registrar o resultado na seção Notes
 
 ---
 
@@ -302,7 +302,7 @@ Task: "T041 bots/satisfying_bot.py /collect + test_adapters.py"
 ## Notes
 
 - Linha de base (T001): 290 passed, 0 falhas (`uv run pytest -q`, 2026-09-28, branch `005-video-performance-history`).
-- Resultado final (T053): _preencher_.
+- Resultado final (T053, 2026-09-28): `just fmt` sem mudanças; `uv run pytest -q` → 482 passed (linha de base 290); `git diff --stat main -- tests/fixtures/daily_run_golden.json` vazio; `sqlite3` só em `src/storage/sqlite_history.py`; `patchright` só em `src/proxies/`; os três configs carregam com o bloco `tiktok_studio_config` comentado e as receitas citadas no README existem no `Justfile`.
 - Desvios do M1 em relação ao desenho: `ModelGrade` não tem `summary` (o resumo já vive em `VideoRecord.summary`, e o esquema não tem coluna para ele); o contrato ganhou `HistoryError` (toda falha de escrita no SQLite) e `HistoryConflictError` (UNIQUE/FK), iguais nos dois stores, e as leituras `run_summary(run_id)` e `reddit_snapshots(record_id)`; a contabilidade da rodada fica em `src/flows/run_record.py` (`RunRecord` + `@recorded`), e o `except` de publicação do fluxo re-lança `HistoryError` em vez de tratá-la como falha de publicação (princípio I).
 - Correção do M1 (PR #12, antes do M2): `video_path` deixou de ser `UNIQUE`. A rodada diária reescreve `output/daily/story_NN.mp4` todo dia, então a segunda rodada no servidor pararia com `HistoryConflictError`. A busca por caminho devolve o registro mais novo; um histórico criado com a restrição é reconstruído uma vez ao abrir.
 - Golden: `tests/fixtures/daily_run_golden.json` não muda em nenhum PR (SC-006).
