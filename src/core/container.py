@@ -5,6 +5,7 @@ from .recipe import build_production_recipe
 from .secrets import secrets
 
 from ..capabilities.discovery import RedditStoryDiscovery
+from ..capabilities.performance import StudioPerformanceSource
 from ..capabilities.publishing import HashtagSuggester
 from ..capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
 from ..capabilities.rendering import NarrationOverFootageRenderer, select_renderer
@@ -15,7 +16,8 @@ from ..capabilities.rendering.cover import CoverService
 from ..capabilities.rendering.speech import SpeechService
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
-from ..entities.configs.flows import DailyRunConfig
+from ..entities.configs.flows import CollectionConfig, DailyRunConfig
+from ..flows.collect_performance import PerformanceCollection
 from ..flows.daily_run import DailyRun
 from ..prompts import loader as prompts
 from ..proxies import factories as proxies_factories
@@ -192,6 +194,9 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config=main_config.provided.proxies.tiktok_studio_config,
         publisher_config=main_config.provided.proxies.tiktok_publisher_config,
     )
+    performance_source = providers.Factory(
+        StudioPerformanceSource, proxy=tiktok_studio_proxy
+    )
 
     # Flows
     daily_run_config = providers.Singleton(DailyRunConfig.from_main_config, main_config)
@@ -224,6 +229,17 @@ class ApplicationContainer(containers.DeclarativeContainer):
         recipe=production_recipe,
         speech=speech_proxy,
         config=daily_run_config,
+    )
+    collection_config = providers.Singleton(
+        CollectionConfig.from_main_config, main_config
+    )
+    # Called with ``progress=`` too; a new Studio browser per collection.
+    performance_collection = providers.Factory(
+        PerformanceCollection,
+        source=performance_source,
+        discovery=story_discovery,
+        history=history_store,
+        config=collection_config,
     )
 
 

@@ -5,11 +5,14 @@ from dependency_injector import providers
 from pydantic import ValidationError
 
 from src.capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
+from src.capabilities.performance import StudioPerformanceSource
 from src.core.container import ApplicationContainer
 from src.entities.config import MainConfig
+from src.entities.configs.flows import CollectionConfig
 from src.prompts import loader as prompts
 from src.proxies.factories import TikTokStudioProxyFactory
 from src.proxies.tiktok_studio_proxy import PatchrightTikTokStudioProxy
+from src.storage import SqliteHistoryStore
 
 
 def _container(tmp_path, video_config: str) -> ApplicationContainer:
@@ -167,3 +170,32 @@ def test_the_studio_reader_is_built_on_the_publishers_profile(tmp_path):
     assert isinstance(proxy, PatchrightTikTokStudioProxy)
     assert proxy._user_data_dir == tmp_path.resolve() / "tiktok_cookies_userdata"
     assert proxy._timeout == 5
+
+
+def test_the_collection_reads_the_studio_with_the_configured_window(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("HISTORY_DB_PATH", str(tmp_path / "history.sqlite"))
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "proxies:\n  llm_config:\n    type: mock\n"
+        "  tiktok_publisher_config:\n"
+        f"    cookies_path: {tmp_path}/tiktok_cookies.json\n"
+        "  tiktok_studio_config:\n    lookback_days: 14\n    max_gap_hours: 6\n",
+        encoding="utf-8",
+    )
+    container = ApplicationContainer()
+    container.main_config.override(
+        providers.Singleton(MainConfig.from_yaml, file_path=str(path))
+    )
+
+    async def progress(text):
+        pass
+
+    collection = container.performance_collection(progress=progress)
+
+    assert collection.config == CollectionConfig(lookback_days=14, max_gap_hours=6)
+    assert isinstance(collection.source, StudioPerformanceSource)
+    assert isinstance(collection.source._proxy, PatchrightTikTokStudioProxy)
+    assert isinstance(collection.history, SqliteHistoryStore)
+    assert (tmp_path / "history.sqlite").exists()
