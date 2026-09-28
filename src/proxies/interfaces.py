@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import List, Optional, Literal
 
+from ..entities.history import PerformanceMetrics, TikTokVideoStats
 from ..entities.reddit_post import RedditPost
 from ..entities.transcription import TranscriptionResult
 from ..entities.language import Language
@@ -167,4 +168,32 @@ class ITikTokPublisherProxy(ABC):
         reject anything outside that window. Returns the URL of the
         published video when available, otherwise an empty string.
         """
+        ...
+
+
+class TikTokSessionExpiredError(RuntimeError):
+    """The TikTok profile is logged out; the Studio sent us to the login page."""
+
+
+class TikTokStudioLayoutError(RuntimeError):
+    """A Studio response lacks a field the reader depends on.
+
+    The message names the field and the endpoint, so the fix is to rerun
+    ``scripts/tiktok_studio_probe.py`` and adjust the parser to the new dump.
+    """
+
+
+class ITikTokStudioProxy(ABC):
+    """Reads the account's own numbers from the TikTok Studio."""
+
+    @abstractmethod
+    async def list_videos(self, *, since: datetime) -> List[TikTokVideoStats]:
+        """The account's posts created at or after ``since``, with the counts
+        the content list shows. An empty list is a valid answer."""
+        ...
+
+    @abstractmethod
+    async def video_analytics(self, video_id: str) -> PerformanceMetrics:
+        """One video's analytics: the list counts plus retention. A metric
+        the Studio does not return for this video is ``None``."""
         ...

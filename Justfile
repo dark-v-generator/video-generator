@@ -270,6 +270,28 @@ sync-tiktok-runs:
     @echo "==> Latest:  $(ls -t .storage/tiktok_runs 2>/dev/null | head -1)"
     @echo "==> Lessons: $(wc -l < .storage/tiktok_learnings.md 2>/dev/null || echo 0) lines"
 
+# The dump is pulled even when the probe fails: the screenshots show why.
+# Usage:
+#   just prod-tiktok-studio-probe
+#   just prod-tiktok-studio-probe "--video-id 7412345678901234567"
+#
+# Record every JSON the TikTok Studio fetches on the server, then pull it here.
+prod-tiktok-studio-probe *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> Probing the TikTok Studio on {{PROD_HOST}}..."
+    status=0
+    ssh -t {{PROD_HOST}} "cd {{PROD_DIR}} && export PATH=\"\$HOME/.local/bin:\$PATH\" && CONFIG_PATH=config.prod.yaml xvfb-run -a --server-args='-screen 0 1920x1080x24' uv run --no-dev python scripts/tiktok_studio_probe.py {{args}} 2>&1" || status=$?
+    just sync-tiktok-studio-probe
+    exit $status
+
+# Pull the Studio probe dumps from prod (server -> local only).
+sync-tiktok-studio-probe:
+    @mkdir -p .storage/tiktok_studio_probe
+    rsync -avz {{PROD_HOST}}:{{PROD_DIR}}/.storage/tiktok_studio_probe/ \
+        ./.storage/tiktok_studio_probe/ 2>/dev/null || echo "(no remote probes yet)"
+    @echo "==> Latest: $(ls -t .storage/tiktok_studio_probe 2>/dev/null | head -1)"
+
 # Push manually-edited lessons back to prod (after pruning bad ones, etc).
 push-tiktok-learnings:
     @test -f .storage/tiktok_learnings.md || (echo "no local lessons file" && exit 1)
