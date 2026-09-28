@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from src.entities.history import (
+    Collection,
+    PerformanceSnapshot,
     PublishAttempt,
+    PublishedRecord,
     RedditSnapshot,
     RunMode,
     RunSummary,
@@ -24,6 +27,8 @@ class InMemoryHistoryStore:
         self.records: dict[int, VideoRecord] = {}
         self.snapshots: dict[int, list[RedditSnapshot]] = {}
         self.attempts: dict[int, list[PublishAttempt]] = {}
+        self.performance: dict[int, list[PerformanceSnapshot]] = {}
+        self.collection_rows: list[Collection] = []
 
     def start_run(self, *, mode: RunMode, requested: int, started_at: datetime) -> int:
         run_id = len(self.runs) + 1
@@ -115,3 +120,81 @@ class InMemoryHistoryStore:
 
     def publish_attempts(self, record_id: int) -> list[PublishAttempt]:
         return list(self.attempts.get(record_id, []))
+
+    def video_record(self, record_id: int) -> VideoRecord:
+        if record_id not in self.records:
+            raise HistoryConflictError(f"No record {record_id}")
+        return self.records[record_id]
+
+    def published_records(self, since: datetime) -> list[PublishedRecord]:
+        since = _utc(since)
+        published = []
+        for record_id, record in self.records.items():
+            slots = [
+                a.scheduled_at
+                for a in self.attempts[record_id]
+                if a.status == "scheduled" and a.scheduled_at is not None
+            ]
+            if record.tiktok_video_id or any(slot >= since for slot in slots):
+                published.append(
+                    PublishedRecord(record, slots[-1] if slots else None)
+                )
+        return published
+
+    def record_collection(
+        self,
+        collection: Collection,
+        performance: dict[int, PerformanceSnapshot],
+        reddit: dict[int, RedditSnapshot],
+    ) -> int:
+        # Checked before anything is written, as the SQLite transaction would.
+        for record_id in [*performance, *reddit]:
+            if record_id not in self.records:
+                raise HistoryConflictError(f"FOREIGN KEY: no record {record_id}")
+        for record_id, snapshot in performance.items():
+            self._check_video_id_free(record_id, snapshot.tiktok_video_id)
+        self.collection_rows.append(
+            dataclasses.replace(
+                collection,
+                started_at=_utc(collection.started_at),
+                finished_at=_utc(collection.finished_at),
+            )
+        )
+        for record_id, snapshot in performance.items():
+            self.performance.setdefault(record_id, []).append(
+                dataclasses.replace(
+                    snapshot,
+                    taken_at=_utc(snapshot.taken_at),
+                    tiktok_created_at=_utc(snapshot.tiktok_created_at),
+                )
+            )
+            self.records[record_id] = dataclasses.replace(
+                self.records[record_id], tiktok_video_id=snapshot.tiktok_video_id
+            )
+        for record_id, snapshot in reddit.items():
+            self.snapshots[record_id].append(
+                dataclasses.replace(snapshot, taken_at=_utc(snapshot.taken_at))
+            )
+        return len(self.collection_rows)
+
+    def assign_tiktok_video(self, record_id: int, tiktok_video_id: str) -> None:
+        if record_id not in self.records:
+            raise HistoryConflictError(f"No record {record_id}")
+        self._check_video_id_free(record_id, tiktok_video_id)
+        self.records[record_id] = dataclasses.replace(
+            self.records[record_id], tiktok_video_id=tiktok_video_id
+        )
+
+    def _check_video_id_free(self, record_id: int, tiktok_video_id: str) -> None:
+        if any(
+            r.tiktok_video_id == tiktok_video_id
+            for other_id, r in self.records.items()
+            if other_id != record_id
+        ):
+            raise HistoryConflictError(f"UNIQUE tiktok_video_id: {tiktok_video_id}")
+
+    def performance_snapshots(self, record_id: int) -> list[PerformanceSnapshot]:
+        return list(self.performance.get(record_id, []))
+
+    def collections(self) -> list[Collection]:
+        return list(self.collection_rows)

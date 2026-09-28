@@ -6,7 +6,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from src.entities.history import (
+    Collection,
     ModelGrade,
+    PerformanceMetrics,
+    PerformanceSnapshot,
     ProductionRecipe,
     PublishAttempt,
     RedditSnapshot,
@@ -265,3 +268,149 @@ def test_a_history_from_when_paths_were_unique_is_rebuilt_keeping_its_rows(tmp_p
         store.add_publish_attempt(42, attempt())
     check = sqlite3.connect(path)
     assert check.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+# --------------------------------------------------------------------------
+# Collections (M4)
+# --------------------------------------------------------------------------
+
+COLLECTED = T0 + timedelta(days=3)
+
+
+def collection(matched=1) -> Collection:
+    return Collection(
+        started_at=COLLECTED,
+        finished_at=COLLECTED + timedelta(minutes=5),
+        lookback_days=30,
+        matched=matched,
+        unmatched=2,
+        ambiguous=0,
+        reddit_refreshed=matched,
+    )
+
+
+def performance(video_id="v1", views=1000, **metrics) -> PerformanceSnapshot:
+    return PerformanceSnapshot(
+        taken_at=COLLECTED,
+        tiktok_video_id=video_id,
+        metrics=PerformanceMetrics(views=views, likes=50, **metrics),
+        tiktok_created_at=T0 + timedelta(hours=2),
+    )
+
+
+def refreshed(score=150) -> RedditSnapshot:
+    return RedditSnapshot(
+        taken_at=COLLECTED,
+        source="collection",
+        score=score,
+        num_comments=12,
+        upvote_ratio=0.91,
+    )
+
+
+def scheduled_record(store, path, *, slot_hours=2, status="scheduled") -> int:
+    record_id = store.add_video_record(record(path), discovery())
+    store.add_publish_attempt(
+        record_id,
+        attempt(status, scheduled_at=T0 + timedelta(hours=slot_hours)),
+    )
+    return record_id
+
+
+def test_published_records_are_those_scheduled_since_with_their_newest_slot(store):
+    recent = scheduled_record(store, "out/a.mp4", slot_hours=2)
+    store.add_publish_attempt(
+        recent,
+        attempt(minutes=90, scheduled_at=T0 + timedelta(hours=26)),
+    )
+    scheduled_record(store, "out/old.mp4", slot_hours=-72)
+    scheduled_record(store, "out/failed.mp4", status="failed")
+    store.add_video_record(record("out/never.mp4"), discovery())
+
+    published = store.published_records(T0)
+
+    assert [(p.record.id, p.scheduled_at) for p in published] == [
+        (recent, T0 + timedelta(hours=26))
+    ]
+
+
+def test_a_record_that_knows_its_video_is_published_whatever_its_slot(store):
+    old = scheduled_record(store, "out/old.mp4", slot_hours=-72)
+    store.assign_tiktok_video(old, "v-old")
+
+    assert [p.record.id for p in store.published_records(T0)] == [old]
+
+
+def test_a_collection_writes_its_row_snapshots_and_video_ids(store):
+    record_id = scheduled_record(store, "out/a.mp4")
+
+    collection_id = store.record_collection(
+        collection(), {record_id: performance()}, {record_id: refreshed()}
+    )
+
+    assert collection_id == 1
+    assert store.collections() == [collection()]
+    assert store.performance_snapshots(record_id) == [performance()]
+    assert store.reddit_snapshots(record_id) == [discovery(), refreshed()]
+    assert store.video_record(record_id).tiktok_video_id == "v1"
+
+
+def test_a_metric_the_studio_did_not_show_comes_back_none(store):
+    record_id = scheduled_record(store, "out/a.mp4")
+
+    store.record_collection(
+        collection(), {record_id: performance(saves=None, avg_watch_seconds=None)}, {}
+    )
+
+    metrics = store.performance_snapshots(record_id)[0].metrics
+    assert metrics.saves is None and metrics.avg_watch_seconds is None
+    assert metrics.views == 1000
+
+
+def test_a_second_collection_adds_snapshots_and_keeps_the_first(store):
+    record_id = scheduled_record(store, "out/a.mp4")
+    store.record_collection(collection(), {record_id: performance(views=10)}, {})
+
+    store.record_collection(collection(), {record_id: performance(views=99)}, {})
+
+    assert [s.metrics.views for s in store.performance_snapshots(record_id)] == [
+        10,
+        99,
+    ]
+    assert len(store.collections()) == 2
+
+
+def test_a_collection_that_fails_midway_leaves_nothing(store):
+    first = scheduled_record(store, "out/a.mp4")
+    last = scheduled_record(store, "out/b.mp4")
+
+    with pytest.raises(HistoryConflictError):
+        store.record_collection(
+            collection(matched=3),
+            {first: performance("v1"), 404: performance("v2"), last: performance("v3")},
+            {first: refreshed()},
+        )
+
+    assert store.collections() == []
+    assert store.performance_snapshots(first) == []
+    assert store.reddit_snapshots(first) == [discovery()]
+    assert store.video_record(first).tiktok_video_id is None
+
+
+def test_one_tiktok_video_on_two_records_raises(store):
+    first = scheduled_record(store, "out/a.mp4")
+    second = scheduled_record(store, "out/b.mp4")
+    store.assign_tiktok_video(first, "v1")
+
+    with pytest.raises(HistoryConflictError):
+        store.record_collection(collection(), {second: performance("v1")}, {})
+    with pytest.raises(HistoryConflictError):
+        store.assign_tiktok_video(second, "v1")
+
+    assert store.collections() == []
+    assert store.video_record(second).tiktok_video_id is None
+
+
+def test_assigning_a_video_to_a_missing_record_raises(store):
+    with pytest.raises(HistoryConflictError):
+        store.assign_tiktok_video(42, "v1")

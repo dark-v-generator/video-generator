@@ -1,5 +1,5 @@
 """What the performance history keeps: one record per video, its publish
-attempts, and one summary per run.
+attempts, one summary per run, and what each collection read from TikTok.
 
 Every write that fails raises. Unlike the publish log, the history is the
 product: a run whose videos are not recorded went wrong.
@@ -9,7 +9,10 @@ from datetime import datetime
 from typing import Optional, Protocol
 
 from ..entities.history import (
+    Collection,
+    PerformanceSnapshot,
     PublishAttempt,
+    PublishedRecord,
     RedditSnapshot,
     RunMode,
     RunSummary,
@@ -59,3 +62,31 @@ class HistoryStore(Protocol):
     def add_publish_attempt(self, record_id: int, attempt: PublishAttempt) -> None: ...
 
     def publish_attempts(self, record_id: int) -> list[PublishAttempt]: ...
+
+    def video_record(self, record_id: int) -> VideoRecord: ...
+
+    def published_records(self, since: datetime) -> list[PublishedRecord]:
+        """What a collection can match: the records scheduled for a slot at or
+        after ``since``, plus every record that already knows its TikTok video
+        so it keeps gaining snapshots."""
+        ...
+
+    def record_collection(
+        self,
+        collection: Collection,
+        performance: dict[int, PerformanceSnapshot],
+        reddit: dict[int, RedditSnapshot],
+    ) -> int:
+        """Write a collection in one transaction: its row, a performance and a
+        Reddit snapshot per record id, and each record's TikTok video id (the
+        one its snapshot was read from). Any write that fails leaves nothing."""
+        ...
+
+    def assign_tiktok_video(self, record_id: int, tiktok_video_id: str) -> None:
+        """The operator's word on which video a record is; later collections
+        match it by id."""
+        ...
+
+    def performance_snapshots(self, record_id: int) -> list[PerformanceSnapshot]: ...
+
+    def collections(self) -> list[Collection]: ...

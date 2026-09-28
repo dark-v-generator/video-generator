@@ -12,9 +12,13 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from ..entities.history import (
+    Collection,
     ModelGrade,
+    PerformanceMetrics,
+    PerformanceSnapshot,
     ProductionRecipe,
     PublishAttempt,
+    PublishedRecord,
     RedditSnapshot,
     RunMode,
     RunSummary,
@@ -77,6 +81,22 @@ _RECIPE_FIELDS = [
     "speech_rate",
     "narrator_gender",
     "voice_id",
+]
+_METRIC_FIELDS = [
+    "views",
+    "likes",
+    "comments",
+    "shares",
+    "saves",
+    "avg_watch_seconds",
+    "full_watch_ratio",
+]
+_COLLECTION_FIELDS = [
+    "lookback_days",
+    "matched",
+    "unmatched",
+    "ambiguous",
+    "reddit_refreshed",
 ]
 
 
@@ -351,6 +371,105 @@ class SqliteHistoryStore:
                 hashtags=_tags_list(row["hashtags"]),
                 publish_result=row["publish_result"],
                 error=row["error"],
+            )
+            for row in rows
+        ]
+
+    def video_record(self, record_id: int) -> VideoRecord:
+        row = self._conn.execute(
+            "SELECT * FROM video_records WHERE id = ?", (record_id,)
+        ).fetchone()
+        if row is None:
+            raise HistoryConflictError(f"No record {record_id}")
+        return self._record(row)
+
+    def published_records(self, since: datetime) -> list[PublishedRecord]:
+        rows = self._conn.execute(
+            "SELECT r.*, (SELECT a.scheduled_at FROM publish_attempts a"
+            "  WHERE a.record_id = r.id AND a.status = 'scheduled'"
+            "  ORDER BY a.id DESC LIMIT 1) AS last_slot"
+            " FROM video_records r WHERE r.tiktok_video_id IS NOT NULL"
+            " OR EXISTS (SELECT 1 FROM publish_attempts a WHERE a.record_id = r.id"
+            "  AND a.status = 'scheduled' AND a.scheduled_at >= ?)"
+            " ORDER BY r.id",
+            (_to_iso(since),),
+        ).fetchall()
+        return [
+            PublishedRecord(
+                record=self._record(row), scheduled_at=_from_iso(row["last_slot"])
+            )
+            for row in rows
+        ]
+
+    def record_collection(
+        self,
+        collection: Collection,
+        performance: dict[int, PerformanceSnapshot],
+        reddit: dict[int, RedditSnapshot],
+    ) -> int:
+        with self._tx() as db:
+            collection_id = db.execute(
+                "INSERT INTO collections (started_at, finished_at,"
+                f" {', '.join(_COLLECTION_FIELDS)}) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    _to_iso(collection.started_at),
+                    _to_iso(collection.finished_at),
+                    *(getattr(collection, f) for f in _COLLECTION_FIELDS),
+                ),
+            ).lastrowid
+            for record_id, snapshot in performance.items():
+                db.execute(
+                    "INSERT INTO performance_snapshots (record_id, collection_id,"
+                    f" taken_at, tiktok_video_id, {', '.join(_METRIC_FIELDS)},"
+                    " tiktok_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        record_id,
+                        collection_id,
+                        _to_iso(snapshot.taken_at),
+                        snapshot.tiktok_video_id,
+                        *(getattr(snapshot.metrics, f) for f in _METRIC_FIELDS),
+                        _to_iso(snapshot.tiktok_created_at),
+                    ),
+                )
+                db.execute(
+                    "UPDATE video_records SET tiktok_video_id = ? WHERE id = ?",
+                    (snapshot.tiktok_video_id, record_id),
+                )
+            for record_id, snapshot in reddit.items():
+                self._insert_reddit_snapshot(db, record_id, snapshot)
+            return collection_id
+
+    def assign_tiktok_video(self, record_id: int, tiktok_video_id: str) -> None:
+        with self._tx() as db:
+            cursor = db.execute(
+                "UPDATE video_records SET tiktok_video_id = ? WHERE id = ?",
+                (tiktok_video_id, record_id),
+            )
+            if cursor.rowcount != 1:
+                raise HistoryConflictError(f"No record {record_id}")
+
+    def performance_snapshots(self, record_id: int) -> list[PerformanceSnapshot]:
+        rows = self._conn.execute(
+            "SELECT * FROM performance_snapshots WHERE record_id = ? ORDER BY id",
+            (record_id,),
+        ).fetchall()
+        return [
+            PerformanceSnapshot(
+                taken_at=_from_iso(row["taken_at"]),
+                tiktok_video_id=row["tiktok_video_id"],
+                metrics=PerformanceMetrics(**{f: row[f] for f in _METRIC_FIELDS}),
+                tiktok_created_at=_from_iso(row["tiktok_created_at"]),
+            )
+            for row in rows
+        ]
+
+    def collections(self) -> list[Collection]:
+        rows = self._conn.execute("SELECT * FROM collections ORDER BY id").fetchall()
+        return [
+            Collection(
+                started_at=_from_iso(row["started_at"]),
+                finished_at=_from_iso(row["finished_at"]),
+                **{f: row[f] for f in _COLLECTION_FIELDS},
             )
             for row in rows
         ]
