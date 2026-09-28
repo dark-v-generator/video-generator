@@ -152,6 +152,15 @@ class VideoRecord:
 
 
 @dataclass(frozen=True)
+class PublishedRecord:
+    """A record as a collection matches it: with the slot of its newest
+    scheduled attempt, which is when TikTok made the video public."""
+
+    record: VideoRecord
+    scheduled_at: Optional[datetime]
+
+
+@dataclass(frozen=True)
 class RunSummary:
     """What a daily run did, whether or not it produced anything."""
 
