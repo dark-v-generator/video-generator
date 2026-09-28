@@ -18,6 +18,15 @@ proxies:
     headless: false
     use_vision: false
     max_steps: 60
+  # The performance collection (just prod-collect-performance, /collect) reads
+  # the TikTok Studio with the publisher's profile. Every key is optional;
+  # see docs/configuration.md#tiktok-studio-tiktok_studio_config.
+  # tiktok_studio_config:
+  #   lookback_days: 30          # days of posts a collection reads by default
+  #   max_gap_hours: 12          # slot vs post time for same-caption records
+  #   page_timeout_seconds: 60
+  #   headless: false
+  #   user_data_dir: .storage/tiktok_cookies_userdata   # default: the publisher's
   llm_config:
     type: prompt
     provider_config:

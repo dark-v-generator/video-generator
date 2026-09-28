@@ -14,6 +14,15 @@ proxies:
   transcription_config:
     model: base
     type: local
+  # The performance collection (just prod-collect-performance, /collect) reads
+  # the TikTok Studio with the publisher's profile. Every key is optional;
+  # see docs/configuration.md#tiktok-studio-tiktok_studio_config.
+  # tiktok_studio_config:
+  #   lookback_days: 30          # days of posts a collection reads by default
+  #   max_gap_hours: 12          # slot vs post time for same-caption records
+  #   page_timeout_seconds: 60
+  #   headless: false
+  #   user_data_dir: .storage/tiktok_cookies_userdata   # default: the publisher's
 services:
   captions_config:
     font_path: default_font.ttf
