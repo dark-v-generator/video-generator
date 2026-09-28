@@ -1,4 +1,4 @@
-"""Settings the daily run reads, gathered from where they live in config.yaml."""
+"""Settings the flows read, gathered from where they live in config.yaml."""
 
 from dataclasses import dataclass
 
@@ -27,4 +27,17 @@ class DailyRunConfig:
             publish_hashtags=list(bot.publish_hashtags),
             low_quality=bot.low_quality,
             language=config.language,
+        )
+
+
+@dataclass(frozen=True)
+class CollectionConfig:
+    lookback_days: int
+    max_gap_hours: int
+
+    @classmethod
+    def from_main_config(cls, config: MainConfig) -> "CollectionConfig":
+        studio = config.proxies.tiktok_studio_config
+        return cls(
+            lookback_days=studio.lookback_days, max_gap_hours=studio.max_gap_hours
         )
