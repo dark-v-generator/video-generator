@@ -12,14 +12,13 @@ class HistoryStore(Protocol):
     def add_publish_attempt(self, record_id: int, attempt: PublishAttempt) -> None: ...
 
     # M4 — coleta
-    def published_records(self, since: datetime) -> list[VideoRecord]: ...
+    def published_records(self, since: datetime) -> list[PublishedRecord]: ...
     def record_collection(
         self,
         collection: Collection,
-        performance: list[PerformanceSnapshot],
-        reddit: list[RedditSnapshot],
-        assignments: dict[int, str],          # record_id -> tiktok_video_id
-    ) -> int: ...                             # tudo em uma transação
+        performance: dict[int, PerformanceSnapshot],  # record_id -> snapshot
+        reddit: dict[int, RedditSnapshot],            # record_id -> snapshot
+    ) -> int: ...     # tudo em uma transação; grava o tiktok_video_id de cada snapshot
     def assign_tiktok_video(self, record_id: int, tiktok_video_id: str) -> None: ...
 
     # M5 — visão cruzada
@@ -46,9 +45,11 @@ Regras comuns às implementações:
   de antes da feature); esses ficam com `imported=True`.
 - `add_publish_attempt` com `(record_id, attempted_at)` repetido estoura
   (`UNIQUE`): a importação é idempotente porque verifica antes.
-- `published_records(since)`: registros com ao menos uma tentativa `scheduled`
-  cujo `scheduled_at >= since`, mais os que já têm `tiktok_video_id` (para
-  continuar acumulando snapshots de vídeos antigos, dentro do mesmo `since`).
+- `published_records(since)`: registros com ao menos uma tentativa (inclusive
+  `failed`: no servidor o publisher registrou falha em vídeos que o TikTok
+  agendou) cujo `scheduled_at >= since`, mais os que já têm `tiktok_video_id`;
+  cada um com o slot da última tentativa `scheduled` ou, sem ela, da última
+  tentativa (`PublishedRecord`).
 - `record_collection` grava a linha de `collections`, os snapshots e as
   atribuições de `tiktok_video_id` em uma transação; devolve o id da coleta.
 - `crossed_view`: colunas válidas de `filters`/`sort` são as de `CrossedRow`;

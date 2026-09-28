@@ -78,7 +78,7 @@ class MatchResult:
     ambiguous: list[tuple[TikTokVideoStats, list[int]]]
 
 def normalize_caption(text: str) -> str: ...
-def match(records: list[VideoRecord], videos: list[TikTokVideoStats],
+def match(records: list[PublishedRecord], videos: list[TikTokVideoStats],
           *, max_gap: timedelta = timedelta(hours=12)) -> MatchResult: ...
 ```
 
@@ -87,7 +87,9 @@ Regras, em ordem:
 1. Registro com `tiktok_video_id` igual ao `video_id` → casado, sem olhar
    legenda.
 2. `normalize_caption(video.description) == normalize_caption(record.title)`:
-   remove hashtags finais (`#\w+` no fim, repetido), colapsa espaços, `casefold`.
+   remove hashtags finais (a mesma regra do publisher), dobra acentos e
+   pontuação (`unidecode`; no servidor "café" voltou "cafe" e aspas curvas
+   voltaram retas), colapsa espaços, `casefold`.
 3. Vários candidatos por legenda → fica o(s) cujo último `scheduled_at` está a
    menos de `max_gap` do `video.created_at`; um → casado; zero ou mais de um →
    `ambiguous` com os ids candidatos.
