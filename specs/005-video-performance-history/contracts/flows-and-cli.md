@@ -65,9 +65,12 @@ exceção antes de `record_collection` sai sem gravar (FR-014).
 
 Todos leem o container (`container.history_store()`, etc.), exceto
 `performance_report`, que abre `SqliteHistoryStore(history_db_path())`
-(`src/core/paths.py`) sem importar o container: roda no laptop sem chaves, e
-importar o container custa ~7 s (o `litellm` baixa a tabela de preços a cada
-import), o que deixaria SC-004 na margem.
+(`src/core/paths.py`) sem importar o container: roda no laptop sem chaves.
+Quando isso foi decidido, importar o container custava ~7,5 s (o `litellm`
+baixava a tabela de preços a cada import, com timeout de 5 s), o que deixaria
+SC-004 na margem. Depois o projeto passou a usar a tabela embutida no `litellm`
+(`LITELLM_LOCAL_MODEL_COST_MAP=True` por padrão), mas o relatório continua sem
+o container.
 
 ## Bot (M4)
 

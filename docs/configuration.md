@@ -396,3 +396,8 @@ Three more environment variables change where things are read or written:
 | `CONFIG_PATH` | `config.yaml` | YAML file to load |
 | `TIKTOK_PUBLISH_LOG_PATH` | `.storage/tiktok_publish_log.csv` | Publish log; its `scheduled` rows keep discovery from picking a post twice |
 | `HISTORY_DB_PATH` | `.storage/history.sqlite` | Performance history (SQLite): what the daily run and the collection write, and what `just report` reads. Read at every run, so tests point it at a temporary file |
+
+`LITELLM_LOCAL_MODEL_COST_MAP` defaults to `True` here, so litellm loads the
+model cost map bundled with it instead of downloading it on every import (up to
+5 s, and startup would depend on the network). Nothing in the project reads
+litellm's costs. Set it to an empty value to fetch the online map again.
