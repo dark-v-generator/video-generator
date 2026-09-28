@@ -28,6 +28,7 @@ proxies:
   youtube_config: { ... }
   cover_config: { ... }
   tiktok_publisher_config: { ... }
+  tiktok_studio_config: { ... }            # optional: the performance collection
 
 services:
   video_config: { ... }
@@ -226,6 +227,34 @@ lives in `.env`; the session lives in the cookies and the Chromium profile.
 
 ---
 
+### TikTok Studio (`tiktok_studio_config`)
+
+How the performance collection (`just prod-collect-performance`, `/collect`) reads
+the account's numbers from the TikTok Studio. There is no model and no login of
+its own: it opens the publisher's Chromium profile, with the session the
+publisher already keeps. Every key is optional.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `user_data_dir` | `str` | the publisher's profile | Chromium profile with the session; unset, it is `<cookies_path stem>_userdata` next to `tiktok_publisher_config.cookies_path` (`.storage/tiktok_cookies_userdata`) |
+| `headless` | `bool` | `false` | Headful is harder to detect; the server runs it under Xvfb |
+| `lookback_days` | `int` | `30` | Days of posts a collection reads when none is given (`/collect 60`, `just prod-collect-performance 60` override it) |
+| `page_timeout_seconds` | `int` | `60` | How long to wait for a Studio page to load its data |
+| `max_gap_hours` | `int` | `12` | Two records with the same caption: the one scheduled within this many hours of TikTok's post time is the match; otherwise the video is reported as ambiguous |
+
+```yaml
+proxies:
+  tiktok_studio_config:
+    lookback_days: 30
+    max_gap_hours: 12
+```
+
+The collection and the publisher share that profile and must never run at the
+same time. The bot serializes `/collect`, `/autopost` and the daily job; from the
+command line, do not start a collection while a publish is running.
+
+---
+
 ## Services
 
 ### Video (`video_config`)
@@ -360,9 +389,10 @@ environment). All are optional; set the ones your providers need.
 | `TIKTOK_EMAIL`, `TIKTOK_PASSWORD` | TikTok login (the publisher agent) |
 | `YOUTUBE_PO_TOKEN`, `YOUTUBE_VISITOR_DATA` | Background downloads refused by YouTube's bot detection; set as a pair — see [po-token.md](./po-token.md) |
 
-Two more environment variables change where things are read or written:
+Three more environment variables change where things are read or written:
 
 | Variable | Default | Effect |
 |---|---|---|
 | `CONFIG_PATH` | `config.yaml` | YAML file to load |
 | `TIKTOK_PUBLISH_LOG_PATH` | `.storage/tiktok_publish_log.csv` | Publish log; its `scheduled` rows keep discovery from picking a post twice |
+| `HISTORY_DB_PATH` | `.storage/history.sqlite` | Performance history (SQLite): what the daily run and the collection write, and what `just report` reads. Read at every run, so tests point it at a temporary file |

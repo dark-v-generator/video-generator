@@ -114,6 +114,71 @@ rodada todo dia no horário configurado e aceita `/autopost [n]`; mandar a URL d
 um post do Reddit para o bot devolve a narração e o vídeo daquela história. Os
 `just prod-daily-*` rodam os mesmos comandos no servidor.
 
+### Histórico e desempenho
+
+Toda rodada grava um histórico em `.storage/history.sqlite` (no servidor), ao lado
+dos manifests e do CSV de publicação, que continuam como antes:
+
+- **por vídeo**: título, post do Reddit, parte, duração; upvotes e comentários do
+  post na descoberta; a nota do modelo e as sub-notas; a receita que o produziu
+  (versão do prompt `story.jinja2`, modelos, estratégia de renderização, voz,
+  taxa de fala); as hashtags;
+- **por tentativa de publicação**: a mesma linha do CSV (agendado ou falha, slot,
+  erro), sem substituir as anteriores;
+- **por rodada**: modo, pedidos, candidatas, produzidos, agendados, pulos por motivo.
+
+Só resultados entram; o raciocínio do modelo e os prompts renderizados não.
+
+**Importar o passado (uma vez).** Os vídeos de antes do histórico entram a partir
+do CSV e dos manifests, sem nota nem números do Reddit. Rodar de novo não duplica.
+
+```bash
+just prod-import-history
+```
+
+**Coletar o desempenho.** A coleta lê o TikTok Studio com a sessão do publisher,
+casa cada vídeo com o seu registro pela legenda e pelo horário agendado, e grava
+views, likes, comentários, shares, saves, watch médio e % assistido até o fim, mais
+os upvotes do post no Reddit agora. Rode alguns dias depois de publicar e repita
+para acompanhar: cada coleta acrescenta um retrato datado, sem mexer nos anteriores.
+
+```bash
+just prod-collect-performance      # lookback_days do config (30)
+just prod-collect-performance 60   # últimos 60 dias
+```
+
+Pelo Telegram: `/collect` ou `/collect 60`. A coleta termina com
+"K casados, U sem par, A ambíguos" e uma linha por vídeo sem par ou ambíguo, com
+legenda, data e id do TikTok. Para resolver, diga a qual registro o vídeo pertence;
+a coleta seguinte já casa pelo id:
+
+```bash
+just prod-collect-performance "--assign 7678762304107810068 322"
+```
+
+A coleta e a publicação usam o mesmo perfil do Chromium e **nunca podem rodar ao
+mesmo tempo**. O bot já recusa ("Já existe um fluxo em andamento."); pela linha de
+comando, não comece uma coleta com uma publicação em andamento.
+
+**Ver o cruzamento.** No laptop, puxe o histórico do servidor (só servidor →
+laptop) e peça a visão cruzada: uma linha por vídeo com nota, upvotes na
+descoberta e agora, views, likes, comentários, shares, saves, watch médio,
+% até o fim, versão do prompt e modelo. Vídeo ainda sem coleta aparece com essas
+colunas vazias.
+
+```bash
+just sync-history
+just report --sort grade_overall:desc                    # nota alta e poucas views aparecem no topo
+just report --sort latest_views                          # os menos vistos primeiro
+just report --filter story_prompt_version=42072ca8893c   # só uma versão do prompt
+just report --since 2026-09-01 --csv /tmp/cruzamento.csv # todas as colunas, para planilha
+just report --columns                                    # colunas de --sort e --filter
+```
+
+`--sort COLUNA:desc` inverte a ordem; vazios ficam no fim nos dois sentidos.
+`--filter` é repetível e compara igualdade. As colunas e a estrutura do banco
+estão em [docs/architecture.md](docs/architecture.md#the-history-and-the-crossed-view).
+
 ### Renderizar uma história escrita à mão
 
 ```bash

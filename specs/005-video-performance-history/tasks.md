@@ -222,9 +222,9 @@ documentação descreve o histórico e a coleta.
 
 ## Phase 8: Polish & Cross-Cutting Concerns (dentro do PR 5)
 
-- [ ] T049 [P] Atualizar `docs/architecture.md`: o segundo fluxo (`collect_performance`), a fronteira `HistoryStore` ao lado de `RunStore`, a capacidade `performance` e o proxy do Studio no diagrama e na tabela de contratos; árvore de `src/`, `scripts/` e `tests/` com os arquivos novos; seção "Extending" ganha "uma fonte de desempenho"
-- [ ] T050 [P] Atualizar `docs/configuration.md`: seção `### TikTok Studio (tiktok_studio_config)` com as chaves e defaults, e `HISTORY_DB_PATH` na seção de variáveis de ambiente
-- [ ] T051 [P] Atualizar `README.md` com a seção "Histórico e desempenho": o que é gravado, `just prod-import-history` (uma vez), quando rodar `just prod-collect-performance` (alguns dias após publicar, repetir para acompanhar), como resolver "sem par" com `--assign`, `just sync-history` e `just report`, e a restrição de não rodar coleta e publicação ao mesmo tempo
+- [X] T049 [P] Atualizar `docs/architecture.md`: o segundo fluxo (`collect_performance`), a fronteira `HistoryStore` ao lado de `RunStore`, a capacidade `performance` e o proxy do Studio no diagrama e na tabela de contratos; árvore de `src/`, `scripts/` e `tests/` com os arquivos novos; seção "Extending" ganha "uma fonte de desempenho"
+- [X] T050 [P] Atualizar `docs/configuration.md`: seção `### TikTok Studio (tiktok_studio_config)` com as chaves e defaults, e `HISTORY_DB_PATH` na seção de variáveis de ambiente
+- [X] T051 [P] Atualizar `README.md` com a seção "Histórico e desempenho": o que é gravado, `just prod-import-history` (uma vez), quando rodar `just prod-collect-performance` (alguns dias após publicar, repetir para acompanhar), como resolver "sem par" com `--assign`, `just sync-history` e `just report`, e a restrição de não rodar coleta e publicação ao mesmo tempo
 - [ ] T052 Adicionar o bloco comentado `tiktok_studio_config` a `config.yaml`, `config.prod.yaml` e `config.dev.yaml` e `HISTORY_DB_PATH` a `env.example`
 - [ ] T053 Rodar `just fmt`, `uv run pytest -q` e a verificação final do [quickstart](./quickstart.md) (`git diff --stat main -- tests/fixtures/daily_run_golden.json` vazio; `grep -rn "sqlite3" src` só em `src/storage/sqlite_history.py`; `grep -rn "patchright" src` só em `src/proxies/`); registrar o resultado na seção Notes
 
