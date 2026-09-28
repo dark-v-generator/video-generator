@@ -37,6 +37,28 @@ class PromptLLMProxy(ILLMProxy):
         self._logger = get_logger(__name__)
         self.config = config.provider_config
 
+    def _empty_response_error(self, response, task: str) -> RuntimeError:
+        """Why the model answered with no text, in words the caller can act on.
+
+        The finish reason tells a refusal from a budget problem: a reasoning
+        model can spend all of max_tokens thinking and stop with "length",
+        which is not the post's fault and must not read as a content block.
+        """
+        reason = response.choices[0].finish_reason
+        self._logger.error("LLM returned empty response. Finish reason: %s", reason)
+        if reason == "content_filter":
+            return RuntimeError(
+                f"LLM refused the {task}: its content filter blocked the "
+                "response (finish_reason=content_filter)."
+            )
+        if reason == "length":
+            return RuntimeError(
+                f"LLM reached max_tokens before writing the {task} "
+                "(finish_reason=length); raise max_tokens or lower "
+                "reasoning_effort in the LLM config."
+            )
+        return RuntimeError(f"LLM returned an empty {task} (finish_reason={reason}).")
+
     @staticmethod
     def _clean_json(text: str) -> str:
         """Normalize LLM output so it can be parsed as JSON.
@@ -249,14 +271,7 @@ class PromptLLMProxy(ILLMProxy):
         response_text = response.choices[0].message.content
 
         if not response_text:
-            self._logger.error(
-                f"LLM returned empty response. "
-                f"Finish reason: {response.choices[0].finish_reason}"
-            )
-            raise RuntimeError(
-                "LLM returned empty content for story generation. "
-                "This may be caused by a safety filter. Check the post content."
-            )
+            raise self._empty_response_error(response, "story")
 
         try:
             result = json.loads(self._clean_json(response_text))
@@ -295,14 +310,7 @@ class PromptLLMProxy(ILLMProxy):
         response_text = response.choices[0].message.content
 
         if not response_text:
-            self._logger.error(
-                "LLM returned empty response. Finish reason: %s",
-                response.choices[0].finish_reason,
-            )
-            raise RuntimeError(
-                "LLM returned empty content for story evaluation. "
-                "This may be caused by a safety filter."
-            )
+            raise self._empty_response_error(response, "story evaluation")
 
         try:
             data = json.loads(self._clean_json(response_text))
@@ -408,14 +416,7 @@ class PromptLLMProxy(ILLMProxy):
         response_text = response.choices[0].message.content
 
         if not response_text:
-            self._logger.error(
-                f"LLM returned empty response. "
-                f"Finish reason: {response.choices[0].finish_reason}"
-            )
-            raise RuntimeError(
-                "LLM returned empty content for transcription enhancement. "
-                "This may be caused by a safety filter."
-            )
+            raise self._empty_response_error(response, "transcription enhancement")
 
         try:
             cleaned = self._clean_json(response_text)

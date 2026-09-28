@@ -31,9 +31,11 @@ proxies:
       # 'high' chosen by ear (2026-07-29 audio review): tighter, punchier
       # scripts. Tradeoff seen in the shootout: it condenses harder, so
       # drop to 'low' if stories start losing important details.
-      # max_tokens bounds runaway runs.
+      # max_tokens bounds runaway runs. It covers the reasoning too: at 12000
+      # 'high' sometimes spent it all thinking and returned no story
+      # (finish_reason=length, 2026-09-25), so it is 20000.
       reasoning_effort: high
-      max_tokens: 12000
+      max_tokens: 20000
   speech_config:
     type: edge-tts
     # Multiplier applied on top of whatever rate the caller asks for, so this is
