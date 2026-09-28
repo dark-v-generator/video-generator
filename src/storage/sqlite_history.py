@@ -253,10 +253,13 @@ class SqliteHistoryStore:
             ),
         )
 
-    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
+    def find_record_by_video_path(
+        self, video_path: str, *, post_url: Optional[str] = None
+    ) -> Optional[VideoRecord]:
         row = self._conn.execute(
-            "SELECT * FROM video_records WHERE video_path = ? ORDER BY id DESC",
-            (video_path,),
+            "SELECT * FROM video_records WHERE video_path = ?"
+            " AND (? IS NULL OR post_url = ?) ORDER BY id DESC",
+            (video_path, post_url, post_url),
         ).fetchone()
         return self._record(row) if row else None
 

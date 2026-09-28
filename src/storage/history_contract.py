@@ -46,9 +46,12 @@ class HistoryStore(Protocol):
         """
         ...
 
-    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
+    def find_record_by_video_path(
+        self, video_path: str, *, post_url: Optional[str] = None
+    ) -> Optional[VideoRecord]:
         """The newest record for the path: each daily run reuses the paths of
-        the one before, so older records keep the path of a file now gone."""
+        the one before, so older records keep the path of a file now gone.
+        With *post_url*, the newest one made from that post."""
         ...
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]: ...

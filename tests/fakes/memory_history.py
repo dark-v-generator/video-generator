@@ -77,9 +77,16 @@ class InMemoryHistoryStore:
             )
         return record_id
 
-    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
+    def find_record_by_video_path(
+        self, video_path: str, *, post_url: Optional[str] = None
+    ) -> Optional[VideoRecord]:
         return next(
-            (r for r in reversed(self.records.values()) if r.video_path == video_path),
+            (
+                r
+                for r in reversed(self.records.values())
+                if r.video_path == video_path
+                and (post_url is None or r.post_url == post_url)
+            ),
             None,
         )
 

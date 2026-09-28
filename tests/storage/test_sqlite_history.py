@@ -189,6 +189,16 @@ def test_a_path_reused_by_the_next_run_finds_the_newest_record(store):
     assert store.publish_attempts(second) == []
 
 
+def test_a_reused_path_finds_the_record_made_from_a_given_post(store):
+    first = store.add_video_record(record(post_url="yesterday"), discovery())
+    store.add_video_record(record(post_url="today"), discovery())
+
+    found = store.find_record_by_video_path("out/story_01.mp4", post_url="yesterday")
+
+    assert found.id == first
+    assert store.find_record_by_video_path("out/story_01.mp4", post_url="never") is None
+
+
 def test_an_unknown_video_path_finds_nothing(store):
     store.add_video_record(record(), discovery())
 
