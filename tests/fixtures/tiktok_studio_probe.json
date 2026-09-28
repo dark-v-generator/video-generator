@@ -1,0 +1,343 @@
+{
+  "_about": "TikTok Studio responses recorded by scripts/tiktok_studio_probe.py on the server (2026-09-28T17:28:25Z), redacted: no account, device or signing params, no CDN urls, video ids replaced by sequential ones, lists cut to a few items.",
+  "item_list_pages": [
+    {
+      "path": "/tiktok/creator/manage/item_list/v1/",
+      "method": "POST",
+      "body": {
+        "cursor": 50,
+        "enable_query": true,
+        "extra": {
+          "fatal_item_ids": [],
+          "logid": "redacted",
+          "now": 1790616508000
+        },
+        "has_more": true,
+        "is_limited": false,
+        "item_list": [
+          {
+            "comment_count": "0",
+            "create_time": "1790593155",
+            "desc": "Acordei com um estranho bêbado no meu sofá e minha colega de quarto ainda disse que eu fui a errada  #fyp  #storytime  #reddit",
+            "duration": 113667,
+            "favorite_count": "4",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000002",
+            "item_type": 1,
+            "like_count": "28",
+            "play_count": "287",
+            "post_time": "1790607600",
+            "schedule_time": "1790607600",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          },
+          {
+            "comment_count": "1",
+            "create_time": "1790532521",
+            "desc": "A um mês do casamento, a noiva resolveu que eu devia entregar o quarto que paguei há quase um ano pros pais dela — que já tinham hotel a 10 min — e quando eu disse não, a irmã dela apareceu com uma \"decisão executiva\".  #fyp #storytime  #reddit",
+            "duration": 142534,
+            "favorite_count": "15",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000003",
+            "item_type": 1,
+            "like_count": "113",
+            "play_count": "1987",
+            "post_time": "1790550000",
+            "schedule_time": "1790550000",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          },
+          {
+            "comment_count": "0",
+            "create_time": "1790518641",
+            "desc": "Minha mãe botou o volume no talo à 1h da manhã na MINHA casa, e quando eu desliguei a TV, ela ainda me fez sentir uma filha horrível  #fyp  #storytime  #reddit",
+            "duration": 83234,
+            "favorite_count": "3",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000004",
+            "item_type": 1,
+            "like_count": "21",
+            "play_count": "272",
+            "post_time": "1790542800",
+            "schedule_time": "1790542800",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          },
+          {
+            "comment_count": "0",
+            "create_time": "1790510450",
+            "desc": "Ele foi denunciado na polícia por perseguir uma mulher por três anos — e me ligou no dia seguinte ao nosso primeiro encontro para contar cada detalhe  #fyp  #storytime  #reddit",
+            "duration": 169467,
+            "favorite_count": "3",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000005",
+            "item_type": 1,
+            "like_count": "37",
+            "play_count": "484",
+            "post_time": "1790521200",
+            "schedule_time": "1790521200",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          }
+        ],
+        "log_pb": {
+          "impr_id": "redacted"
+        },
+        "status_code": 0,
+        "status_msg": ""
+      }
+    },
+    {
+      "path": "/tiktok/creator/manage/item_list/v1/",
+      "method": "POST",
+      "body": {
+        "cursor": 70,
+        "enable_query": true,
+        "extra": {
+          "fatal_item_ids": [],
+          "logid": "redacted",
+          "now": 1790616520000
+        },
+        "has_more": true,
+        "is_limited": false,
+        "item_list": [
+          {
+            "comment_count": "1",
+            "create_time": "1788707751",
+            "desc": "7 anos de amizade e ele me deixou plantada no café depois que eu avisei que tava sem grana  #fyp  #storytime  #reddit",
+            "duration": 97134,
+            "favorite_count": "11",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000006",
+            "item_type": 1,
+            "like_count": "204",
+            "play_count": "2159",
+            "post_time": "1788735600",
+            "schedule_time": "1788735600",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          },
+          {
+            "comment_count": "2",
+            "create_time": "1788699142",
+            "desc": "Minha sogra disse que eu roubei o momento mais feliz dela porque eu escondi o parto  #fyp  #storytime  #reddit",
+            "duration": 167500,
+            "favorite_count": "15",
+            "in_review": false,
+            "is_pinned": false,
+            "item_id": "7000000000000000007",
+            "item_type": 1,
+            "like_count": "170",
+            "play_count": "1607",
+            "post_time": "1788728400",
+            "schedule_time": "1788728400",
+            "share_count": "0",
+            "status": 102,
+            "vid": "",
+            "visibility": 1
+          }
+        ],
+        "log_pb": {
+          "impr_id": "redacted"
+        },
+        "status_code": 0,
+        "status_msg": ""
+      }
+    }
+  ],
+  "insight": {
+    "path": "/aweme/v2/data/insight/",
+    "method": "GET",
+    "type_requests": [
+      {
+        "insigh_type": "video_info",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "item_search_terms",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_traffic_source_percent_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_retention_rate_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_info",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_view_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_total_duration_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_per_duration_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_finish_rate_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_new_follower_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "photo_viewed",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_total_duration_realtime",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_new_followers",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "photo_retention_rate_history_7d",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_vv_history_7d",
+        "aweme_id": "7000000000000000001"
+      },
+      {
+        "insigh_type": "video_vv_history_48_hours",
+        "aweme_id": "7000000000000000001"
+      }
+    ],
+    "body": {
+      "status_code": 0,
+      "status_msg": "",
+      "realtime_total_video_views": {
+        "is_after_7d": false,
+        "is_data_delay": false,
+        "value": {
+          "status": 0,
+          "value": 2147
+        },
+        "value_compare_previous_day": {
+          "status": 0,
+          "value": 2147
+        }
+      },
+      "video_per_duration_realtime": {
+        "is_after_7d": false,
+        "is_data_delay": false,
+        "value": {
+          "status": 0,
+          "value": 38.78
+        },
+        "value_compare_previous_day": {
+          "status": 0,
+          "value": 0
+        }
+      },
+      "video_finish_rate_realtime": {
+        "is_after_7d": false,
+        "is_data_delay": false,
+        "value": {
+          "status": 0,
+          "value": 0.0683
+        },
+        "value_compare_previous_day": {
+          "status": 0,
+          "value": 0
+        }
+      },
+      "video_total_duration_realtime": {
+        "is_after_7d": false,
+        "is_data_delay": false,
+        "value": {
+          "status": 0,
+          "value": 91995
+        },
+        "value_compare_previous_day": {
+          "status": 0,
+          "value": 0
+        }
+      },
+      "realtime_average_watch_time_history": {
+        "index_date": "1790530130",
+        "interval": 2,
+        "is_real_time": false,
+        "list": [
+          {
+            "key": "1788382800",
+            "value": 44.81
+          },
+          {
+            "key": "1788469200",
+            "value": 44.32
+          }
+        ],
+        "status": 0,
+        "total": 38.78
+      },
+      "realtime_finish_rate_history": {
+        "index_date": "1790530130",
+        "interval": 2,
+        "is_real_time": false,
+        "list": [
+          {
+            "key": "1788382800",
+            "value": 0.0715
+          },
+          {
+            "key": "1788469200",
+            "value": 0.0745
+          }
+        ],
+        "status": 0,
+        "total": 0.0683
+      },
+      "photo_retention_percent": {
+        "status": 2,
+        "value": null
+      },
+      "video_new_followers": {
+        "status": 0,
+        "value": 6
+      },
+      "video_info": {
+        "aweme_id": "7000000000000000001",
+        "aweme_type": 0,
+        "create_time": 1788382800,
+        "desc": "Minha sogra humilhou minha esposa e ameaçou acabar com o emprego dela por causa de uma salada... e eu finalmente revidei.  #fyp  #storytime  #reddit",
+        "statistics": {
+          "collect_count": 10,
+          "comment_count": 1,
+          "digg_count": 217,
+          "play_count": 2147,
+          "share_count": 0
+        },
+        "status": {
+          "private_status": 0
+        }
+      }
+    }
+  }
+}

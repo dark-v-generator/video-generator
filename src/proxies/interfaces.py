@@ -184,7 +184,11 @@ class TikTokStudioLayoutError(RuntimeError):
 
 
 class ITikTokStudioProxy(ABC):
-    """Reads the account's own numbers from the TikTok Studio."""
+    """Reads the account's own numbers from the TikTok Studio.
+
+    One browser serves every call until ``close`` (or the end of an
+    ``async with``), so a collection opens the profile once.
+    """
 
     @abstractmethod
     async def list_videos(self, *, since: datetime) -> List[TikTokVideoStats]:
@@ -197,3 +201,14 @@ class ITikTokStudioProxy(ABC):
         """One video's analytics: the list counts plus retention. A metric
         the Studio does not return for this video is ``None``."""
         ...
+
+    @abstractmethod
+    async def close(self) -> None:
+        """Release the browser; the profile stays locked until this runs."""
+        ...
+
+    async def __aenter__(self) -> "ITikTokStudioProxy":
+        return self
+
+    async def __aexit__(self, *exc_info) -> None:
+        await self.close()
