@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from src.entities.configs.proxies.transcription import (
     TranscriptionConfigType,
     LocalTranscriptionConfig,
@@ -41,6 +43,9 @@ from src.proxies.caching_youtube_proxy import CachingYouTubeProxy
 from src.proxies.interfaces import ICoverProxy
 from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
+from src.entities.configs.proxies.tiktok_publisher import TikTokPublisherConfig
+from src.entities.configs.proxies.tiktok_studio import TikTokStudioConfig
+from src.proxies.tiktok_browser import profile_dir
 
 
 class TranscriptionProxyFactory:
@@ -165,3 +170,14 @@ class CoverProxyFactory:
             return PlaywrightCoverProxy(title_font_size=config.title_font_size)
         else:
             raise ValueError(f"Unknown Cover Configuration: {type(config)}")
+
+
+class TikTokStudioProxyFactory:
+    @staticmethod
+    def profile(
+        config: TikTokStudioConfig, publisher_config: TikTokPublisherConfig
+    ) -> Path:
+        """The Studio reader shares the publisher's profile unless told otherwise."""
+        if config.user_data_dir:
+            return Path(config.user_data_dir).expanduser().resolve()
+        return profile_dir(publisher_config.cookies_path)

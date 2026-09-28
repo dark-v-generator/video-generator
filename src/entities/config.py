@@ -21,6 +21,7 @@ from src.entities.configs.proxies.llm import (
 from src.entities.configs.proxies.youtube import YouTubeConfigType, PyTubeYouTubeConfig
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 from src.entities.configs.proxies.tiktok_publisher import TikTokPublisherConfig
+from src.entities.configs.proxies.tiktok_studio import TikTokStudioConfig
 
 from src.entities.configs.services.captions import CaptionsConfig
 from src.entities.configs.services.censorship import CensorshipConfig
@@ -55,6 +56,10 @@ class ProxiesConfig(BaseYAMLModel):
     tiktok_publisher_config: TikTokPublisherConfig = Field(
         default_factory=TikTokPublisherConfig,
         title="TikTok auto-publisher agent configuration (non-secret)",
+    )
+    tiktok_studio_config: TikTokStudioConfig = Field(
+        default_factory=TikTokStudioConfig,
+        title="TikTok Studio reader used by the performance collection",
     )
 
 

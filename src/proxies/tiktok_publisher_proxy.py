@@ -38,6 +38,11 @@ from playwright_stealth import Stealth
 
 from src.core.logging_config import get_logger
 from src.proxies.interfaces import ITikTokPublisherProxy
+from src.proxies.tiktok_browser import (
+    DEFAULT_USER_AGENT,
+    STEALTH_BROWSER_ARGS,
+    profile_dir,
+)
 from src.proxies.tiktok_publisher_memory import TikTokPublisherMemory
 from src.proxies.tiktok_publisher_tools import build_tools
 from src.capabilities.publishing.hashtags import (
@@ -61,26 +66,6 @@ TIKTOK_SCHEDULE_MINUTE_GRANULARITY = 5
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 TIKTOK_UPLOAD_URL = "https://www.tiktok.com/tiktokstudio/upload?from=upload"
-
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/131.0.0.0 Safari/537.36"
-)
-
-# Launch flags borrowed from patchright's defaults that are universally
-# safe and meaningfully reduce automation fingerprint surface.
-STEALTH_BROWSER_ARGS: List[str] = [
-    "--disable-blink-features=AutomationControlled",
-    "--disable-features=IsolateOrigins,site-per-process",
-    "--disable-site-isolation-trials",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-dev-shm-usage",
-    "--disable-background-timer-throttling",
-    "--disable-backgrounding-occluded-windows",
-    "--disable-renderer-backgrounding",
-]
 
 # Domains the agent is allowed to navigate. Any attempt to leave these
 # bounds (e.g. an LLM-induced misclick on an external link) will be
@@ -343,9 +328,7 @@ class BrowserUseTikTokPublisherProxy(ITikTokPublisherProxy):
         cookies_path_obj = Path(cookies_path).expanduser().resolve()
         cookies_path_obj.parent.mkdir(parents=True, exist_ok=True)
         self._cookies_path = cookies_path_obj
-        self._user_data_dir = cookies_path_obj.parent / (
-            cookies_path_obj.stem + "_userdata"
-        )
+        self._user_data_dir = profile_dir(cookies_path)
         self._user_data_dir.mkdir(parents=True, exist_ok=True)
         if not self._cookies_path.exists():
             # Keep a Playwright-compatible export alongside the user_data_dir

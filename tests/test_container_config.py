@@ -8,6 +8,7 @@ from src.capabilities.footage import LocalFolderFootageSource, YouTubeFootageSou
 from src.core.container import ApplicationContainer
 from src.entities.config import MainConfig
 from src.prompts import loader as prompts
+from src.proxies.factories import TikTokStudioProxyFactory
 
 
 def _container(tmp_path, video_config: str) -> ApplicationContainer:
@@ -112,3 +113,36 @@ def test_without_a_story_model_the_writer_is_the_main_model(tmp_path):
 
     assert recipe.writer_model == recipe.grader_model == "openai/gpt-x"
     assert (recipe.speech_provider, recipe.speech_rate) == ("elevenlabs", None)
+
+
+def _proxies(tmp_path, proxies: str) -> MainConfig:
+    path = tmp_path / "config.yaml"
+    path.write_text(f"proxies:\n{proxies}", encoding="utf-8")
+    return MainConfig.from_yaml(str(path))
+
+
+def test_the_studio_reads_the_publishers_profile_by_default(tmp_path):
+    config = _proxies(
+        tmp_path,
+        "  tiktok_publisher_config:\n"
+        f"    cookies_path: {tmp_path}/session/tiktok_cookies.json\n",
+    ).proxies
+
+    profile = TikTokStudioProxyFactory.profile(
+        config.tiktok_studio_config, config.tiktok_publisher_config
+    )
+
+    assert profile == tmp_path.resolve() / "session" / "tiktok_cookies_userdata"
+
+
+def test_a_studio_profile_in_the_config_wins(tmp_path):
+    config = _proxies(
+        tmp_path,
+        f"  tiktok_studio_config:\n    user_data_dir: {tmp_path}/studio\n",
+    ).proxies
+
+    profile = TikTokStudioProxyFactory.profile(
+        config.tiktok_studio_config, config.tiktok_publisher_config
+    )
+
+    assert profile == tmp_path.resolve() / "studio"
