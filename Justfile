@@ -99,6 +99,16 @@ sync-history:
     rm -f .storage/history.sqlite-wal .storage/history.sqlite-shm
     rsync -avz '{{PROD_HOST}}:{{PROD_DIR}}/.storage/history.sqlite*' ./.storage/
 
+# Usage:
+#   just report --sort grade_overall:desc
+#   just report --sort latest_views --filter grade_verdict=Excelente
+#   just report --since 2026-09-01 --csv /tmp/cross.csv
+#   just report --columns
+#
+# The crossed view of the local history, one row per video (sync-history first).
+report *args:
+    uv run python scripts/performance_report.py {{args}}
+
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
 render-story story_json footage_dir:
     uv run python scripts/render_story.py {{story_json}} {{footage_dir}}
