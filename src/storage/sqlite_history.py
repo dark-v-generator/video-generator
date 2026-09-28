@@ -22,15 +22,11 @@ from ..entities.history import (
 )
 from .history_contract import HistoryConflictError, HistoryError
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS run_summaries (
-  id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT,
-  mode TEXT NOT NULL, requested INTEGER, target INTEGER, candidates_found INTEGER,
-  produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL,
-  stopped_reason TEXT NOT NULL DEFAULT '');
-CREATE TABLE IF NOT EXISTS video_records (
+# The daily run writes to the same output/daily/story_NN.mp4 every day, so a
+# path names a video only until the next run: it is not unique.
+_VIDEO_RECORDS_COLUMNS = """
   id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, run_id INTEGER,
-  video_path TEXT NOT NULL UNIQUE, title TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '',
+  video_path TEXT NOT NULL, title TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '',
   post_url TEXT NOT NULL, community TEXT, author TEXT, post_created_utc TEXT,
   part_index INTEGER NOT NULL DEFAULT 1, part_count INTEGER NOT NULL DEFAULT 1,
   language TEXT, duration_seconds REAL,
@@ -39,7 +35,16 @@ CREATE TABLE IF NOT EXISTS video_records (
   story_prompt_version TEXT, grading_prompt_version TEXT, writer_model TEXT, grader_model TEXT,
   rendering_strategy TEXT, speech_provider TEXT, speech_rate REAL, narrator_gender TEXT,
   voice_id TEXT, hashtags TEXT NOT NULL DEFAULT '', tiktok_video_id TEXT UNIQUE,
-  imported INTEGER NOT NULL DEFAULT 0);
+  imported INTEGER NOT NULL DEFAULT 0"""
+
+SCHEMA = f"""
+CREATE TABLE IF NOT EXISTS run_summaries (
+  id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT,
+  mode TEXT NOT NULL, requested INTEGER, target INTEGER, candidates_found INTEGER,
+  produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL,
+  stopped_reason TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS video_records ({_VIDEO_RECORDS_COLUMNS});
+CREATE INDEX IF NOT EXISTS video_records_by_path ON video_records (video_path);
 CREATE TABLE IF NOT EXISTS reddit_snapshots (
   id INTEGER PRIMARY KEY, record_id INTEGER NOT NULL REFERENCES video_records(id),
   taken_at TEXT NOT NULL, source TEXT NOT NULL, score INTEGER, num_comments INTEGER,
@@ -99,6 +104,35 @@ class SqliteHistoryStore:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
+        self._allow_reused_video_paths()
+
+    def _allow_reused_video_paths(self) -> None:
+        """A history created when video_path was UNIQUE is rebuilt once
+        without it, keeping every row and id."""
+        unique_on_path = any(
+            index["unique"]
+            and [
+                column["name"]
+                for column in self._conn.execute(
+                    f"PRAGMA index_info('{index['name']}')"
+                )
+            ]
+            == ["video_path"]
+            for index in self._conn.execute("PRAGMA index_list(video_records)")
+        )
+        if not unique_on_path:
+            return
+        self._conn.executescript(f"""
+            PRAGMA foreign_keys=OFF;
+            BEGIN;
+            CREATE TABLE video_records_rebuilt ({_VIDEO_RECORDS_COLUMNS});
+            INSERT INTO video_records_rebuilt SELECT * FROM video_records;
+            DROP TABLE video_records;
+            ALTER TABLE video_records_rebuilt RENAME TO video_records;
+            CREATE INDEX video_records_by_path ON video_records (video_path);
+            COMMIT;
+            PRAGMA foreign_keys=ON;
+            """)
 
     @contextmanager
     def _tx(self) -> Iterator[sqlite3.Connection]:
@@ -221,7 +255,8 @@ class SqliteHistoryStore:
 
     def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
         row = self._conn.execute(
-            "SELECT * FROM video_records WHERE video_path = ?", (video_path,)
+            "SELECT * FROM video_records WHERE video_path = ? ORDER BY id DESC",
+            (video_path,),
         ).fetchone()
         return self._record(row) if row else None
 

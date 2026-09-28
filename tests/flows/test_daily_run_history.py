@@ -153,6 +153,25 @@ async def test_each_video_gets_a_record_with_signals_grade_and_attempt(
 
 
 @pytest.mark.asyncio
+async def test_the_next_day_reuses_the_paths_and_publish_only_finds_its_videos(
+    tmp_path, history
+):
+    """The bot writes to output/daily every day, over yesterday's files."""
+    yesterday = flow_over(tmp_path, history)
+    await yesterday.run(count=1, output_dir=yesterday.output_dir)
+    today = flow_over(tmp_path, history)
+    today.discovery.results = graded_candidates(3)[1:]
+
+    await today.generate(count=1, output_dir=today.output_dir)
+    await today.publish(today.store.load_manifests(today.output_dir))
+
+    (record,) = records(history, today)
+    assert record.post_url == "url-2"
+    assert [a.status for a in history.publish_attempts(record.id)] == ["scheduled"]
+    assert [a.status for a in history.publish_attempts(record.id - 1)] == ["scheduled"]
+
+
+@pytest.mark.asyncio
 async def test_a_three_part_story_leaves_three_sibling_records(tmp_path, history):
     flow = flow_over(tmp_path, history, writer=ScriptedWriter(parts=3))
 

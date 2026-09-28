@@ -17,7 +17,7 @@ compartilham os campos de história.
 | `id` | `int` | SQLite (autoincrement) | chave |
 | `created_at` | `datetime` | `DailyRun.now()` no `_produce` | |
 | `run_id` | `int \| None` | `RunSummary` da rodada | referência solta (FR-007b); `None` em importados |
-| `video_path` | `str` | manifest | único; mesma string do manifest e do CSV |
+| `video_path` | `str` | manifest | mesma string do manifest e do CSV; **não é único**: a rodada diária reescreve `output/daily/story_NN.mp4` todo dia, e a busca por caminho devolve o registro mais novo |
 | `title` | `str` | `GeneratedVideo.title` (com sufixo da parte) | é a legenda publicada sem hashtags |
 | `summary` | `str` | `GeneratedVideo.summary` | |
 | `post_url` | `str` | `story.origin.url` | identifica a história |
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS run_summaries (
   produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL, stopped_reason TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS video_records (
   id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, run_id INTEGER,
-  video_path TEXT NOT NULL UNIQUE, title TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '',
+  video_path TEXT NOT NULL, title TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '',
   post_url TEXT NOT NULL, community TEXT, author TEXT, post_created_utc TEXT,
   part_index INTEGER NOT NULL DEFAULT 1, part_count INTEGER NOT NULL DEFAULT 1,
   language TEXT, duration_seconds REAL,
@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS video_records (
   story_prompt_version TEXT, grading_prompt_version TEXT, writer_model TEXT, grader_model TEXT,
   rendering_strategy TEXT, speech_provider TEXT, speech_rate REAL, narrator_gender TEXT, voice_id TEXT,
   hashtags TEXT NOT NULL DEFAULT '', tiktok_video_id TEXT UNIQUE, imported INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS video_records_by_path ON video_records (video_path);
 CREATE TABLE IF NOT EXISTS reddit_snapshots (
   id INTEGER PRIMARY KEY, record_id INTEGER NOT NULL REFERENCES video_records(id),
   taken_at TEXT NOT NULL, source TEXT NOT NULL, score INTEGER, num_comments INTEGER,

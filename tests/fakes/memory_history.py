@@ -58,8 +58,6 @@ class InMemoryHistoryStore:
     def add_video_record(
         self, record: VideoRecord, discovery_signals: Optional[RedditSnapshot]
     ) -> int:
-        if self.find_record_by_video_path(record.video_path):
-            raise HistoryConflictError(f"UNIQUE video_path: {record.video_path}")
         record_id = len(self.records) + 1
         self.records[record_id] = dataclasses.replace(
             record,
@@ -81,7 +79,8 @@ class InMemoryHistoryStore:
 
     def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
         return next(
-            (r for r in self.records.values() if r.video_path == video_path), None
+            (r for r in reversed(self.records.values()) if r.video_path == video_path),
+            None,
         )
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]:

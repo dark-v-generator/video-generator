@@ -14,6 +14,7 @@ from src.entities.history import (
     VideoRecord,
 )
 from src.storage import HistoryConflictError, SqliteHistoryStore
+from src.storage.sqlite_history import SCHEMA
 from tests.fakes.memory_history import InMemoryHistoryStore
 
 T0 = datetime(2026, 9, 25, 10, 0, tzinfo=timezone.utc)
@@ -175,11 +176,17 @@ def test_an_attempt_for_a_missing_record_raises(store):
         store.add_publish_attempt(42, attempt())
 
 
-def test_the_same_video_path_twice_raises(store):
-    store.add_video_record(record(), discovery())
+def test_a_path_reused_by_the_next_run_finds_the_newest_record(store):
+    """Every daily run writes output/daily/story_01.mp4 again."""
+    first = store.add_video_record(record(title="Yesterday"), discovery())
+    store.add_publish_attempt(first, attempt())
 
-    with pytest.raises(HistoryConflictError):
-        store.add_video_record(record(), discovery())
+    second = store.add_video_record(record(title="Today"), discovery())
+
+    assert second != first
+    assert store.find_record_by_video_path("out/story_01.mp4").title == "Today"
+    assert len(store.publish_attempts(first)) == 1
+    assert store.publish_attempts(second) == []
 
 
 def test_an_unknown_video_path_finds_nothing(store):
@@ -218,3 +225,33 @@ def test_dates_come_back_in_utc(store):
     for value in (started, created, attempted.attempted_at):
         assert value.tzinfo == timezone.utc
         assert value == T0
+
+
+def test_a_history_from_when_paths_were_unique_is_rebuilt_keeping_its_rows(tmp_path):
+    path = str(tmp_path / "history.sqlite")
+    old = sqlite3.connect(path)
+    old.executescript(
+        SCHEMA.replace("video_path TEXT NOT NULL,", "video_path TEXT NOT NULL UNIQUE,")
+    )
+    old.execute(
+        "INSERT INTO video_records (created_at, video_path, title, post_url)"
+        " VALUES ('2026-09-29T10:00:00+00:00', 'out/story_01.mp4', 'Yesterday', 'u')"
+    )
+    old.execute(
+        "INSERT INTO publish_attempts (record_id, attempted_at, status)"
+        " VALUES (1, '2026-09-29T10:05:00+00:00', 'scheduled')"
+    )
+    old.commit()
+    old.close()
+
+    store = SqliteHistoryStore(path)
+    today = store.add_video_record(record(title="Today"), discovery())
+
+    assert today == 2
+    assert store.find_record_by_video_path("out/story_01.mp4").title == "Today"
+    assert [a.status for a in store.publish_attempts(1)] == ["scheduled"]
+    # Still enforced after the rebuild.
+    with pytest.raises(HistoryConflictError):
+        store.add_publish_attempt(42, attempt())
+    check = sqlite3.connect(path)
+    assert check.execute("PRAGMA foreign_key_check").fetchall() == []

@@ -22,8 +22,8 @@ class HistoryError(Exception):
 
 
 class HistoryConflictError(HistoryError):
-    """A write clashed with what is already recorded: a video path or a
-    publish attempt recorded twice, or a record that does not exist."""
+    """A write clashed with what is already recorded: a publish attempt or
+    a TikTok video id recorded twice, or a record that does not exist."""
 
 
 class HistoryStore(Protocol):
@@ -46,7 +46,10 @@ class HistoryStore(Protocol):
         """
         ...
 
-    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]: ...
+    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]:
+        """The newest record for the path: each daily run reuses the paths of
+        the one before, so older records keep the path of a file now gone."""
+        ...
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]: ...
 
