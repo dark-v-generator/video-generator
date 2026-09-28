@@ -5,6 +5,7 @@ change. ``validate_all`` compiles every template up front so a broken edit
 stops the process at boot, naming the file, instead of halfway through a run.
 """
 
+import hashlib
 import os
 from functools import lru_cache
 
@@ -21,6 +22,13 @@ def _environment(directory: str) -> Environment:
 
 def render(template_name: str, **variables) -> str:
     return _environment(PROMPTS_DIR).get_template(template_name).render(**variables)
+
+
+def fingerprint(template_name: str) -> str:
+    """A short hash of the template file, so a record can tell which version
+    of a prompt made it. A missing template raises."""
+    with open(os.path.join(PROMPTS_DIR, template_name), "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:12]
 
 
 def load_examples(name: str) -> list:

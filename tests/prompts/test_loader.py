@@ -58,6 +58,28 @@ class TestExamples:
         assert loader.load_examples("nope") == []
 
 
+class TestFingerprint:
+    def test_is_short_and_stable(self):
+        first = loader.fingerprint("story.jinja2")
+
+        assert len(first) == 12
+        assert first == loader.fingerprint("story.jinja2")
+
+    def test_changes_when_the_template_is_edited(self, tmp_path, monkeypatch):
+        template = tmp_path / "story.jinja2"
+        template.write_text("Hello {{ name }}")
+        monkeypatch.setattr(loader, "PROMPTS_DIR", str(tmp_path))
+        before = loader.fingerprint("story.jinja2")
+
+        template.write_text("Hello there, {{ name }}")
+
+        assert loader.fingerprint("story.jinja2") != before
+
+    def test_a_missing_template_raises(self):
+        with pytest.raises(FileNotFoundError):
+            loader.fingerprint("nope.jinja2")
+
+
 class TestValidateAll:
     def test_the_shipped_templates_compile(self):
         loader.validate_all()
