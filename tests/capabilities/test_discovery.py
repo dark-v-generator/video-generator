@@ -1,13 +1,16 @@
 import time
+from datetime import datetime, timezone
 
 import pytest
 
 from src.capabilities.discovery import RedditStoryDiscovery
 from src.entities.config import EvaluationConfig
+from src.entities.history import RedditSnapshot
 from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory, StoryCandidate
+from src.proxies.interfaces import RedditPostUnavailableError
 
 
 class FailingRedditProxy:
@@ -296,3 +299,60 @@ def test_fetch_reads_the_post_as_a_story_origin():
 
     assert proxy.urls == [post.url]
     assert origin == StoryOrigin.from_post(post)
+
+
+class GoneRedditProxy:
+    def __init__(self, error: Exception):
+        self._error = error
+
+    def get_reddit_post(self, url):
+        raise self._error
+
+
+SIGNALS_AT = datetime(2026, 9, 28, 12, 0, tzinfo=timezone.utc)
+
+
+def signals_service(proxy) -> RedditStoryDiscovery:
+    return RedditStoryDiscovery(
+        reddit=proxy,
+        llm=ForbiddenLLMProxy(),
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
+        now=lambda: SIGNALS_AT,
+    )
+
+
+def test_signals_are_the_posts_numbers_now_as_a_collection_snapshot():
+    post = make_post("pettyrevenge", "aaa", 400, num_comments=33)
+
+    snapshot = signals_service(SinglePostRedditProxy(post)).signals(post.url)
+
+    assert snapshot == RedditSnapshot(
+        taken_at=SIGNALS_AT,
+        source="collection",
+        score=400,
+        num_comments=33,
+        upvote_ratio=0.95,
+        available=True,
+    )
+
+
+def test_a_post_that_is_gone_is_an_unavailable_snapshot():
+    proxy = GoneRedditProxy(RedditPostUnavailableError("removed"))
+
+    snapshot = signals_service(proxy).signals("https://www.reddit.com/r/x/1/")
+
+    assert snapshot == RedditSnapshot(
+        taken_at=SIGNALS_AT,
+        source="collection",
+        score=None,
+        num_comments=None,
+        upvote_ratio=None,
+        available=False,
+    )
+
+
+def test_any_other_reddit_failure_raises_instead_of_calling_the_post_gone():
+    proxy = GoneRedditProxy(ConnectionError("network down"))
+
+    with pytest.raises(ConnectionError):
+        signals_service(proxy).signals("https://www.reddit.com/r/x/1/")

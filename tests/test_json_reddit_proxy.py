@@ -1,6 +1,8 @@
 import pytest
+import requests
 
 from src.entities.configs.proxies.reddit import JsonRedditConfig
+from src.proxies.interfaces import RedditPostUnavailableError
 from src.proxies.json_reddit_proxy import JsonRedditProxy
 
 
@@ -274,4 +276,58 @@ def test_get_reddit_post_rejects_removed_post_flag(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="unavailable or removed"):
+        proxy.get_reddit_post("https://www.reddit.com/r/test/comments/abc/title/")
+
+
+class FakeErrorResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+
+    def raise_for_status(self):
+        raise requests.HTTPError(f"{self.status_code} error", response=self)
+
+
+def _proxy_answering(monkeypatch, response) -> JsonRedditProxy:
+    monkeypatch.setattr(
+        "src.proxies.json_reddit_proxy.requests.post",
+        lambda url, *, auth, data, headers, timeout: FakeTokenResponse(),
+    )
+    monkeypatch.setattr(
+        "src.proxies.json_reddit_proxy.requests.get",
+        lambda url, *, headers, params, timeout: response,
+    )
+    return JsonRedditProxy(
+        config=JsonRedditConfig(),
+        client_id="client-id",
+        client_secret="client-secret",
+    )
+
+
+@pytest.mark.parametrize("status", [403, 404])
+def test_get_reddit_post_calls_a_forbidden_or_missing_post_unavailable(
+    monkeypatch, status
+):
+    proxy = _proxy_answering(monkeypatch, FakeErrorResponse(status))
+
+    with pytest.raises(RedditPostUnavailableError, match=str(status)):
+        proxy.get_reddit_post("https://www.reddit.com/r/test/comments/abc/title/")
+
+
+def test_get_reddit_post_lets_a_server_error_through(monkeypatch):
+    proxy = _proxy_answering(monkeypatch, FakeErrorResponse(500))
+
+    with pytest.raises(requests.HTTPError) as exc:
+        proxy.get_reddit_post("https://www.reddit.com/r/test/comments/abc/title/")
+
+    assert not isinstance(exc.value, RedditPostUnavailableError)
+
+
+def test_a_removed_post_is_the_unavailable_error(monkeypatch):
+    removed = _post_data(title="A removed post", removed_by_category="moderator")
+    proxy = _proxy_answering(
+        monkeypatch,
+        FakeJsonResponse([{"data": {"children": [{"data": removed}]}}]),
+    )
+
+    with pytest.raises(RedditPostUnavailableError):
         proxy.get_reddit_post("https://www.reddit.com/r/test/comments/abc/title/")

@@ -1,7 +1,9 @@
-"""What any story discovery promises: ranked candidates, grades and origins."""
+"""What any story discovery promises: ranked candidates, grades, origins and
+the post's current numbers."""
 
 from typing import Literal, Optional, Protocol
 
+from ...entities.history import RedditSnapshot
 from ...entities.language import Language
 from ...entities.story import StoryOrigin
 from ...entities.story_candidate import EvaluatedStory, StoryCandidate
@@ -12,6 +14,11 @@ TimeFilter = Literal["hour", "day", "week", "month", "year", "all"]
 
 class StoryDiscovery(Protocol):
     def fetch(self, url: str) -> StoryOrigin: ...
+
+    def signals(self, url: str) -> RedditSnapshot:
+        """The post's numbers now, as a collection snapshot; a post that is
+        gone is ``available=False``. Any other failure raises."""
+        ...
 
     async def find_candidates(
         self,

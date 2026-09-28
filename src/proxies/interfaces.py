@@ -9,10 +9,19 @@ from ..entities.language import Language
 from ..entities.speech_voice import SpeechVoice
 
 
+class RedditPostUnavailableError(ValueError):
+    """The post was deleted, removed or made private; Reddit answers, the
+    post is just not there any more."""
+
+
 class IRedditProxy(ABC):
     @abstractmethod
     def get_reddit_post(self, url: str) -> RedditPost:
-        """Get a Reddit post from a URL"""
+        """Get a Reddit post from a URL.
+
+        Raises ``RedditPostUnavailableError`` for a post that is gone; any
+        other failure (network, rate limit, blocked request) raises as is.
+        """
         ...
 
     @abstractmethod

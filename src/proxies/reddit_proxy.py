@@ -3,7 +3,7 @@ from typing import Literal, Optional, List
 from bs4 import BeautifulSoup, ResultSet, Tag
 import requests
 
-from ..proxies.interfaces import IRedditProxy
+from ..proxies.interfaces import IRedditProxy, RedditPostUnavailableError
 from ..entities.reddit_post import RedditPost
 from ..proxies.reddit_availability import assert_reddit_post_available
 
@@ -24,6 +24,9 @@ class BS4RedditProxy(IRedditProxy):
 
     def get_reddit_post(self, url: str) -> RedditPost:
         response = requests.get(url, headers=self._HEADERS)
+        # Scraping, a 403 is Reddit blocking the request, not a missing post.
+        if response.status_code == 404:
+            raise RedditPostUnavailableError(f"Reddit post not found (404): {url}")
         html_doc = response.text
         soup = BeautifulSoup(html_doc, "html.parser")
         reddit_post_params = {}

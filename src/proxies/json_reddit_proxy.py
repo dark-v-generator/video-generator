@@ -13,7 +13,7 @@ from ..proxies.reddit_availability import (
     assert_reddit_post_data_available,
     is_unavailable_reddit_post_data,
 )
-from ..proxies.interfaces import IRedditProxy
+from ..proxies.interfaces import IRedditProxy, RedditPostUnavailableError
 
 
 class JsonRedditProxy(IRedditProxy):
@@ -122,7 +122,16 @@ class JsonRedditProxy(IRedditProxy):
 
     def get_reddit_post(self, url: str) -> RedditPost:
         path = url.split("reddit.com", 1)[-1].rstrip("/") + ".json"
-        data = self._request_json(path, params={"sr_detail": "true"})
+        try:
+            data = self._request_json(path, params={"sr_detail": "true"})
+        except requests.HTTPError as e:
+            # With OAuth, 404 is a deleted post and 403 a private or banned
+            # subreddit: the post is gone, not the request.
+            if e.response is not None and e.response.status_code in (403, 404):
+                raise RedditPostUnavailableError(
+                    f"Reddit post is unavailable (HTTP {e.response.status_code}): {url}"
+                ) from e
+            raise
         post_data = data[0]["data"]["children"][0]["data"]
         assert_reddit_post_data_available(post_data, url=url)
         post = self._parse_post_data(post_data)

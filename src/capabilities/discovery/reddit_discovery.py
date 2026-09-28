@@ -12,15 +12,17 @@ import math
 import re
 import time
 import statistics
-from typing import List, Optional, Set
+from datetime import datetime
+from typing import Callable, List, Optional, Set
 
 from ...core.logging_config import get_logger
 from ...entities.config import EvaluationConfig
+from ...entities.history import RedditSnapshot
 from ...entities.language import Language
 from ...entities.reddit_post import RedditPost
 from ...entities.story import StoryOrigin
 from ...entities.story_candidate import EvaluatedStory, StoryCandidate
-from ...proxies.interfaces import ILLMProxy, IRedditProxy
+from ...proxies.interfaces import ILLMProxy, IRedditProxy, RedditPostUnavailableError
 from .contract import Sort, TimeFilter
 
 logger = get_logger(__name__)
@@ -225,13 +227,36 @@ class RedditStoryDiscovery:
         reddit: IRedditProxy,
         llm: ILLMProxy,
         evaluation: EvaluationConfig,
+        now: Callable[[], datetime] = datetime.now,
     ):
         self._reddit = reddit
         self._llm = llm
         self._config = evaluation
+        self._now = now
 
     def fetch(self, url: str) -> StoryOrigin:
         return StoryOrigin.from_post(self._reddit.get_reddit_post(url))
+
+    def signals(self, url: str) -> RedditSnapshot:
+        taken_at = self._now()
+        try:
+            post = self._reddit.get_reddit_post(url)
+        except RedditPostUnavailableError:
+            return RedditSnapshot(
+                taken_at=taken_at,
+                source="collection",
+                score=None,
+                num_comments=None,
+                upvote_ratio=None,
+                available=False,
+            )
+        return RedditSnapshot(
+            taken_at=taken_at,
+            source="collection",
+            score=post.score,
+            num_comments=post.num_comments,
+            upvote_ratio=post.upvote_ratio,
+        )
 
     async def find_candidates(
         self,

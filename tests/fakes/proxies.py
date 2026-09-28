@@ -12,6 +12,7 @@ from src.proxies.interfaces import (
     ILLMProxy,
     IRedditProxy,
     ISpeechProxy,
+    RedditPostUnavailableError,
     ITranscriptionProxy,
 )
 
@@ -24,15 +25,23 @@ def _fixture_bytes(name: str) -> bytes:
 
 
 class FakeRedditProxy(IRedditProxy):
-    """Serves a fixed set of posts per subreddit and by URL."""
+    """Serves a fixed set of posts per subreddit and by URL; a URL in
+    ``unavailable_urls`` is a post that was removed since."""
 
-    def __init__(self, posts_by_subreddit: Dict[str, List[RedditPost]]):
+    def __init__(
+        self,
+        posts_by_subreddit: Dict[str, List[RedditPost]],
+        unavailable_urls: Optional[set[str]] = None,
+    ):
         self._posts_by_subreddit = posts_by_subreddit
+        self.unavailable_urls = unavailable_urls or set()
         self.listed: List[str] = []
         self.fetched: List[str] = []
 
     def get_reddit_post(self, url: str) -> RedditPost:
         self.fetched.append(url)
+        if url in self.unavailable_urls:
+            raise RedditPostUnavailableError(f"Removed: {url}")
         for posts in self._posts_by_subreddit.values():
             for post in posts:
                 if post.url == url:
