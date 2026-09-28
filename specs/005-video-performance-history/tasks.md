@@ -109,7 +109,7 @@ via importação idempotente do CSV e dos manifests.
   - Evidência (2026-09-28, laptop): `uv run pytest -q` → 360 passed; `git diff --stat main -- tests/fixtures/daily_run_golden.json` vazio.
   - Receita ao vivo: container real com `CONFIG_PATH=config.dev.yaml` (descoberta real, LLM mock, `EdgeTTSSpeechProxy` real para a voz, `SqliteHistoryStore` real), só o renderer trocado pelo fake (não se renderiza no laptop). Duas gerações no mesmo diretório, a segunda com `{# quickstart #}` no topo de `story.jinja2`: `1|42072ca8893c|673b96bf11d3|mock|mock|narration-over-footage|edge-tts|1.2|male|pt-BR-AntonioNeural` e `2|4ba6834641b4|…` com o resto igual. `duration_seconds` = 1.0 do renderer falso; a duração real (`video.clip.duration`) é coberta por `tests/capabilities/test_rendering.py` com o compositor falso — **não verificada sobre um mp4 real**.
   - Importação sobre cópia do CSV do servidor (449 linhas) e dos 10 manifests de `output/daily`: `444 registros criados, 449 tentativas, 0 já existiam` (379 `scheduled`, 70 `failed`, 3 linhas de pytest incluídas, 10 registros com resumo do manifest) em 2,7 s; segunda execução `0 registros criados, 0 tentativas, 449 já existiam`.
-  - Pendente do servidor: `just deploy` (com o PR #12 e este) e `just prod-import-history`.
+  - Servidor (2026-09-28 14:02): `just deploy` e `just prod-import-history` → `444 registros criados, 449 tentativas, 0 já existiam`; `.storage/history.sqlite` com 444 `video_records` (todos `imported`), 379 `scheduled` e 70 `failed`, igual à cópia; segunda `just prod-import-history` → `0 registros criados, 0 tentativas, 449 já existiam`.
 
 **Checkpoint**: Milestone 2 DONE ✅
 
