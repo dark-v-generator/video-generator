@@ -186,6 +186,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
         use_vision=main_config.provided.proxies.tiktok_publisher_config.use_vision,
     )
 
+    # Reading the Studio: one browser per collection, on the publisher's profile.
+    tiktok_studio_proxy = providers.Factory(
+        proxies_factories.TikTokStudioProxyFactory.create,
+        config=main_config.provided.proxies.tiktok_studio_config,
+        publisher_config=main_config.provided.proxies.tiktok_publisher_config,
+    )
+
     # Flows
     daily_run_config = providers.Singleton(DailyRunConfig.from_main_config, main_config)
     hashtag_suggester = providers.Singleton(

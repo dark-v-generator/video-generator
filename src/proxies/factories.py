@@ -45,7 +45,9 @@ from src.proxies.playwright_cover_proxy import PlaywrightCoverProxy
 from src.entities.configs.proxies.cover import CoverConfigType, PlaywrightCoverConfig
 from src.entities.configs.proxies.tiktok_publisher import TikTokPublisherConfig
 from src.entities.configs.proxies.tiktok_studio import TikTokStudioConfig
+from src.proxies.interfaces import ITikTokStudioProxy
 from src.proxies.tiktok_browser import profile_dir
+from src.proxies.tiktok_studio_proxy import PatchrightTikTokStudioProxy
 
 
 class TranscriptionProxyFactory:
@@ -181,3 +183,13 @@ class TikTokStudioProxyFactory:
         if config.user_data_dir:
             return Path(config.user_data_dir).expanduser().resolve()
         return profile_dir(publisher_config.cookies_path)
+
+    @staticmethod
+    def create(
+        config: TikTokStudioConfig, publisher_config: TikTokPublisherConfig
+    ) -> ITikTokStudioProxy:
+        return PatchrightTikTokStudioProxy(
+            user_data_dir=TikTokStudioProxyFactory.profile(config, publisher_config),
+            headless=config.headless,
+            page_timeout_seconds=config.page_timeout_seconds,
+        )

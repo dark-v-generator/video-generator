@@ -9,6 +9,7 @@ from src.core.container import ApplicationContainer
 from src.entities.config import MainConfig
 from src.prompts import loader as prompts
 from src.proxies.factories import TikTokStudioProxyFactory
+from src.proxies.tiktok_studio_proxy import PatchrightTikTokStudioProxy
 
 
 def _container(tmp_path, video_config: str) -> ApplicationContainer:
@@ -146,3 +147,23 @@ def test_a_studio_profile_in_the_config_wins(tmp_path):
     )
 
     assert profile == tmp_path.resolve() / "studio"
+
+
+def test_the_studio_reader_is_built_on_the_publishers_profile(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "proxies:\n  tiktok_publisher_config:\n"
+        f"    cookies_path: {tmp_path}/tiktok_cookies.json\n"
+        "  tiktok_studio_config:\n    page_timeout_seconds: 5\n",
+        encoding="utf-8",
+    )
+    container = ApplicationContainer()
+    container.main_config.override(
+        providers.Singleton(MainConfig.from_yaml, file_path=str(path))
+    )
+
+    proxy = container.tiktok_studio_proxy()
+
+    assert isinstance(proxy, PatchrightTikTokStudioProxy)
+    assert proxy._user_data_dir == tmp_path.resolve() / "tiktok_cookies_userdata"
+    assert proxy._timeout == 5
