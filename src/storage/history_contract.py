@@ -1,0 +1,55 @@
+"""What the performance history keeps: one record per video, its publish
+attempts, and one summary per run.
+
+Every write that fails raises. Unlike the publish log, the history is the
+product: a run whose videos are not recorded went wrong.
+"""
+
+from datetime import datetime
+from typing import Optional, Protocol
+
+from ..entities.history import (
+    PublishAttempt,
+    RedditSnapshot,
+    RunMode,
+    RunSummary,
+    VideoRecord,
+)
+
+
+class HistoryError(Exception):
+    """The history could not be written. The run stops: it is the product."""
+
+
+class HistoryConflictError(HistoryError):
+    """A write clashed with what is already recorded: a video path or a
+    publish attempt recorded twice, or a record that does not exist."""
+
+
+class HistoryStore(Protocol):
+    def start_run(self, *, mode: RunMode, requested: int, started_at: datetime) -> int:
+        """Open the run's summary with zero counts; a run that dies midway
+        leaves it without ``finished_at``."""
+        ...
+
+    def finish_run(self, run_id: int, summary: RunSummary) -> None: ...
+
+    def run_summary(self, run_id: int) -> RunSummary: ...
+
+    def add_video_record(
+        self, record: VideoRecord, discovery_signals: Optional[RedditSnapshot]
+    ) -> int:
+        """Record a video and the post's numbers when it was found.
+
+        None is for a video that was not found by this run (imported, or a
+        manifest from before the history); it is stored as ``imported``.
+        """
+        ...
+
+    def find_record_by_video_path(self, video_path: str) -> Optional[VideoRecord]: ...
+
+    def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]: ...
+
+    def add_publish_attempt(self, record_id: int, attempt: PublishAttempt) -> None: ...
+
+    def publish_attempts(self, record_id: int) -> list[PublishAttempt]: ...

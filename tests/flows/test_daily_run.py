@@ -18,6 +18,7 @@ from src.capabilities.writing import (
 )
 from src.entities.configs.flows import DailyRunConfig
 from src.entities.generated_video import GeneratedVideo
+from src.entities.history import ProductionRecipe
 from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.story import StoryOrigin, StoryPart
@@ -26,6 +27,7 @@ from src.flows import daily_run as daily_run_module
 from src.flows.daily_run import DailyRun
 from src.flows.publish_slots import next_publish_slot
 from src.storage import FileRunStore, PublishLogEntry
+from tests.fakes.memory_history import InMemoryHistoryStore
 from tests.fakes.memory_store import InMemoryRunStore
 from tests.fakes.proxies import FakeLLMProxy
 from tests.fakes.publisher import FakePublisher
@@ -113,6 +115,8 @@ def build(tmp_path, *, n=3, count=4, writer=None, renderer=None, store=None, **k
         publisher=kw.pop("publisher", FakePublisher()),
         hashtags=HashtagSuggester(llm, ["reddit"], Language.PORTUGUESE),
         store=store if store is not None else InMemoryRunStore(),
+        history=kw.pop("history", InMemoryHistoryStore()),
+        recipe=ProductionRecipe.empty(),
         config=DailyRunConfig(
             count=count,
             publish_slots_local=SLOTS,

@@ -15,14 +15,16 @@ from ..capabilities.rendering.speech import SpeechService
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
 from ..entities.configs.flows import DailyRunConfig
+from ..entities.history import ProductionRecipe
 from ..flows.daily_run import DailyRun
 from ..prompts import loader as prompts
 from ..proxies import factories as proxies_factories
 from ..proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
-from ..storage import FileRunStore
+from ..storage import FileRunStore, SqliteHistoryStore
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 _DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
+_DEFAULT_HISTORY_DB_PATH = ".storage/history.sqlite"
 
 
 def _create_llm_proxy(**kwargs):
@@ -38,6 +40,10 @@ def _first_configured(*proxies):
 
 def _publish_log_path() -> str:
     return os.environ.get("TIKTOK_PUBLISH_LOG_PATH", _DEFAULT_PUBLISH_LOG_PATH)
+
+
+def _history_db_path() -> str:
+    return os.environ.get("HISTORY_DB_PATH", _DEFAULT_HISTORY_DB_PATH)
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -192,6 +198,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
     run_store = providers.Factory(
         FileRunStore, publish_log_path=providers.Callable(_publish_log_path)
     )
+    # Same for HISTORY_DB_PATH; each run gets its own connection.
+    history_store = providers.Factory(
+        SqliteHistoryStore, path=providers.Callable(_history_db_path)
+    )
     # Called with ``progress=``: the adapter decides where the lines go.
     daily_run = providers.Factory(
         DailyRun,
@@ -201,6 +211,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
         publisher=tiktok_publisher,
         hashtags=hashtag_suggester,
         store=run_store,
+        history=history_store,
+        recipe=providers.Object(ProductionRecipe.empty()),
         config=daily_run_config,
     )
 

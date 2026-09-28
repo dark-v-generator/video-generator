@@ -136,6 +136,8 @@ class _Run:
         self.log_path = tmp_path / "tiktok_publish_log.csv"
         self.messages: list[str] = []
         self.publisher = FakePublisher(fail_on=set(publish_fail_on))
+        # The history is written too, but is not part of the golden record.
+        monkeypatch.setenv("HISTORY_DB_PATH", str(tmp_path / "history.sqlite"))
 
         config = _main_config()
         container = ApplicationContainer()

@@ -44,3 +44,15 @@ def test_local_without_a_directory_fails_naming_the_key(tmp_path):
 
     with pytest.raises(ValidationError, match="local_footage_dir"):
         container.main_config()
+
+
+def test_the_history_path_is_read_on_every_call(tmp_path, monkeypatch):
+    container = ApplicationContainer()
+
+    monkeypatch.setenv("HISTORY_DB_PATH", str(tmp_path / "a" / "history.sqlite"))
+    container.history_store()
+    monkeypatch.setenv("HISTORY_DB_PATH", str(tmp_path / "b" / "history.sqlite"))
+    container.history_store()
+
+    assert (tmp_path / "a" / "history.sqlite").exists()
+    assert (tmp_path / "b" / "history.sqlite").exists()

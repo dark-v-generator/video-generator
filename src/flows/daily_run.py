@@ -25,11 +25,13 @@ from ..capabilities.writing import (
 )
 from ..entities.configs.flows import DailyRunConfig
 from ..entities.generated_video import GeneratedVideo
+from ..entities.history import ProductionRecipe
 from ..entities.story import Story
 from ..entities.story_candidate import EvaluatedStory
-from ..storage import PublishLogEntry, RunStore
+from ..storage import HistoryStore, PublishLogEntry, RunStore
 from .progress import Progress, short_error
 from .publish_slots import next_publish_slot
+from .run_record import RunRecord, recorded
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +47,14 @@ class DailyRun:
     publisher: Optional[ITikTokPublisherProxy]
     hashtags: HashtagSuggester
     store: RunStore
+    history: HistoryStore
+    recipe: ProductionRecipe
     config: DailyRunConfig
     progress: Progress
     now: Callable[[], datetime] = datetime.now
+    record: RunRecord = dataclasses.field(init=False, repr=False)
 
+    @recorded("generate")
     async def generate(
         self, *, count: Optional[int] = None, output_dir: str = DEFAULT_OUTPUT_DIR
     ) -> list[GeneratedVideo]:
@@ -72,6 +78,7 @@ class DailyRun:
         await self.progress(f"✅ Geração finalizada: {done}/{target} vídeos prontos.")
         return generated
 
+    @recorded("run")
     async def run(
         self, *, count: Optional[int] = None, output_dir: str = DEFAULT_OUTPUT_DIR
     ) -> None:
@@ -101,6 +108,7 @@ class DailyRun:
                         f"{last_slot.strftime('%d/%m %H:%M')}"
                     )
             except Exception as e:
+                self.record.publish_failed(e)
                 await self.progress(
                     f"❌ #{number} Erro ao publicar: {short_error(e)}. "
                     "Pulando para uma nova história."
@@ -112,6 +120,7 @@ class DailyRun:
             f"✅ Fluxo finalizado: {published}/{target} vídeos agendados."
         )
 
+    @recorded("publish")
     async def publish(self, videos: list[GeneratedVideo]) -> None:
         """Schedule videos generated earlier, in order; a failure skips only that one."""
         if not videos:
@@ -124,6 +133,7 @@ class DailyRun:
             try:
                 last_slot = await self._schedule(video, last_slot, [])
             except Exception as e:
+                self.record.publish_failed(e)
                 await self.progress(
                     f"❌ [#{number} — {video.title[:60]}] Erro: {short_error(e)}"
                 )
@@ -152,13 +162,14 @@ class DailyRun:
             )
         except Exception as e:
             logger.exception("Failed to find stories")
+            self.record.stop("discovery_failed")
             await self.progress(f"Erro ao buscar histórias: {e}")
             return [], 0
+        target = min(requested, len(candidates))
+        self.record.found(len(candidates), target)
         if not candidates:
             await self.progress("Nenhuma história boa encontrada hoje.")
             return [], 0
-
-        target = min(requested, len(candidates))
         if target:
             plan = (
                 "Iniciando geração de vídeo e agendamento."
@@ -185,6 +196,7 @@ class DailyRun:
             )
         except Exception as e:
             logger.exception("Failed to generate video for %s", story.origin.url)
+            self.record.skip("render")
             await self.progress(
                 f"❌ #{number} Erro na geração de vídeo: {short_error(e)}. "
                 "Pulando para a próxima história."
@@ -205,7 +217,7 @@ class DailyRun:
                 post_url=story.origin.url,
                 part=index if story.is_multipart else None,
             )
-            self.store.save_manifest(video, output_dir)
+            self.record.video(video, candidate, story, output_dir)
             videos.append(video)
             if story.is_multipart:
                 await self.progress(f"#{number} Parte {index} gerada")
@@ -230,6 +242,7 @@ class DailyRun:
 
             except WriterContentBlockedError as e:
                 logger.warning("Content filter on %s, skipping: %s", post.url, e)
+                self.record.skip("content_filter")
                 await self.progress(
                     f"⚠️ #{number} Bloqueado por filtro de conteúdo, pulando."
                 )
@@ -247,6 +260,7 @@ class DailyRun:
                     continue
 
                 logger.exception("Failed to prepare story for %s", post.url)
+                self.record.skip("script")
                 await self.progress(
                     f"❌ #{number} Erro no roteiro: {short_error(e)}. "
                     f"Tentando outra história para completar {target}."
@@ -287,11 +301,11 @@ class DailyRun:
             )
         except Exception as e:
             logger.exception("Failed to publish %s", video.video_path)
-            self.store.append_publish_log(
+            self.record.publish_log(
                 PublishLogEntry("failed", slot, video, list(tags), error=short_error(e))
             )
             raise
-        self.store.append_publish_log(
+        self.record.publish_log(
             PublishLogEntry("scheduled", slot, video, list(tags), publish_result=result)
         )
         return slot
