@@ -9,7 +9,11 @@ class TikTokStudioLayoutError(RuntimeError): ...   # campo/endpoint esperado aus
 class ITikTokStudioProxy(ABC):
     async def list_videos(self, *, since: datetime) -> list[TikTokVideoStats]: ...
     async def video_analytics(self, video_id: str) -> PerformanceMetrics: ...
+    async def close(self) -> None: ...          # também `async with proxy:`
 ```
+
+- Um navegador serve todas as chamadas até `close` (ou o fim do `async with`):
+  a coleta abre o perfil uma vez, não uma vez por vídeo.
 
 - `list_videos`: os posts da conta com `created_at >= since`, com id, legenda
   (`desc`), data e as contagens da lista (views, likes, comments, shares,
@@ -23,12 +27,16 @@ class ITikTokStudioProxy(ABC):
 ### `PatchrightTikTokStudioProxy(user_data_dir, headless, timeouts)` — `src/proxies/tiktok_studio_proxy.py`
 
 - `patchright.async_api.async_playwright().chromium.launch_persistent_context(
-  user_data_dir, headless=..., channel/args como o publisher)`; injeta
-  `Stealth().script_payload` via `add_init_script` antes de navegar.
-- Registra `page.on("response")` e guarda corpos JSON cujas URLs casam com os
-  padrões fixados pela sondagem (constantes no módulo, com o comentário "ver
-  `scripts/tiktok_studio_probe.py`"). Navega para a lista de conteúdo do Studio,
-  rola até cobrir `since`, e depois abre a analytics de cada vídeo pedido.
+  user_data_dir, channel="chrome", headless=..., args e user agent do publisher)`.
+  **Sem** o script do `playwright-stealth`: sob patchright ele fez toda navegação
+  falhar com `ERR_NAME_NOT_RESOLVED` (research §2).
+- Registra `page.on("response")` e guarda os corpos de `ITEM_LIST_PATH`
+  (`/tiktok/creator/manage/item_list/v1/`) e `INSIGHT_PATH`
+  (`/aweme/v2/data/insight/`), fixados pela sondagem. Navega para a lista de
+  conteúdo, rola até um post não fixado mais velho que `since` ou `has_more`
+  falso (três rolagens sem post novo → `TikTokStudioLayoutError`), e abre a
+  analytics de cada vídeo pedido esperando a resposta com
+  `video_finish_rate_realtime` daquele vídeo.
 - Parser em funções puras (`_parse_video_list(body) -> list[TikTokVideoStats]`,
   `_parse_analytics(body) -> PerformanceMetrics`) testadas sobre
   `tests/fixtures/tiktok_studio_probe.json`.

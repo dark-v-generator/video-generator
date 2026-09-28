@@ -73,6 +73,43 @@ processo. O bot roda a coleta sob o mesmo `RunLock` da rodada; na linha de
 comando, `patchright` falha ao abrir um perfil em uso e a coleta estoura cedo.
 Roda no servidor sob `xvfb-run`, headful como o publisher (menos detectável).
 
+### O que a sondagem encontrou (2026-09-28, servidor)
+
+`just prod-tiktok-studio-probe` → `.storage/tiktok_studio_probe/20260928T172825/`:
+103 respostas XHR/fetch, 91 JSON. Fixture redigido em
+`tests/fixtures/tiktok_studio_probe.json` (duas páginas da lista, cortadas, e a
+resposta de analytics com retenção; sem ids de conta, `device_id`, `msToken`,
+`X-Bogus`, URLs de CDN; ids de vídeo trocados por sequenciais).
+
+- **Lista de conteúdo** (`/tiktokstudio/content`): `POST
+  /tiktok/creator/manage/item_list/v1/`. Primeira página com 50 posts, depois 10
+  por rolagem (`cursor` 60, 70, 80), com a primeira página rebuscada no meio.
+  `has_more`, `cursor` e `item_list[]` com `item_id`, `desc` (título + hashtags,
+  como publicado), `create_time` (upload), `post_time` = `schedule_time` (o slot
+  agendado, em epoch como string), `play_count`, `like_count`, `comment_count`,
+  `share_count`, `favorite_count` (strings), `is_pinned`, `status` (102 em todos
+  os 80 posts vistos, 09-03 a 09-28). Posts agendados ainda não publicados não
+  aparecem. `created_at` do `TikTokVideoStats` = `post_time`, que é o que o
+  casamento compara com `scheduled_at`.
+- **Analytics por vídeo** (`/tiktokstudio/analytics/<id>`): `GET
+  /aweme/v2/data/insight/?type_requests=[...]`, várias vezes por página; só uma
+  resposta pede `video_finish_rate_realtime`. Ela traz
+  `video_info.statistics` (`play_count`, `digg_count`, `comment_count`,
+  `share_count`, `collect_count`, inteiros), `video_per_duration_realtime.value`
+  (tempo médio assistido em s, o "Average watch time" da tela) e
+  `video_finish_rate_realtime.value` (fração que viu até o fim). Cada insight
+  vem como `{"status": 0, "value": ...}`; status diferente de 0 é "sem dado" e
+  vira `None`.
+- **Sessão expirada**: com um perfil vazio (no servidor, sem tocar no perfil
+  real), a Studio carrega e em ~4 s redireciona para
+  `/login?redirect_url=...tiktokstudio...`.
+- **playwright-stealth não entra**: com o script de init do
+  `playwright-stealth` injetado via patchright, toda navegação falhou com
+  `ERR_NAME_NOT_RESOLVED` (reproduzido com perfil vazio, headless e headful);
+  sem ele, carrega. O patchright já esconde a automação; o leitor usa
+  `channel="chrome"` (o `/usr/bin/google-chrome-stable` 147 que o publisher usa
+  e que gravou o perfil), o user agent e as flags do publisher.
+
 ## 3. Casar um vídeo do TikTok com o registro: legenda e horário
 
 **Decisão**: a legenda publicada é `title` mais hashtags
