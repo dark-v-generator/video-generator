@@ -13,6 +13,7 @@ import inspect
 from datetime import datetime, timezone
 from typing import Callable, Optional, get_args
 
+from ..capabilities.rendering import ISpeechProxy
 from ..entities.generated_video import GeneratedVideo
 from ..entities.history import (
     ModelGrade,
@@ -37,6 +38,7 @@ class RunRecord:
     store: RunStore
     history: HistoryStore
     recipe: ProductionRecipe
+    speech: Optional[ISpeechProxy]
     mode: RunMode
     requested: int
     now: Callable[[], datetime]
@@ -81,9 +83,18 @@ class RunRecord:
         candidate: EvaluatedStory,
         story: Story,
         output_dir: str,
+        duration_seconds: float,
     ) -> None:
         """Save the video's manifest, then its record with the post's numbers."""
         self.store.save_manifest(video, output_dir)
+        gender = story.resolved_gender
+        recipe = dataclasses.replace(
+            self.recipe,
+            narrator_gender=gender,
+            voice_id=(
+                self.speech.voice_id(gender, story.language) if self.speech else ""
+            ),
+        )
         post = candidate.post
         now = self.now()
         record = VideoRecord(
@@ -103,9 +114,10 @@ class RunRecord:
             part_index=video.part or 1,
             part_count=len(story.parts),
             language=story.language.value,
+            duration_seconds=duration_seconds,
             grade=ModelGrade.from_evaluation(candidate.evaluation),
             deterministic_score=candidate.deterministic_score,
-            recipe=self.recipe,
+            recipe=recipe,
         )
         signals = RedditSnapshot(
             taken_at=now,
@@ -200,6 +212,7 @@ def recorded(mode: RunMode):
                 store=flow.store,
                 history=flow.history,
                 recipe=flow.recipe,
+                speech=flow.speech,
                 mode=mode,
                 requested=(
                     len(videos)

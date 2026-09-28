@@ -1,6 +1,7 @@
 import os
 
 from dependency_injector import containers, providers
+from .recipe import build_production_recipe
 from .secrets import secrets
 
 from ..capabilities.discovery import RedditStoryDiscovery
@@ -15,7 +16,6 @@ from ..capabilities.rendering.speech import SpeechService
 from ..capabilities.writing import ModelStoryWriter
 from ..entities.config import MainConfig
 from ..entities.configs.flows import DailyRunConfig
-from ..entities.history import ProductionRecipe
 from ..flows.daily_run import DailyRun
 from ..prompts import loader as prompts
 from ..proxies import factories as proxies_factories
@@ -202,6 +202,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
     history_store = providers.Factory(
         SqliteHistoryStore, path=providers.Callable(_history_db_path)
     )
+    # Fixed for the process; each run fills in the narrator's voice per story.
+    production_recipe = providers.Singleton(build_production_recipe, main_config)
     # Called with ``progress=``: the adapter decides where the lines go.
     daily_run = providers.Factory(
         DailyRun,
@@ -212,7 +214,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
         hashtags=hashtag_suggester,
         store=run_store,
         history=history_store,
-        recipe=providers.Object(ProductionRecipe.empty()),
+        recipe=production_recipe,
+        speech=speech_proxy,
         config=daily_run_config,
     )
 

@@ -4,6 +4,7 @@ The same fakes as ``test_daily_run.py``; the history is the in-memory store and
 the SQLite one on a temporary file, and both must end up the same.
 """
 
+import dataclasses
 import datetime
 
 import pytest
@@ -16,6 +17,7 @@ from src.flows import daily_run as daily_run_module
 from src.storage import HistoryError, SqliteHistoryStore
 from tests.fakes.memory_history import InMemoryHistoryStore
 from tests.fakes.memory_store import InMemoryRunStore
+from tests.fakes.proxies import FakeSpeechProxy
 from tests.fakes.publisher import FakePublisher
 from tests.fakes.renderer import EchoRenderer
 from tests.flows.test_daily_run import NOW, ScriptedWriter, build
@@ -36,6 +38,17 @@ EVALUATION = {
     "nota_geral": 70.0,
     "veredito": "Boa",
 }
+RECIPE = ProductionRecipe(
+    story_prompt_version="story123",
+    grading_prompt_version="grade456",
+    writer_model="openrouter/writer",
+    grader_model="openrouter/grader",
+    rendering_strategy="narration-over-footage",
+    speech_provider="edge-tts",
+    speech_rate=1.5,
+    narrator_gender="",
+    voice_id="",
+)
 NO_SKIPS = {
     "content_filter": 0,
     "script": 0,
@@ -104,6 +117,19 @@ class RenderFailsFor(EchoRenderer):
         return await super().render(story, low_quality=low_quality)
 
 
+class GenderByTitle(ScriptedWriter):
+    """Narrates the titles it is given with a female voice, the rest male."""
+
+    def __init__(self, female_titles):
+        super().__init__()
+        self._female = set(female_titles)
+
+    async def write(self, origin, **kwargs):
+        story = await super().write(origin, **kwargs)
+        gender = "female" if origin.title in self._female else "male"
+        return dataclasses.replace(story, resolved_gender=gender)
+
+
 class RecordsFail(InMemoryHistoryStore):
     def add_video_record(self, record, discovery_signals):
         raise HistoryError("disk I/O error")
@@ -133,8 +159,11 @@ async def test_each_video_gets_a_record_with_signals_grade_and_attempt(
     assert (first.part_index, first.part_count, first.imported) == (1, 1, False)
     assert first.grade == ModelGrade(70.0, "Boa", 80, 70, 60, 90, 50)
     assert first.deterministic_score == 0.5
-    assert first.recipe == ProductionRecipe.empty()
-    assert first.duration_seconds is None
+    # Without a speech proxy the voice stays empty; the gender is the story's.
+    assert first.recipe == dataclasses.replace(
+        ProductionRecipe.empty(), narrator_gender="male"
+    )
+    assert first.duration_seconds == 1.0
     assert first.hashtags == ["reddit", "historia", "fyp"]
     assert history.reddit_snapshots(first.id) == [
         RedditSnapshot(
@@ -169,6 +198,28 @@ async def test_the_next_day_reuses_the_paths_and_publish_only_finds_its_videos(
     assert record.post_url == "url-2"
     assert [a.status for a in history.publish_attempts(record.id)] == ["scheduled"]
     assert [a.status for a in history.publish_attempts(record.id - 1)] == ["scheduled"]
+
+
+@pytest.mark.asyncio
+async def test_each_record_carries_the_recipe_with_its_story_voice(tmp_path, history):
+    flow = flow_over(
+        tmp_path,
+        history,
+        writer=GenderByTitle(female_titles={"Auto 2"}),
+        recipe=RECIPE,
+        speech=FakeSpeechProxy(),
+    )
+
+    await flow.generate(count=2, output_dir=flow.output_dir)
+
+    male, female = records(history, flow)
+    assert male.recipe == dataclasses.replace(
+        RECIPE, narrator_gender="male", voice_id="fake-male-pt"
+    )
+    assert female.recipe == dataclasses.replace(
+        RECIPE, narrator_gender="female", voice_id="fake-female-pt"
+    )
+    assert male.duration_seconds > 0
 
 
 @pytest.mark.asyncio

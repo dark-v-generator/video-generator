@@ -116,7 +116,8 @@ def build(tmp_path, *, n=3, count=4, writer=None, renderer=None, store=None, **k
         hashtags=HashtagSuggester(llm, ["reddit"], Language.PORTUGUESE),
         store=store if store is not None else InMemoryRunStore(),
         history=kw.pop("history", InMemoryHistoryStore()),
-        recipe=ProductionRecipe.empty(),
+        recipe=kw.pop("recipe", ProductionRecipe.empty()),
+        speech=kw.pop("speech", None),
         config=DailyRunConfig(
             count=count,
             publish_slots_local=SLOTS,

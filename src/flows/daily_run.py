@@ -17,7 +17,7 @@ from typing import Callable, Optional
 
 from ..capabilities.discovery import StoryDiscovery
 from ..capabilities.publishing import HashtagSuggester, ITikTokPublisherProxy
-from ..capabilities.rendering import Renderer
+from ..capabilities.rendering import ISpeechProxy, Renderer
 from ..capabilities.writing import (
     StoryWriter,
     WriterContentBlockedError,
@@ -51,6 +51,8 @@ class DailyRun:
     recipe: ProductionRecipe
     config: DailyRunConfig
     progress: Progress
+    # Names the voice in each record's recipe; None leaves it empty.
+    speech: Optional[ISpeechProxy] = None
     now: Callable[[], datetime] = datetime.now
     record: RunRecord = dataclasses.field(init=False, repr=False)
 
@@ -217,7 +219,9 @@ class DailyRun:
                 post_url=story.origin.url,
                 part=index if story.is_multipart else None,
             )
-            self.record.video(video, candidate, story, output_dir)
+            self.record.video(
+                video, candidate, story, output_dir, part.duration_seconds
+            )
             videos.append(video)
             if story.is_multipart:
                 await self.progress(f"#{number} Parte {index} gerada")

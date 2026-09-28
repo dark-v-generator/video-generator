@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from src.capabilities.footage import LocalFolderFootageSource, YouTubeFootageSource
 from src.core.container import ApplicationContainer
 from src.entities.config import MainConfig
+from src.prompts import loader as prompts
 
 
 def _container(tmp_path, video_config: str) -> ApplicationContainer:
@@ -56,3 +57,58 @@ def test_the_history_path_is_read_on_every_call(tmp_path, monkeypatch):
 
     assert (tmp_path / "a" / "history.sqlite").exists()
     assert (tmp_path / "b" / "history.sqlite").exists()
+
+
+@pytest.mark.parametrize(
+    "config_file, writer, grader, rate",
+    [
+        ("config.dev.yaml", "mock", "mock", 1.2),
+        (
+            "config.prod.yaml",
+            "openrouter/moonshotai/kimi-k2.6",
+            "openrouter/deepseek/deepseek-v4-flash",
+            1.5,
+        ),
+    ],
+)
+def test_the_recipe_comes_from_the_config_and_the_prompt_files(
+    config_file, writer, grader, rate
+):
+    container = ApplicationContainer()
+    container.main_config.override(
+        providers.Singleton(MainConfig.from_yaml, file_path=config_file)
+    )
+
+    recipe = container.production_recipe()
+
+    assert recipe.story_prompt_version == prompts.fingerprint("story.jinja2")
+    assert recipe.grading_prompt_version == prompts.fingerprint("evaluate_story.jinja2")
+    assert (recipe.writer_model, recipe.grader_model) == (writer, grader)
+    assert recipe.rendering_strategy == "narration-over-footage"
+    assert (recipe.speech_provider, recipe.speech_rate) == ("edge-tts", rate)
+    # The run fills these per story.
+    assert (recipe.narrator_gender, recipe.voice_id) == ("", "")
+
+
+def test_without_a_story_model_the_writer_is_the_main_model(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "proxies:\n"
+        "  llm_config:\n"
+        "    type: prompt\n"
+        "    provider_config:\n"
+        "      provider: openai\n"
+        "      model: gpt-x\n"
+        "  speech_config:\n"
+        "    type: elevenlabs\n",
+        encoding="utf-8",
+    )
+    container = ApplicationContainer()
+    container.main_config.override(
+        providers.Singleton(MainConfig.from_yaml, file_path=str(path))
+    )
+
+    recipe = container.production_recipe()
+
+    assert recipe.writer_model == recipe.grader_model == "openai/gpt-x"
+    assert (recipe.speech_provider, recipe.speech_rate) == ("elevenlabs", None)
