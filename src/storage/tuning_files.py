@@ -1,4 +1,4 @@
-"""The tuning records as files under one directory, ``tuning/`` in the repo.
+"""The tuning records as files under one directory (TUNING_DIR).
 
 Every call reads the disk again: the records are small, and the assistant
 edits them between calls. A record that does not load stops whoever asked for
