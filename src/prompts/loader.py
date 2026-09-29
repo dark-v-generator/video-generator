@@ -8,6 +8,7 @@ stops the process at boot, naming the file, instead of halfway through a run.
 import hashlib
 import os
 from functools import lru_cache
+from typing import Optional
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
@@ -24,10 +25,11 @@ def render(template_name: str, **variables) -> str:
     return _environment(PROMPTS_DIR).get_template(template_name).render(**variables)
 
 
-def fingerprint(template_name: str, directory: str = PROMPTS_DIR) -> str:
+def fingerprint(template_name: str, directory: Optional[str] = None) -> str:
     """A short hash of the template file, so a record can tell which version
-    of a prompt made it. A missing template raises."""
-    with open(os.path.join(directory, template_name), "rb") as f:
+    of a prompt made it; from ``directory`` instead of the shipped prompts
+    when given. A missing template raises."""
+    with open(os.path.join(directory or PROMPTS_DIR, template_name), "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()[:12]
 
 
