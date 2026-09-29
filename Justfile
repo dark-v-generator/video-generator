@@ -120,6 +120,16 @@ tuning-check:
 tuning-summary:
     uv run python scripts/tuning_summary.py
 
+#   just tuning-data                                   # the last 30 days
+#   just tuning-data --since 2026-08-29 --until 2026-09-28 --json /tmp/pack.json
+#
+# Exits 2 with one line saying what to do when the last collection is old or
+# too few videos have settled (sync-history first).
+#
+# The numbers of a tuning report as JSON, from the local history and tuning/.
+tuning-data *args:
+    uv run python scripts/tuning_data.py {{args}}
+
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
 render-story story_json footage_dir:
     uv run python scripts/render_story.py {{story_json}} {{footage_dir}}
