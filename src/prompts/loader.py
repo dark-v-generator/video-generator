@@ -8,7 +8,7 @@ stops the process at boot, naming the file, instead of halfway through a run.
 import hashlib
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Mapping, Optional
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
@@ -31,6 +31,21 @@ def fingerprint(template_name: str, directory: Optional[str] = None) -> str:
     when given. A missing template raises."""
     with open(os.path.join(directory or PROMPTS_DIR, template_name), "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()[:12]
+
+
+def fingerprints(
+    templates: Mapping[str, str], directory: Optional[str] = None
+) -> dict[str, Optional[str]]:
+    """Each name's template fingerprint, None when the file is absent."""
+    directory = directory or PROMPTS_DIR
+    return {
+        name: (
+            fingerprint(template, directory)
+            if os.path.exists(os.path.join(directory, template))
+            else None
+        )
+        for name, template in templates.items()
+    }
 
 
 def load_examples(name: str) -> list:

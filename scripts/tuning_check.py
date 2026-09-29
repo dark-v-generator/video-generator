@@ -24,6 +24,7 @@ from typing import Callable, Optional
 
 import yaml
 
+from src.capabilities.tuning import prompt_drift
 from src.core.paths import tuning_dir
 from src.entities.tuning import (
     PROMPT_FILES,
@@ -32,7 +33,7 @@ from src.entities.tuning import (
     ExplorationPlan,
     Report,
 )
-from src.prompts.loader import PROMPTS_DIR, fingerprint
+from src.prompts.loader import PROMPTS_DIR, fingerprints
 from src.storage import FileTuningRecords, TuningError
 
 
@@ -171,24 +172,12 @@ def _prompts_match(records: Records) -> list[str]:
     cycle = _open_cycle(records)
     if cycle is None:
         return ["sem ciclo aberto, não há versões com que comparar"]
-    problems = []
-    for name, template in PROMPT_FILES.items():
-        recorded = getattr(cycle.prompts, name)
-        on_disk = (
-            fingerprint(template, str(records.prompts_dir))
-            if (records.prompts_dir / template).exists()
-            else None
-        )
-        explained = any(
-            change.prompt == name and change.to == on_disk
-            for change in cycle.outside_changes
-        )
-        if recorded != on_disk and not explained:
-            problems.append(
-                f"prompt {name} mudou fora da rotina:"
-                f" {recorded or 'ausente'} → {on_disk or 'ausente'}"
-            )
-    return problems
+    on_disk = fingerprints(PROMPT_FILES, str(records.prompts_dir))
+    return [
+        f"prompt {drift.prompt} mudou fora da rotina:"
+        f" {drift.recorded or 'ausente'} → {drift.on_disk or 'ausente'}"
+        for drift in prompt_drift(cycle, on_disk)
+    ]
 
 
 def _git(root: Path, *args: str) -> str:
