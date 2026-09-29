@@ -78,12 +78,18 @@ Lê `HISTORY_DB_PATH` (o arquivo puxado por `just sync-history`) e `TUNING_DIR`.
 ## Regras de cálculo
 
 - **`relative`**: [research.md §5](../research.md). `null` com menos de 5
-  vizinhos.
-- **`settled`**: `data_as_of − published_at ≥ settle-days`. `rows` traz todos os
+  vizinhos e nos vídeos não assentados. Os vizinhos vêm do histórico inteiro,
+  não só do período, assim como os vídeos de cada ciclo e de cada experimento.
+- **`published_at`**: `scheduled_at` da tentativa agendada mais recente; sem
+  ela, o `tiktok_created_at` do snapshot (o publicador às vezes relata falha de
+  um vídeo que o TikTok publicou).
+- **`settled`**: `taken_at − published_at ≥ settle-days`, com o `taken_at` do
+  snapshot do próprio vídeo. `rows` traz todos os
   vídeos do período; `considered` conta só os assentados com snapshot.
 - **`cycle_comparison`**: só vídeos com `goal = base` (ou NULL, para os
   anteriores à feature), assentados (FR-034). `previous.cycle = 0` é tudo o que
-  veio antes do primeiro ciclo. `also_changed` lista `writer_model`,
+  veio antes do primeiro ciclo. Vídeo sem `cycle` gravado pertence ao ciclo
+  mais recente implantado (`deployed`) até o dia em que foi feito. `also_changed` lista `writer_model`,
   `grader_model` e `rendering_strategy` quando diferem entre os dois ciclos:
   com a lista não vazia, a skill diz que o efeito não é atribuível só ao prompt.
   `verdict_possible` exige 20 vídeos de base assentados em cada lado.
@@ -96,8 +102,9 @@ Lê `HISTORY_DB_PATH` (o arquivo puxado por `just sync-history`) e `TUNING_DIR`.
 - **`lost_uploads`**: tentativas com falha e registros sem nenhuma tentativa
   bem-sucedida, no período.
 
-Antes do M4, `goal`, `exploration_*` e `cycle` vêm `null` e `exploration` vem
-com `experiments: []`.
+Antes do M4, `goal`, `exploration_*` e `cycle` vêm `null` nas linhas, e cada
+experimento aberto aparece com `produced: 0`. `slots` e `filled` vêm `null` até
+o M5.
 
 ## Onde fica a lógica
 

@@ -100,25 +100,25 @@ recusa quando os dados não sustentam achados.
 
 ### Tests
 
-- [ ] T018 [P] [US1] Criar `tests/capabilities/test_tuning_relative.py`: relativo com 5 vizinhos de cada lado, nas bordas do período (10 de um lado só), com menos de 5 vizinhos (`None`), empate de horário, vídeo sem snapshot fora da vizinhança, o próprio vídeo excluído, assentado calculado contra a data da coleta e não contra hoje
-- [ ] T019 [P] [US1] Criar `tests/capabilities/test_tuning_periods.py`: mediana semanal do canal, semana sem vídeos, contagem de tentativas falhas e de registros sem tentativa bem-sucedida
-- [ ] T020 [P] [US5] Criar `tests/capabilities/test_tuning_progress.py`: comparação entre ciclos só com vídeos de base assentados, `goal` NULL tratado como base, `previous.cycle = 0` para o que veio antes do ciclo 1, `also_changed` preenchido quando modelo ou estratégia diferem, `verdict_possible` falso abaixo de 20 de cada lado; progresso por experimento com `days_to_target` e `None` sem produção; fatia atingida desde `share_since`
-- [ ] T021 [P] [US1] Criar `tests/scripts/test_tuning_data.py`: pacote com todas as chaves do contrato sobre um SQLite semeado em `tmp_path`, `unlabelled` listando os ids sem rótulo, `prompt_drift` preenchido, as duas recusas com código 2 e stdout vazio, `--json` gravando o mesmo conteúdo
+- [X] T018 [P] [US1] Criar `tests/capabilities/test_tuning_relative.py`: relativo com 5 vizinhos de cada lado, nas bordas do período (10 de um lado só), com menos de 5 vizinhos (`None`), empate de horário, vídeo sem snapshot fora da vizinhança, o próprio vídeo excluído, assentado calculado contra a data da coleta e não contra hoje
+- [X] T019 [P] [US1] Criar `tests/capabilities/test_tuning_periods.py`: mediana semanal do canal, semana sem vídeos, contagem de tentativas falhas e de registros sem tentativa bem-sucedida
+- [X] T020 [P] [US5] Criar `tests/capabilities/test_tuning_progress.py`: comparação entre ciclos só com vídeos de base assentados, `goal` NULL tratado como base, `previous.cycle = 0` para o que veio antes do ciclo 1, `also_changed` preenchido quando modelo ou estratégia diferem, `verdict_possible` falso abaixo de 20 de cada lado; progresso por experimento com `days_to_target` e `None` sem produção; fatia atingida desde `share_since`
+- [X] T021 [P] [US1] Criar `tests/scripts/test_tuning_data.py`: pacote com todas as chaves do contrato sobre um SQLite semeado em `tmp_path`, `unlabelled` listando os ids sem rótulo, `prompt_drift` preenchido, as duas recusas com código 2 e stdout vazio, `--json` gravando o mesmo conteúdo
 
 ### Implementation
 
-- [ ] T022 [P] [US1] Criar `src/capabilities/tuning/__init__.py` e `src/capabilities/tuning/relative.py`: `settled(row, data_as_of, settle_days)` e `relative_performance(rows, settle_days)` conforme [research.md §5](./research.md), puras sobre `CrossedRow`
-- [ ] T023 [P] [US1] Criar `src/capabilities/tuning/periods.py`: `weekly_channel(rows)` e `lost_uploads(rows)`
-- [ ] T024 [P] [US5] Criar `src/capabilities/tuning/cycles.py`: `compare_cycles(rows, cycles, minimum=20)` devolvendo `current`, `previous`, `also_changed`, `verdict_possible` e `reason`
-- [ ] T025 [P] [US5] Criar `src/capabilities/tuning/progress.py`: `experiment_progress(rows, plan, today)` e `share_achieved(rows, plan)`
-- [ ] T026 [US1] Criar `scripts/tuning_data.py` com os argumentos e o formato de [contracts/tuning-data.md](./contracts/tuning-data.md): lê `SqliteHistoryStore(history_db_path()).crossed_view(...)` e `FileTuningRecords(tuning_dir())`, aplica as recusas antes de qualquer saída, junta os rótulos às linhas, serializa em JSON
-- [ ] T027 [US1] Adicionar a receita `tuning-data *args` ao `Justfile`
+- [X] T022 [P] [US1] Criar `src/capabilities/tuning/__init__.py` e `src/capabilities/tuning/relative.py`: `settled(row, data_as_of, settle_days)` e `relative_performance(rows, settle_days)` conforme [research.md §5](./research.md), puras sobre `CrossedRow`
+- [X] T023 [P] [US1] Criar `src/capabilities/tuning/periods.py`: `weekly_channel(rows)` e `lost_uploads(rows)`
+- [X] T024 [P] [US5] Criar `src/capabilities/tuning/cycles.py`: `compare_cycles(rows, cycles, minimum=20)` devolvendo `current`, `previous`, `also_changed`, `verdict_possible` e `reason`
+- [X] T025 [P] [US5] Criar `src/capabilities/tuning/progress.py`: `experiment_progress(rows, plan, today)` e `share_achieved(rows, plan)`
+- [X] T026 [US1] Criar `scripts/tuning_data.py` com os argumentos e o formato de [contracts/tuning-data.md](./contracts/tuning-data.md): lê `SqliteHistoryStore(history_db_path()).crossed_view(...)` e `FileTuningRecords(tuning_dir())`, aplica as recusas antes de qualquer saída, junta os rótulos às linhas, serializa em JSON
+- [X] T027 [US1] Adicionar a receita `tuning-data *args` ao `Justfile`
 
 ### Live verification (milestone gate)
 
-- [ ] T028 [US1] Executar [quickstart §2](./quickstart.md) sobre o histórico real depois de `just sync-history`: tempo, contagem de 84, conferência manual de três vídeos, as duas recusas; anotar os três `record_id` e os valores em Notes
+- [X] T028 [US1] Executar [quickstart §2](./quickstart.md) sobre o histórico real depois de `just sync-history`: tempo, contagem de 84, conferência manual de três vídeos, as duas recusas; anotar os três `record_id` e os valores em Notes
 
-**Checkpoint**: Milestone 2 DONE
+**Checkpoint**: Milestone 2 DONE ✅ (2026-09-29)
 
 ---
 
@@ -334,3 +334,10 @@ Se os dados do M4 mostrarem que quase nenhuma história atinge `min_fit`, ajusta
   - Migração sobre uma cópia de `.storage/history.sqlite`: 444 linhas mantidas, coluna `hashtags_prompt_version` criada, NULL em todas.
   - Semente: `cycles/001.yaml` com `deployed: null`, porque `tuning/` ainda não foi implantado; preencher no próximo `just deploy`. Nenhum registro do histórico tem receita ainda (os 444 são importados), então não havia versão implantada a conferir.
   - Contagem de B005 (≥ 35 s, 30 vídeos) refeita sobre o histórico local; o relatório de setembro não a trazia.
+- Gate M2 (T028, 2026-09-29, branch `006-m2-tuning-data`, depois de `just sync-history`: 447 registros, última coleta 2026-09-28 16:28 local):
+  - `uv run pytest -q` → 571 passed (M1 537 + 34 novos), 0 falhas. `uv run pytest tests/capabilities/test_tuning_relative.py tests/capabilities/test_tuning_periods.py tests/capabilities/test_tuning_progress.py tests/scripts/test_tuning_data.py -q` → 34 passed.
+  - `time just tuning-data --since 2026-08-29 --until 2026-09-28 --json …/pack.json` → 0,53 s, saída 0. 116 registros no período; os 84 do relatório de setembro são os que têm snapshot: `considered` 64 + `unsettled` 20; `no_snapshot` 32 (uploads que não chegaram ao TikTok: `never_published` 30, `attempts_failed` 35). Medianas semanais 1 065 (31 ago) → 930 → 602 → 430 (21 set), as do relatório de setembro. `prompt_drift` vazio; `cycle_comparison` ciclo 1 com 0 vídeos contra ciclo 0 com 64, `verdict_possible: false`.
+  - Conferência à mão sobre `just report --csv` (todo o histórico; assentado = `latest_taken_at − last_scheduled_at ≥ 7 d`, 64 vídeos, mesma contagem do pacote), 5 vizinhos de cada lado ordenados por horário: 335 → 1024 / mediana 1020 = 1,00 (pacote 1,0); 364 → 918 / 984,5 = 0,93 (pacote 0,93); 405 → 273 / 534 = 0,51 (pacote 0,51, vizinhos pulando 400 e 409, não assentados).
+  - `just tuning-data --days 3` → saída 2, stdout vazio, "0 vídeos assentados no período; o mínimo é 30; amplie com `--days`". `just tuning-data --max-age-days 0` → saída 2, stdout vazio, "última coleta em 2026-09-28; rode `just prod-collect-performance`".
+  - `just tuning-check` → "tudo certo" (a verificação 8 passou a usar o mesmo `prompt_drift` do pacote).
+  - Decisões de implementação: o relativo e os ciclos usam o histórico inteiro, não só o período (os vizinhos de um vídeo na borda do período e os vídeos do ciclo anterior ficam fora dele); o assentado conta até a coleta do próprio vídeo; `published_at` é o `scheduled_at` da tentativa agendada mais recente, senão o `tiktok_created_at` do snapshot (5 vídeos no histórico tinham falha no publicador e estão no TikTok); vídeo sem `cycle` gravado pertence ao ciclo mais recente implantado até o dia em que foi feito (0 antes do primeiro), para que os vídeos entre o deploy do ciclo 1 e o do M4 não caiam no ciclo 0; `never_published` conta os registros sem tentativa agendada e sem nada no TikTok; `exploration.experiments` já traz os experimentos abertos (com `produced: 0` até o M4 gravar `goal`), em vez de lista vazia.
