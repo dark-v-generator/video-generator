@@ -182,6 +182,15 @@ just report --columns                                    # colunas de --sort e -
 `--filter` é repetível e compara igualdade. As colunas e a estrutura do banco
 estão em [docs/architecture.md](docs/architecture.md#the-history-and-the-crossed-view).
 
+### Ajuste dos prompts
+
+O que o canal aprende com o desempenho fica em `tuning/`, ao lado dos prompts:
+crenças com a evidência, experimentos, ciclos e relatórios. Na sessão do
+assistente, `/prompt-tuning` lê o histórico, grava um relatório, publica uma
+página de leitura e recomenda manter ou fechar o ciclo; os prompts editoriais
+só mudam quando você fecha um ciclo, com o motivo de cada mudança registrado.
+Comece por `tuning/README.md`; a rotina está em [docs/tuning.md](docs/tuning.md).
+
 ### Renderizar uma história escrita à mão
 
 ```bash
