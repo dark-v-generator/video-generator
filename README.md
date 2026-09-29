@@ -138,8 +138,10 @@ just prod-import-history
 
 **Coletar o desempenho.** A coleta lê o TikTok Studio com a sessão do publisher,
 casa cada vídeo com o seu registro pela legenda e pelo horário agendado, e grava
-views, likes, comentários, shares, saves, watch médio e % assistido até o fim, mais
-os upvotes do post no Reddit agora. Rode alguns dias depois de publicar e repita
+views, likes, comentários, shares, saves, watch médio e % assistido até o fim, a
+curva de retenção (quantos ainda assistem a cada segundo), a origem das views (For
+You, busca, perfil…) e os seguidores que o vídeo trouxe, mais os upvotes do post no
+Reddit agora. Rode alguns dias depois de publicar e repita
 para acompanhar: cada coleta acrescenta um retrato datado, sem mexer nos anteriores.
 
 ```bash
@@ -163,7 +165,8 @@ comando, não comece uma coleta com uma publicação em andamento.
 **Ver o cruzamento.** No laptop, puxe o histórico do servidor (só servidor →
 laptop) e peça a visão cruzada: uma linha por vídeo com nota, upvotes na
 descoberta e agora, views, likes, comentários, shares, saves, watch médio,
-% até o fim, versão do prompt e modelo. Vídeo ainda sem coleta aparece com essas
+% até o fim, % que passou dos 3 s (o gancho), % das views vindas do For You,
+seguidores ganhos, versão do prompt e modelo. Vídeo ainda sem coleta aparece com essas
 colunas vazias.
 
 ```bash

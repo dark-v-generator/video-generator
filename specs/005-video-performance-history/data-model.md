@@ -102,6 +102,9 @@ Uma por chamada ao publisher, espelho da linha do CSV.
 | `views`, `likes`, `comments`, `shares`, `saves` | `int \| None` | `None` quando o Studio não expõe |
 | `avg_watch_seconds` | `float \| None` | analytics por vídeo |
 | `full_watch_ratio` | `float \| None` | 0–1, "assistiu até o fim" |
+| `new_followers` | `int \| None` | seguidores que o vídeo trouxe |
+| `retention` | `tuple[float, ...] \| None` | 0–1 ainda assistindo a cada segundo, 1.0 no 0 s; JSON no SQLite |
+| `traffic_sources` | `dict[str, float] \| None` | 0–1 das views por origem ("For You", "Search"…); JSON no SQLite |
 | `tiktok_created_at` | `datetime \| None` | `createTime` do post |
 
 ## TikTokVideoStats (M3)
@@ -145,8 +148,9 @@ Projeção, não tabela: campos de `VideoRecord` + `ModelGrade` + `ProductionRec
 achatados, `discovery_*` (score, comentários, ratio e data do snapshot `discovery`),
 `latest_reddit_*` (último snapshot `collection`: vídeo nunca coletado não tem
 "agora"; mais `latest_reddit_available`), `latest_*` (último `PerformanceSnapshot`,
-`None` quando não há), `last_attempt_status`, `last_scheduled_at` (da última
-tentativa). `CrossedRow.columns()` achata a linha em `CROSSED_COLUMNS` (53 nomes,
+`None` quando não há; mais `latest_retained_3s`/`latest_retained_10s`, o ponto da
+curva naquele segundo, e `latest_for_you_ratio`), `last_attempt_status`, `last_scheduled_at` (da última
+tentativa). `CrossedRow.columns()` achata a linha em `CROSSED_COLUMNS` (57 nomes,
 em `src/entities/history.py`, reexportada por `src/storage`), que são os nomes
 aceitos por `--sort`/`--filter` e as colunas do CSV. Vazios ordenam no fim nos dois
 sentidos, empates por id; filtro compara número como número e o resto como texto.
@@ -186,7 +190,10 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
   id INTEGER PRIMARY KEY, record_id INTEGER NOT NULL REFERENCES video_records(id),
   collection_id INTEGER NOT NULL REFERENCES collections(id), taken_at TEXT NOT NULL,
   tiktok_video_id TEXT NOT NULL, views INTEGER, likes INTEGER, comments INTEGER, shares INTEGER, saves INTEGER,
-  avg_watch_seconds REAL, full_watch_ratio REAL, tiktok_created_at TEXT);
+  avg_watch_seconds REAL, full_watch_ratio REAL, tiktok_created_at TEXT,
+  new_followers INTEGER, retention TEXT, traffic_sources TEXT);
+-- new_followers, retention e traffic_sources vieram depois do M5: um histórico
+-- anterior ganha as colunas ao abrir (ALTER TABLE), vazias nos retratos antigos.
 -- M5: "último snapshot/tentativa por registro" na visão cruzada
 CREATE INDEX IF NOT EXISTS reddit_snapshots_by_record ON reddit_snapshots (record_id);
 CREATE INDEX IF NOT EXISTS publish_attempts_by_record ON publish_attempts (record_id);
