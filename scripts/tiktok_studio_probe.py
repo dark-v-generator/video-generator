@@ -2,7 +2,8 @@
 
 Opens the publisher's profile the same way the Studio reader does, visits the
 content list (scrolling to load more rows) and one video's analytics page,
-and writes every JSON response to disk. It parses nothing: the dump is the
+then that video's comments, both in the Studio's comment page and on
+the video's public page, and writes every JSON response to disk. It parses nothing: the dump is the
 evidence the parser in src/proxies/tiktok_studio_proxy.py is written and
 tested against, and rerunning this is how that parser is fixed when the
 Studio changes.
@@ -15,6 +16,8 @@ Output, under <out>/<UTC timestamp>/:
 Usage (on the server, through `just prod-tiktok-studio-probe`):
     uv run python scripts/tiktok_studio_probe.py
     uv run python scripts/tiktok_studio_probe.py --video-id 7412345678901234567
+    uv run python scripts/tiktok_studio_probe.py --video-id 7412345678901234567 \\
+        --handle fala.gu
 """
 
 from __future__ import annotations
@@ -36,6 +39,7 @@ from src.proxies.factories import TikTokStudioProxyFactory
 from src.proxies.tiktok_studio_proxy import (
     ANALYTICS_URL_TEMPLATE,
     CONTENT_LIST_URL,
+    STUDIO_ORIGIN,
     raise_if_logged_out,
     studio_page,
 )
@@ -45,6 +49,11 @@ DEFAULT_OUT = ".storage/tiktok_studio_probe"
 SETTLE_MS = 8000
 VIDEO_LINK = re.compile(r"/(?:video|analytics)/(\d{15,})")
 # Only used when the list has no links to follow: a TikTok post id in a body.
+# The account's handle, which the video's public page is addressed by; the
+# analytics page's insight carries it in video_info.author.
+HANDLE_IN_BODY = re.compile(r'"unique_id"\s*:\s*"([\w.]+)"')
+STUDIO_COMMENTS_URL = f"{STUDIO_ORIGIN}/tiktokstudio/comment"
+VIDEO_PAGE_TEMPLATE = f"{STUDIO_ORIGIN}/@{{handle}}/video/{{video_id}}"
 VIDEO_ID_IN_BODY = re.compile(
     r'"(?:item_id|itemId|aweme_id|awemeId|video_id|id)"\s*:\s*"?(\d{18,20})'
 )
@@ -139,7 +148,17 @@ async def first_video_id(page: Page, recorder: Recorder) -> Optional[str]:
     return None
 
 
-async def probe(out: Path, video_id: Optional[str], scrolls: int) -> Path:
+def account_handle(recorder: Recorder) -> Optional[str]:
+    for text in recorder.bodies:
+        found = HANDLE_IN_BODY.search(text)
+        if found:
+            return found.group(1)
+    return None
+
+
+async def probe(
+    out: Path, video_id: Optional[str], handle: Optional[str], scrolls: int
+) -> Path:
     main_config = container.main_config()
     studio_config = main_config.proxies.tiktok_studio_config
     profile = TikTokStudioProxyFactory.profile(
@@ -184,6 +203,31 @@ async def probe(out: Path, video_id: Optional[str], scrolls: int) -> Path:
             await scroll_to_end(page, 2)
             await screenshot(page, directory, 3, "analytics")
             await recorder.drain()
+
+            print("💬 Comentários no Studio")
+            await page.goto(STUDIO_COMMENTS_URL, wait_until="domcontentloaded")
+            await page.wait_for_timeout(SETTLE_MS)
+            raise_if_logged_out(page)
+            await scroll_to_end(page, 2)
+            await screenshot(page, directory, 4, "studio-comments")
+            await recorder.drain()
+
+            handle = handle or account_handle(recorder)
+            if handle is None:
+                raise RuntimeError(
+                    "Nenhum handle da conta nas respostas; rode de novo com "
+                    "--handle NOME."
+                )
+            print(f"💬 Comentários na página pública de @{handle}/{video_id}")
+            await page.goto(
+                VIDEO_PAGE_TEMPLATE.format(handle=handle, video_id=video_id),
+                wait_until="domcontentloaded",
+            )
+            await page.wait_for_timeout(SETTLE_MS)
+            raise_if_logged_out(page)
+            await scroll_to_end(page, 3)
+            await screenshot(page, directory, 5, "video-page")
+            await recorder.drain()
     finally:
         await recorder.drain()
         recorder.close()
@@ -201,11 +245,15 @@ def main() -> None:
         "--video-id", help="Video whose analytics to open (default: the first listed)"
     )
     parser.add_argument(
+        "--handle",
+        help="Account handle for the video's public page (default: from the insight)",
+    )
+    parser.add_argument(
         "--scrolls", type=int, default=5, help="Scrolls down the content list"
     )
     args = parser.parse_args()
     try:
-        asyncio.run(probe(args.out, args.video_id, args.scrolls))
+        asyncio.run(probe(args.out, args.video_id, args.handle, args.scrolls))
     except Exception as exc:
         print(f"❌ {type(exc).__name__}: {exc}", file=sys.stderr)
         sys.exit(1)
