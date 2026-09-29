@@ -28,10 +28,13 @@ PERIOD = ["--since", "2026-09-10", "--until", "2026-10-20"]
 LABELLED = (1, 2)
 
 
-def _record(history, day: int, *, collected: bool = True, failed: bool = False) -> int:
+def _record(
+    history, day: int, *, collected: bool = True, failed: bool = False, **made_for
+) -> int:
     created = FIRST + timedelta(days=day)
     record_id = history.add_video_record(
         VideoRecord(
+            **made_for,
             created_at=created,
             run_id=1,
             video_path=f"output/daily/{day}.mp4",
@@ -227,6 +230,27 @@ def test_the_open_experiments_show_their_progress(history, records, capsys):
     assert package["exploration"]["share_since"] == "2026-10-15"
     assert [e["id"] for e in package["exploration"]["experiments"]] == ["E002"]
     assert package["exploration"]["experiments"][0]["produced"] == 0
+
+
+def test_the_goal_and_the_exploration_grade_come_from_the_history(
+    history, records, capsys
+):
+    record_id = _record(
+        history,
+        35,
+        collected=False,
+        goal="E002",
+        exploration_experiment="E002",
+        exploration_fit=88.0,
+        cycle=2,
+    )
+
+    package = _package(capsys)
+
+    (row,) = [r for r in package["rows"] if r["record_id"] == record_id]
+    assert (row["goal"], row["cycle"]) == ("E002", 2)
+    assert (row["exploration_experiment"], row["exploration_fit"]) == ("E002", 88.0)
+    assert package["exploration"]["experiments"][0]["produced"] == 1
 
 
 def test_json_writes_the_same_package_to_a_file(history, records, capsys, tmp_path):

@@ -89,9 +89,8 @@ def _row(video: Video, label: Optional[StoryLabel]) -> dict:
         "for_you_share": _round(columns["latest_for_you_ratio"], 3),
         "new_followers": columns["latest_new_followers"],
         "goal": video.goal,
-        # The history records the exploration grade from milestone 4 on.
-        "exploration_experiment": None,
-        "exploration_fit": None,
+        "exploration_experiment": columns["exploration_experiment"],
+        "exploration_fit": columns["exploration_fit"],
         "cycle": video.cycle,
         "story_prompt_version": columns["story_prompt_version"],
         "grading_prompt_version": columns["grading_prompt_version"],

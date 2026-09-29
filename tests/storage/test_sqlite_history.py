@@ -9,6 +9,7 @@ import pytest
 from src.entities.history import (
     CROSSED_COLUMNS,
     Collection,
+    GoalCounts,
     ModelGrade,
     PerformanceMetrics,
     PerformanceSnapshot,
@@ -21,6 +22,7 @@ from src.entities.history import (
 from src.storage import HistoryConflictError, SqliteHistoryStore, UnknownColumnError
 from src.storage.sqlite_history import (
     _AUDIENCE_COLUMNS_SQL,
+    _EXPLORATION_COLUMNS_SQL,
     _RECIPE_ADDED_COLUMNS_SQL,
     SCHEMA,
 )
@@ -704,3 +706,110 @@ def test_the_crossed_view_shows_the_hook_and_the_for_you_share(store, crossed):
     assert ids(store.crossed_view(filters={"latest_for_you_ratio": "0"})) == [
         crossed["flopped"]
     ]
+
+
+# --------------------------------------------------------------------------
+# What each video was made for (feature 006, M4)
+# --------------------------------------------------------------------------
+
+
+def explored(path: str, goal="base", experiment="E001", fit=81.5, cycle=2, **kw):
+    return record(
+        path,
+        goal=goal,
+        exploration_experiment=experiment,
+        exploration_fit=fit,
+        cycle=cycle,
+        **kw,
+    )
+
+
+def test_a_record_keeps_its_goal_exploration_grade_and_cycle(store):
+    recipe = dataclasses.replace(
+        ProductionRecipe.empty(), exploration_prompt_version="x1"
+    )
+    record_id = store.add_video_record(
+        explored("out/a.mp4", recipe=recipe), discovery()
+    )
+
+    saved = store.video_record(record_id)
+
+    assert (saved.goal, saved.exploration_experiment) == ("base", "E001")
+    assert (saved.exploration_fit, saved.cycle) == (81.5, 2)
+    assert saved.recipe.exploration_prompt_version == "x1"
+
+
+def test_a_record_made_without_a_plan_keeps_them_empty(store):
+    record_id = store.add_video_record(record(), discovery())
+
+    saved = store.video_record(record_id)
+
+    assert (saved.goal, saved.exploration_experiment) == (None, None)
+    assert (saved.exploration_fit, saved.cycle) == (None, None)
+
+
+def test_the_crossed_view_sorts_and_filters_by_goal_fit_and_cycle(store):
+    low = store.add_video_record(explored("out/a.mp4", fit=40.0), discovery())
+    high = store.add_video_record(explored("out/b.mp4", goal="E001"), discovery())
+    plain = store.add_video_record(record("out/c.mp4"), discovery())
+
+    assert ids(store.crossed_view(sort=("exploration_fit", True))) == [
+        high,
+        low,
+        plain,
+    ]
+    assert ids(store.crossed_view(filters={"goal": "E001"})) == [high]
+    assert ids(store.crossed_view(filters={"cycle": "2"})) == [low, high]
+    columns = store.crossed_view(filters={"goal": "E001"})[0].columns()
+    assert (columns["exploration_experiment"], columns["cycle"]) == ("E001", 2)
+
+
+def test_goal_counts_are_the_videos_made_since_and_those_for_an_experiment(store):
+    day = T0.date()
+    store.add_video_record(
+        explored("out/old.mp4", created_at=T0 - timedelta(days=1)), discovery()
+    )
+    store.add_video_record(explored("out/a.mp4"), discovery())
+    store.add_video_record(explored("out/b.mp4", goal="E001"), discovery())
+    store.add_video_record(explored("out/c.mp4", goal="E002"), discovery())
+    # From before the history kept goals: made, but not for an experiment.
+    store.add_video_record(record("out/d.mp4"), discovery())
+    # Imported videos were not made by a run.
+    store.add_video_record(explored("out/e.mp4", goal="E001"), None)
+
+    counts = store.goal_counts(day)
+
+    assert (counts.total, counts.exploration) == (4, 2)
+    assert store.goal_counts(day + timedelta(days=1)) == GoalCounts(0, 0)
+
+
+def test_a_history_from_before_the_goals_gains_their_columns(tmp_path):
+    path = str(tmp_path / "history.sqlite")
+    old = sqlite3.connect(path)
+    before = SCHEMA.replace(_EXPLORATION_COLUMNS_SQL, "").replace(
+        ", exploration_prompt_version TEXT", ""
+    )
+    assert "goal" not in before and "exploration_prompt_version" not in before
+    old.executescript(before)
+    for n in range(3):
+        old.execute(
+            "INSERT INTO video_records (created_at, video_path, title, post_url,"
+            " story_prompt_version, hashtags_prompt_version)"
+            f" VALUES ('2026-09-25T10:00:00+00:00', 'out/{n}.mp4', 'Before', 'u',"
+            " 's1', 'h1')"
+        )
+    old.commit()
+    old.close()
+
+    store = SqliteHistoryStore(path)
+
+    rows = store.crossed_view()
+    assert len(rows) == 3
+    assert {
+        (r.record.goal, r.record.cycle, r.record.exploration_fit) for r in rows
+    } == {(None, None, None)}
+    assert rows[0].record.recipe.hashtags_prompt_version == "h1"
+    assert rows[0].record.recipe.exploration_prompt_version is None
+    store.add_video_record(explored("out/new.mp4"), discovery())
+    # Opening it again finds the columns already there.
+    assert len(SqliteHistoryStore(path).crossed_view(filters={"goal": "base"})) == 1

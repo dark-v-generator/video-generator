@@ -1,12 +1,13 @@
 """A history store over dicts and lists, meeting the same contract as SQLite."""
 
 import dataclasses
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Optional
 
 from src.entities.history import (
     Collection,
     CrossedRow,
+    GoalCounts,
     PerformanceSnapshot,
     PublishAttempt,
     PublishedRecord,
@@ -110,6 +111,16 @@ class InMemoryHistoryStore:
                 and (post_url is None or r.post_url == post_url)
             ),
             None,
+        )
+
+    def goal_counts(self, since: date) -> GoalCounts:
+        start = _utc(datetime.combine(since, time()))
+        made = [
+            r for r in self.records.values() if not r.imported and r.created_at >= start
+        ]
+        return GoalCounts(
+            total=len(made),
+            exploration=sum(r.goal not in (None, "base") for r in made),
         )
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]:

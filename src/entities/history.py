@@ -81,6 +81,8 @@ class ProductionRecipe:
     voice_id: str
     # None on videos made before the hashtags prompt was versioned.
     hashtags_prompt_version: Optional[str] = None
+    # None on videos made before the exploration prompt existed.
+    exploration_prompt_version: Optional[str] = None
 
     @classmethod
     def empty(cls) -> "ProductionRecipe":
@@ -172,6 +174,15 @@ class VideoRecord:
     hashtags: list[str] = field(default_factory=list)
     tiktok_video_id: Optional[str] = None
     imported: bool = False
+    # What the video was made for: "base", or the experiment whose slot it
+    # took. The experiment the exploration grade named is kept even when the
+    # video was made for the base; the grade is None while none was open.
+    # All four are None on videos made before the history kept them.
+    goal: Optional[str] = None
+    exploration_experiment: Optional[str] = None
+    exploration_fit: Optional[float] = None
+    # The tuning cycle in effect when it was made.
+    cycle: Optional[int] = None
     id: Optional[int] = None
 
 
@@ -199,6 +210,14 @@ class RunSummary:
     skipped: dict[SkipReason, int]
     stopped_reason: str = ""
     id: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class GoalCounts:
+    """The videos runs made since a day, and how many were for an experiment."""
+
+    total: int
+    exploration: int
 
 
 @dataclass(frozen=True)
@@ -239,6 +258,7 @@ _RECORD_COLUMNS = (
 _GRADE_COLUMNS = ("overall", "verdict", *_CRITERIA)
 _RECIPE_COLUMNS = tuple(f.name for f in fields(ProductionRecipe))
 _REDDIT_COLUMNS = ("score", "num_comments", "upvote_ratio", "taken_at")
+EXPLORATION_COLUMNS = ("goal", "exploration_experiment", "exploration_fit", "cycle")
 # The curve and the breakdown are not columns: the crossed view shows the
 # points of them that compare across videos.
 METRIC_COLUMNS = tuple(
@@ -255,6 +275,7 @@ CROSSED_COLUMNS: tuple[str, ...] = (
     *(f"grade_{name}" for name in _GRADE_COLUMNS),
     "deterministic_score",
     *_RECIPE_COLUMNS,
+    *EXPLORATION_COLUMNS,
     "hashtags",
     "imported",
     "last_attempt_status",
@@ -299,6 +320,7 @@ class CrossedRow:
                 name: getattr(recipe, name) if recipe else None
                 for name in _RECIPE_COLUMNS
             },
+            **{name: getattr(record, name) for name in EXPLORATION_COLUMNS},
             "hashtags": " ".join(f"#{tag}" for tag in record.hashtags),
             "imported": record.imported,
             "last_attempt_status": attempt.status if attempt else None,

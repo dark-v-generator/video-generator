@@ -5,13 +5,14 @@ Every write that fails raises. Unlike the publish log, the history is the
 product: a run whose videos are not recorded went wrong.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Iterable, Optional, Protocol
 
 from ..entities.history import (
     CROSSED_COLUMNS,
     Collection,
     CrossedRow,
+    GoalCounts,
     PerformanceSnapshot,
     PublishAttempt,
     PublishedRecord,
@@ -71,6 +72,11 @@ class HistoryStore(Protocol):
         """The newest record for the path: each daily run reuses the paths of
         the one before, so older records keep the path of a file now gone.
         With *post_url*, the newest one made from that post."""
+        ...
+
+    def goal_counts(self, since: date) -> GoalCounts:
+        """The records runs made from local midnight of *since* on, imported
+        ones left out, and how many had an experiment as their goal."""
         ...
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]: ...

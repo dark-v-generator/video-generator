@@ -91,6 +91,9 @@ def test_the_recipe_comes_from_the_config_and_the_prompt_files(
     assert recipe.hashtags_prompt_version == prompts.fingerprint(
         "generate_hashtags.jinja2"
     )
+    assert recipe.exploration_prompt_version == prompts.fingerprint(
+        "evaluate_exploration.jinja2"
+    )
     assert (recipe.writer_model, recipe.grader_model) == (writer, grader)
     assert recipe.rendering_strategy == "narration-over-footage"
     assert (recipe.speech_provider, recipe.speech_rate) == ("edge-tts", rate)

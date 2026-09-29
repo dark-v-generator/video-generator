@@ -7,7 +7,7 @@ time, which is what ``datetime.now()`` gives the run.
 import json
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 from typing import Iterator, Optional
 
@@ -17,6 +17,7 @@ from ..entities.history import (
     RETAINED_AT_SECONDS,
     Collection,
     CrossedRow,
+    GoalCounts,
     ModelGrade,
     PerformanceMetrics,
     PerformanceSnapshot,
@@ -61,13 +62,29 @@ _AUDIENCE_COLUMNS_SQL = "".join(
 )
 
 # Recipe parts versioned after the first records: NULL in the rows before.
-_RECIPE_ADDED_COLUMNS = {"hashtags_prompt_version": "TEXT"}
+_RECIPE_ADDED_COLUMNS = {
+    "hashtags_prompt_version": "TEXT",
+    "exploration_prompt_version": "TEXT",
+}
 _RECIPE_ADDED_COLUMNS_SQL = "".join(
     f", {name} {kind}" for name, kind in _RECIPE_ADDED_COLUMNS.items()
 )
+# What each video was made for, from the tuning cycle on: NULL before.
+_EXPLORATION_COLUMNS = {
+    "goal": "TEXT",
+    "exploration_experiment": "TEXT",
+    "exploration_fit": "REAL",
+    "cycle": "INTEGER",
+}
+_EXPLORATION_COLUMNS_SQL = "".join(
+    f", {name} {kind}" for name, kind in _EXPLORATION_COLUMNS.items()
+)
+# In the order ALTER TABLE appends them, so a history migrated step by step
+# lays its columns out as a new one does.
+_VIDEO_RECORDS_ADDED_SQL = _RECIPE_ADDED_COLUMNS_SQL + _EXPLORATION_COLUMNS_SQL
 _ADDED_COLUMNS = {
     "performance_snapshots": _AUDIENCE_COLUMNS,
-    "video_records": _RECIPE_ADDED_COLUMNS,
+    "video_records": {**_RECIPE_ADDED_COLUMNS, **_EXPLORATION_COLUMNS},
 }
 
 SCHEMA = f"""
@@ -77,7 +94,7 @@ CREATE TABLE IF NOT EXISTS run_summaries (
   produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL,
   stopped_reason TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS video_records (
-  {_VIDEO_RECORDS_COLUMNS}{_RECIPE_ADDED_COLUMNS_SQL});
+  {_VIDEO_RECORDS_COLUMNS}{_VIDEO_RECORDS_ADDED_SQL});
 CREATE INDEX IF NOT EXISTS video_records_by_path ON video_records (video_path);
 CREATE TABLE IF NOT EXISTS reddit_snapshots (
   id INTEGER PRIMARY KEY, record_id INTEGER NOT NULL REFERENCES video_records(id),
@@ -318,7 +335,7 @@ class SqliteHistoryStore:
             PRAGMA foreign_keys=OFF;
             BEGIN;
             CREATE TABLE video_records_rebuilt (
-              {_VIDEO_RECORDS_COLUMNS}{_RECIPE_ADDED_COLUMNS_SQL});
+              {_VIDEO_RECORDS_COLUMNS}{_VIDEO_RECORDS_ADDED_SQL});
             INSERT INTO video_records_rebuilt SELECT * FROM video_records;
             DROP TABLE video_records;
             ALTER TABLE video_records_rebuilt RENAME TO video_records;
@@ -416,6 +433,7 @@ class SqliteHistoryStore:
             "hashtags": _tags_text(record.hashtags),
             "tiktok_video_id": record.tiktok_video_id,
             "imported": int(record.imported or discovery_signals is None),
+            **{f: getattr(record, f) for f in _EXPLORATION_COLUMNS},
         }
         with self._tx() as db:
             cursor = db.execute(
@@ -455,6 +473,14 @@ class SqliteHistoryStore:
             (video_path, post_url, post_url),
         ).fetchone()
         return self._record(row) if row else None
+
+    def goal_counts(self, since: date) -> GoalCounts:
+        total, exploration = self._conn.execute(
+            "SELECT count(*), count(CASE WHEN goal != 'base' THEN 1 END)"
+            " FROM video_records WHERE imported = 0 AND created_at >= ?",
+            (_to_iso(datetime.combine(since, time())),),
+        ).fetchone()
+        return GoalCounts(total=total, exploration=exploration)
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]:
         rows = self._conn.execute(
@@ -496,6 +522,7 @@ class SqliteHistoryStore:
             hashtags=_tags_list(row["hashtags"]),
             tiktok_video_id=row["tiktok_video_id"],
             imported=bool(row["imported"]),
+            **{f: row[f] for f in _EXPLORATION_COLUMNS},
         )
 
     def add_publish_attempt(self, record_id: int, attempt: PublishAttempt) -> None:

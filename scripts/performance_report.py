@@ -58,6 +58,7 @@ TABLE: list[tuple[str, Callable[[dict], str], bool]] = [
     ("título", lambda c: _title(c["title"]), False),
     ("nota", lambda c: _number(c["grade_overall"]), True),
     ("veredito", lambda c: c["grade_verdict"] or "", False),
+    ("objetivo", lambda c: c["goal"] or "", False),
     ("up desc.", lambda c: _number(c["discovery_score"]), True),
     ("up agora", _upvotes_now, True),
     ("views", lambda c: _number(c["latest_views"]), True),

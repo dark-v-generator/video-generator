@@ -30,9 +30,12 @@ def history(tmp_path, monkeypatch):
     return SqliteHistoryStore(str(path))
 
 
-def seed(history, title, grade, views=None, *, days=0, prompt="abc123def456"):
+def seed(
+    history, title, grade, views=None, *, days=0, prompt="abc123def456", goal=None
+):
     record_id = history.add_video_record(
         VideoRecord(
+            goal=goal,
             created_at=T0 + timedelta(days=days),
             run_id=1,
             video_path=f"output/daily/{title}.mp4",
@@ -88,7 +91,7 @@ def seed(history, title, grade, views=None, *, days=0, prompt="abc123def456"):
 def seeded(history):
     return {
         "flopped": seed(history, "flopped", 92, views=150),
-        "fine": seed(history, "fine", 88, views=40000),
+        "fine": seed(history, "fine", 88, views=40000, goal="E001"),
         "took_off": seed(history, "took_off", 45, views=90000),
         "waiting": seed(history, "waiting", 70, days=2, prompt="fff000fff000"),
     }
@@ -147,6 +150,20 @@ def test_the_table_shows_the_hook_the_for_you_share_and_the_followers(seeded, ca
     assert cell(lines, "% FYP", "fine") == "97.0%"
     assert cell(lines, "seguid.", "fine") == "3"
     assert cell(lines, "% 3s", "waiting") == ""
+
+
+def test_the_table_shows_what_each_video_was_made_for(seeded, capsys):
+    assert performance_report.main([]) == 0
+
+    lines = table(capsys)
+    start = lines[0].index("objetivo")
+
+    def goal(title: str) -> str:
+        row = next(line for line in lines if f" {title} " in line)
+        return row[start:].split("  ")[0].strip()
+
+    # Empty on the videos made before the history kept it.
+    assert (goal("fine"), goal("flopped")) == ("E001", "")
 
 
 def test_filter_and_since_narrow_the_rows(seeded, capsys):

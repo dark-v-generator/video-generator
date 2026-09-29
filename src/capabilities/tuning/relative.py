@@ -95,6 +95,8 @@ def measure(
                 published_at=published,
                 settled=readable
                 and settled(published, performance.taken_at, settle_days),
+                goal=row.record.goal,
+                cycle=row.record.cycle,
             )
         )
     return relative_performance(videos)
