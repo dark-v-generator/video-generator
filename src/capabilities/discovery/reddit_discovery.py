@@ -5,15 +5,18 @@ Pipeline:
 2. Compute deterministic scores per-sub (relative) + global (absolute).
 3. Take the top N candidates globally.
 4. Evaluate each with the LLM.
-5. Return EvaluatedStory list sorted by LLM grade descending.
+5. While an experiment is open, grade each for exploration too.
+6. Return EvaluatedStory list sorted by LLM grade descending, then the stories
+   only the exploration grade brought in, by fit.
 """
 
+import dataclasses
 import math
 import re
 import time
 import statistics
 from datetime import datetime
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional, Sequence, Set
 
 from ...core.logging_config import get_logger
 from ...entities.config import EvaluationConfig
@@ -21,7 +24,8 @@ from ...entities.history import RedditSnapshot
 from ...entities.language import Language
 from ...entities.reddit_post import RedditPost
 from ...entities.story import StoryOrigin
-from ...entities.story_candidate import EvaluatedStory, StoryCandidate
+from ...entities.story_candidate import EvaluatedStory, ExplorationFit, StoryCandidate
+from ...entities.tuning import Experiment
 from ...proxies.interfaces import ILLMProxy, IRedditProxy, RedditPostUnavailableError
 from .contract import Sort, TimeFilter
 
@@ -379,6 +383,8 @@ class RedditStoryDiscovery:
         top_per_sub: int = 5,
         subreddits: Optional[List[str]] = None,
         exclude_urls: Optional[Set[str]] = None,
+        experiments: Sequence[Experiment] = (),
+        min_fit: int = 70,
     ) -> List[EvaluatedStory]:
         subreddit_names = subreddits or self._config.subreddits
 
@@ -398,16 +404,59 @@ class RedditStoryDiscovery:
         )
 
         evaluated = await self.grade(finalists, language)
+        if experiments:
+            evaluated = await self._grade_exploration(evaluated, experiments, language)
         excellent = [e for e in evaluated if e.veredito == "Excelente"]
         if len(excellent) >= 10:
             result = excellent
         else:
-            worthy = [e for e in evaluated if e.veredito in ("Excelente", "Boa")]
+            worthy = [e for e in evaluated if e.base_worthy]
             result = worthy[:10]
+        listed = {e.post.url for e in result}
+        # A story that tests an experiment well is worth a slot even when its
+        # grade leaves it out of the base; the run decides whether it gets one.
+        fitting = sorted(
+            (
+                e
+                for e in evaluated
+                if e.exploration
+                and e.exploration.experiment
+                and e.exploration.fit >= min_fit
+                and e.post.url not in listed
+            ),
+            key=lambda e: e.exploration.fit,
+            reverse=True,
+        )
         logger.info(
-            "%d/%d stories returned (%d Excelente)",
-            len(result),
+            "%d/%d stories returned (%d Excelente, %d for exploration only)",
+            len(result) + len(fitting),
             len(evaluated),
             len(excellent),
+            len(fitting),
         )
-        return result
+        return result + fitting
+
+    async def _grade_exploration(
+        self,
+        evaluated: List[EvaluatedStory],
+        experiments: Sequence[Experiment],
+        language: Language,
+    ) -> List[EvaluatedStory]:
+        """Each graded story with its exploration grade. A story whose grade
+        failed is not graded again; a failed exploration grade raises, since
+        a story graded 0 by mistake would never be tried for its experiment."""
+        explored = []
+        for story in evaluated:
+            if story.veredito == "Erro":
+                explored.append(story)
+                continue
+            answer = await self._llm.evaluate_exploration(
+                title=story.post.title,
+                content=story.post.content,
+                experiments=experiments,
+                target_language=language,
+            )
+            explored.append(
+                dataclasses.replace(story, exploration=ExplorationFit(**answer))
+            )
+        return explored

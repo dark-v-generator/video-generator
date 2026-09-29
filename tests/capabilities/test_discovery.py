@@ -11,6 +11,8 @@ from src.entities.reddit_post import RedditPost
 from src.entities.story import StoryOrigin
 from src.entities.story_candidate import EvaluatedStory, StoryCandidate
 from src.proxies.interfaces import RedditPostUnavailableError
+from tests.fakes.proxies import FakeLLMProxy
+from tests.proxies.test_evaluate_exploration import EXPERIMENTS
 
 
 class FailingRedditProxy:
@@ -356,3 +358,134 @@ def test_any_other_reddit_failure_raises_instead_of_calling_the_post_gone():
 
     with pytest.raises(ConnectionError):
         signals_service(proxy).signals("https://www.reddit.com/r/x/1/")
+
+
+# --------------------------------------------------------------------------
+# The exploration grade (feature 006, M4)
+# --------------------------------------------------------------------------
+
+
+def explored_service(grades: dict, exploration: dict) -> tuple:
+    posts = [
+        make_post("pettyrevenge", title.removeprefix("Story "), 100) for title in grades
+    ]
+    llm = FakeLLMProxy(grades=grades, exploration=exploration)
+    service = RedditStoryDiscovery(
+        reddit=FakeRedditProxy({"pettyrevenge": posts}),
+        llm=llm,
+        evaluation=EvaluationConfig(subreddits=["pettyrevenge"]),
+    )
+    return service, llm
+
+
+def titles(stories) -> list[str]:
+    return [s.post.title for s in stories]
+
+
+def fits(stories) -> list:
+    return [
+        (s.exploration.experiment, s.exploration.fit) if s.exploration else None
+        for s in stories
+    ]
+
+
+GRADES = {
+    "Story great": 90.0,
+    "Story good": 70.0,
+    "Story weak": 50.0,
+    "Story broken": RuntimeError("model down"),
+}
+
+
+@pytest.mark.asyncio
+async def test_without_experiments_nothing_more_is_asked_and_the_list_is_todays():
+    service, llm = explored_service(
+        GRADES, {"Story weak": {"experiment": "E001", "fit": 99}}
+    )
+
+    result = await service.find_best_stories(
+        language=Language.PORTUGUESE, top_per_sub=10
+    )
+
+    assert titles(result) == ["Story great", "Story good"]
+    assert fits(result) == [None, None]
+    assert {name for name, _ in llm.calls} == {"evaluate_story"}
+
+
+@pytest.mark.asyncio
+async def test_with_experiments_every_graded_story_gets_the_exploration_grade():
+    service, llm = explored_service(
+        GRADES,
+        {
+            "Story weak": {"experiment": "E001", "fit": 85, "reason": "serve"},
+            "Story broken": {"experiment": "E001", "fit": 99},
+        },
+    )
+
+    result = await service.find_best_stories(
+        language=Language.PORTUGUESE, top_per_sub=10, experiments=EXPERIMENTS
+    )
+
+    assert titles(result) == ["Story great", "Story good", "Story weak"]
+    assert fits(result) == [(None, 0.0), (None, 0.0), ("E001", 85.0)]
+    assert result[2].exploration.reason == "serve"
+    # The goal is the run's to give; discovery leaves every story as base.
+    assert {s.goal for s in result} == {"base"}
+    # A story whose grade failed is not graded again for exploration.
+    explored = [title for name, title in llm.calls if name == "evaluate_exploration"]
+    assert sorted(explored) == ["Story good", "Story great", "Story weak"]
+
+
+@pytest.mark.asyncio
+async def test_stories_below_good_enter_last_by_fit_when_they_reach_min_fit():
+    grades = {
+        "Story good": 70.0,
+        "Story close": 50.0,
+        "Story closer": 45.0,
+        "Story far": 55.0,
+    }
+    exploration = {
+        "Story close": {"experiment": "E001", "fit": 75},
+        "Story closer": {"experiment": "E002", "fit": 90},
+        "Story far": {"experiment": "E001", "fit": 60},
+    }
+    service, _ = explored_service(grades, exploration)
+
+    default = await service.find_best_stories(
+        language=Language.PORTUGUESE, top_per_sub=10, experiments=EXPERIMENTS
+    )
+    strict = await service.find_best_stories(
+        language=Language.PORTUGUESE,
+        top_per_sub=10,
+        experiments=EXPERIMENTS,
+        min_fit=80,
+    )
+
+    assert titles(default) == ["Story good", "Story closer", "Story close"]
+    assert titles(strict) == ["Story good", "Story closer"]
+
+
+@pytest.mark.asyncio
+async def test_a_good_story_that_serves_an_experiment_is_listed_once():
+    service, _ = explored_service(
+        {"Story good": 70.0}, {"Story good": {"experiment": "E001", "fit": 95}}
+    )
+
+    result = await service.find_best_stories(
+        language=Language.PORTUGUESE, experiments=EXPERIMENTS
+    )
+
+    assert titles(result) == ["Story good"]
+    assert fits(result) == [("E001", 95.0)]
+
+
+@pytest.mark.asyncio
+async def test_a_failed_exploration_grade_fails_the_search():
+    service, _ = explored_service(
+        {"Story good": 70.0}, {"Story good": RuntimeError("model down")}
+    )
+
+    with pytest.raises(RuntimeError, match="model down"):
+        await service.find_best_stories(
+            language=Language.PORTUGUESE, experiments=EXPERIMENTS
+        )
