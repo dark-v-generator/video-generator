@@ -252,6 +252,12 @@ Mudanças em `exploration.yaml` só valem no servidor depois de `just deploy`.
 
 Com `close`, ou quando o operador decide fechar no passo 13. A ordem é fixa
 (FR-005): primeiro assentar o ciclo que termina, depois propor, depois aplicar.
+
+Antes de começar, olhe `cycle_comparison.current.base_videos`. A mudança que
+abrir o ciclo seguinte só é julgada contra os vídeos de base deste ciclo: com
+menos de 20 deles, ela nunca terá veredito, e se piorar ninguém vai saber.
+Diga isso ao operador com o número, e deixe-o decidir se fecha mesmo assim
+(fechar só para mudar experimentos, sem mudar prompt, não tem esse custo).
 Se o operador parar antes do passo 5, o ciclo continua aberto: os vereditos e
 as crenças atualizadas valem, porque seguem a evidência, mas nada muda em
 `src/prompts/` nem nos arquivos de ciclo.
@@ -303,6 +309,15 @@ De onde vêm as propostas:
 
 Pista não gera proposta. Se nada justifica mudar, diga que os prompts ficam
 como estão e que o ciclo seguinte difere só nos experimentos.
+
+Prefira poucas mudanças por ciclo, e diga ao operador quando houver mais de
+uma: a avaliação compara o ciclo inteiro com o anterior, então duas mudanças no
+mesmo ciclo não se separam, e se o ciclo piorar a reversão tem de desfazer as
+duas. Quando uma proposta pode esperar o ciclo seguinte sem custo, diga isso.
+
+Se o operador perguntar como saberá se a mudança ajudou: ela fica em
+`changes` do ciclo novo e no `tuning/README.md`; o fechamento seguinte compara
+os vídeos de base dos dois ciclos e, se piorou, propõe a reversão.
 
 **Como escrever a mudança.** O prompt é lido por um modelo que vai encontrar
 histórias que nenhum achado viu. Escreva a razão pela qual a audiência

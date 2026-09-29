@@ -142,6 +142,11 @@ Recomende **fechar** quando ao menos uma vale:
 - houve mudança de prompt fora da rotina: o ciclo mistura vídeos de dois
   prompts, e fechar separa os dois a partir daqui.
 
+Mesmo com um desses motivos, um ciclo com menos de 20 vídeos de base
+assentados tem um custo ao fechar com mudança de prompt: a mudança seguinte só
+é comparada com este ciclo, e fica sem veredito. Diga o número junto da
+recomendação.
+
 Recomende **manter** quando:
 
 - os experimentos estão abaixo do alvo: fechar agora daria vereditos sem
