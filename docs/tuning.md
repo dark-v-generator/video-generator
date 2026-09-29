@@ -64,9 +64,35 @@ por causa de três vídeos que foram bem por acaso.
 Um **experimento** é uma pergunta feita à audiência com uma parte da produção:
 "histórias com desconhecidos funcionam quando o narrador reage?". Ele é escrito
 antes dos vídeos, com o número de vídeos de que precisa e o resultado que
-confirma ou refuta, e recebe o veredito quando atinge o alvo. As vagas de
-exploração na rodada diária chegam com o Milestone 5 da feature 006; até lá,
-um experimento aberto fica registrado mas não recebe vídeos.
+confirma ou refuta, e recebe o veredito quando atinge o alvo.
+
+## Como as vagas de exploração são distribuídas
+
+A rodada diária lê `tuning/exploration.yaml` a cada busca. Com experimento
+aberto, cada história avaliada recebe uma segunda nota: se é um teste justo de
+algum experimento, e qual. Com ela, a rodada reserva vagas:
+
+- **Quantas.** A fatia é contada desde `share_since`, não dia a dia: com 25% e
+  3 vídeos por dia, as vagas saem 1, 1, 0, 1 e, em 12 dias, 9 dos 36 vídeos são
+  de exploração. Um dia sem história adequada é compensado nos seguintes, com
+  no máximo a fatia do dia (1 vaga, com 3 por dia), para que a produção nunca
+  vire só exploração.
+- **Para quem.** Cada vaga vai para o primeiro experimento aberto, na ordem do
+  arquivo, que tenha uma história com nota a partir de `min_fit` (padrão 70); a
+  história é a de maior nota para ele. Mudar a ordem no arquivo muda a
+  prioridade.
+- **O resto do dia** é de base, com as histórias "Excelente" e "Boa" de
+  sempre. Uma história boa de base que também serve a um experimento ocupa só
+  a vaga de exploração.
+
+Uma **vaga não preenchida** é uma vaga reservada que terminou sem vídeo do
+experimento: nenhuma história atingiu `min_fit` naquele dia, ou a escolhida
+falhou no roteiro ou no vídeo e uma de base tomou o lugar. Cada rodada grava
+em `run_summaries` as vagas reservadas (`exploration_slots`) e as preenchidas
+(`exploration_filled`); o relatório mostra as duas desde `share_since`. Muitas
+vagas vazias pedem um `looks_like` mais largo ou um `min_fit` menor.
+
+Sem experimento aberto, ou com fatia 0, a rodada é a mesma de antes da rotina.
 
 ## O que exige commit e deploy
 

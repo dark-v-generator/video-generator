@@ -83,8 +83,8 @@ Cada seção diz de onde tira o conteúdo. `R` é o relatório, `C` o ciclo aber
    dela ainda vai mudar.
 6. **Experimentos** (`R.cycle_state.experiments`, com a pergunta de `E`):
    barra de progresso de `settled` até `target`, relativo mediano até aqui e a
-   previsão (`days_to_target`). Sem experimento aberto, diga que não há, e
-   que as vagas só existem na rodada depois do Milestone 5.
+   previsão (`days_to_target`). Sem experimento aberto, diga que não há e
+   que, até abrir um, a rodada faz só vídeos de base.
 7. **Fatia de exploração** (`R.cycle_state`): pretendida contra atingida, e as
    vagas não preenchidas quando houver.
 8. **Sugestões de experimento** (`R.suggestions`): pergunta, tipo, motivação e

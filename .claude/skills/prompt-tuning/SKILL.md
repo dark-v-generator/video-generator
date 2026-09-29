@@ -143,9 +143,9 @@ rotina) e ligue cada uma aos achados que ela afeta (FR-012). Copie
 
 ### 7. Estado do ciclo
 
-Do pacote: fatia pretendida e atingida, vagas não preenchidas (vazio até as
-vagas existirem na rodada), relativo mediano dos vídeos de base do ciclo, e
-cada experimento aberto com `settled`, `target`, `median_relative` e
+Do pacote: fatia pretendida e atingida, vagas não preenchidas
+(`slots − filled`), relativo mediano dos vídeos de base do ciclo, e cada
+experimento aberto com `settled`, `target`, `median_relative` e
 `days_to_target`. A comparação com o ciclo anterior (`cycle_comparison`) diz se
 já dá para julgar a mudança que abriu este ciclo; com `verdict_possible: false`,
 diga que ainda não dá e por quê.
@@ -241,10 +241,12 @@ demais para algum concluir (FR-028). A escolha do operador vale.
   atingida é contada a partir dela;
 - ideias não abertas vão para `backlog` com a motivação (FR-029).
 
-**Vagas.** Enquanto a rodada diária não reservar vagas de exploração (isso
-chega no Milestone 5 da feature 006), um experimento aberto não recebe vídeos:
-diga isso ao operador ao abrir um, para que ele não espere progresso no
-relatório seguinte.
+**Vagas.** A rodada diária reserva as vagas da fatia e dá cada uma ao
+primeiro experimento aberto, na ordem do arquivo, que tenha uma história com
+nota a partir de `min_fit`. `slots` e `filled` do pacote dizem quantas foram
+reservadas e preenchidas desde `share_since`: muitas vagas vazias querem dizer
+que o `looks_like` de algum experimento é estreito demais para o que o Reddit
+traz, ou que `min_fit` está alto; diga isso ao operador e sugira o ajuste.
 
 Mudanças em `exploration.yaml` só valem no servidor depois de `just deploy`.
 

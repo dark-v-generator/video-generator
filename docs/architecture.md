@@ -9,9 +9,12 @@ else is a piece they combine:
 
 - a **story model** (`Story` with one or more parts) at the centre;
 - six **capabilities**, each behind a contract: discovery, writing, footage,
-  rendering, publishing and performance;
+  rendering, publishing and performance; and two that only decide, without I/O
+  of their own: **exploration** (which of the day's stories go to the open
+  experiments) and **tuning** (the numbers of a prompt tuning report);
 - a **storage boundary** for what survives between runs: the manifests and the
-  publish log (`RunStore`), and the performance history (`HistoryStore`);
+  publish log (`RunStore`), the performance history (`HistoryStore`), and the
+  tuning records in `tuning/` (`TuningRecords`), which the code only reads;
 - two **adapters**, the Telegram bot and the command line, that start a flow and
   show its progress.
 
@@ -46,7 +49,7 @@ file directly, without the container, so it runs on the laptop without keys.
 src/
 ├── core/
 │   ├── container.py          # Dependency injection: builds every piece from config.yaml
-│   ├── paths.py              # HISTORY_DB_PATH, readable without importing the container
+│   ├── paths.py              # HISTORY_DB_PATH, TUNING_DIR, readable without the container
 │   ├── recipe.py             # build_production_recipe: prompt versions, models, voice
 │   ├── secrets.py            # API keys and tokens from .env
 │   └── logging_config.py
@@ -88,13 +91,19 @@ src/
 │   ├── rendering/            # Renderer → NarrationOverFootageRenderer (+ speech, captions,
 │   │                         # cover, compose, censor, cta, registry)
 │   ├── publishing/           # HashtagSuggester; the contract is ITikTokPublisherProxy
-│   └── performance/          # PerformanceSource → StudioPerformanceSource; match() by caption
-│                             # and slot
+│   ├── performance/          # PerformanceSource → StudioPerformanceSource; match() by caption
+│   │                         # and slot
+│   ├── exploration/          # ExplorationSource → FileTuningRecords; slots_due, arrange
+│   └── tuning/               # A report's numbers from the crossed rows: relative, periods,
+│                             # cycles, progress (pure)
 ├── storage/
 │   ├── contract.py           # RunStore, PublishLogEntry
 │   ├── files.py              # FileRunStore: output/daily/*.json + .storage/tiktok_publish_log.csv
 │   ├── history_contract.py   # HistoryStore, HistoryError, UnknownColumnError
-│   └── sqlite_history.py     # SqliteHistoryStore: .storage/history.sqlite
+│   ├── sqlite_history.py     # SqliteHistoryStore: .storage/history.sqlite
+│   ├── tuning_contract.py    # TuningRecords, TuningError
+│   └── tuning_files.py       # FileTuningRecords: tuning/ (cycles, beliefs, exploration plan,
+│                             # reports, story labels), read on every call
 └── flows/
     ├── daily_run.py          # DailyRun: generate, publish, run
     ├── run_record.py         # RunRecord: what a run tells the history, and its counts
@@ -159,6 +168,36 @@ The three entry points share those steps:
 
 `count` is a number of stories: a three-part story produces three videos in three
 consecutive slots and counts once toward the target.
+
+### Exploration slots
+
+Part of the production is kept to learn: `tuning/exploration.yaml` sets the
+share (for example 25%) and lists the open experiments, highest priority
+first. The run reads that plan through `ExplorationSource` once per search
+(`publish` never reads it), and the plan decides three things:
+
+1. **Discovery grades for the experiments.** With experiments open, each
+   graded story also gets an exploration grade: which experiment it tests
+   best and how fairly (0–100). Without them no extra model call is made.
+2. **How many slots today owes.** `slots_due` counts since the share was set
+   (`share_since`), from the history's `goal_counts`:
+   `round(share × (made_since + today)) − explored_since`, capped at the
+   share of today's target (at least one). At 25% of three a day that is
+   1, 1, 0, 1: the share is met over days, and a day no story fitted is made
+   up later without turning a whole day into exploration.
+3. **Which stories take them.** `arrange` gives each slot to the first open
+   experiment with a story at or above `min_fit`, its best-fitting one, and
+   puts those first with `goal` set to the experiment's id; then the stories
+   good enough for the base, in discovery's order. A story only the
+   exploration grade brought in is left out unless it took a slot.
+
+The production loop does not change: it walks the list until the target is
+met, so an exploration story that fails to write or render is replaced by the
+next one on the list, a base one, and its slot counts as not filled. The run
+summary keeps `exploration_slots` and `exploration_filled` (stories, so a
+story in parts fills one slot); the difference is the slots no story filled.
+With no experiment open, or a share of 0, the run is the one it was before
+the plan existed, word for word.
 
 Each mode also writes to the history (`HistoryStore`), through `RunRecord`
 (`src/flows/run_record.py`): a `RunSummary` per run (mode, requested, target,
@@ -333,7 +372,9 @@ arguments.
 `history_store`, `tiktok_publisher`, `tiktok_studio_proxy` and
 `performance_collection` are factories, so each run gets a fresh publisher agent
 and Studio reader, its own SQLite connection, and re-reads
-`TIKTOK_PUBLISH_LOG_PATH` and `HISTORY_DB_PATH`.
+`TIKTOK_PUBLISH_LOG_PATH` and `HISTORY_DB_PATH`. `exploration_source` is a
+factory over `FileTuningRecords` for the same reason: `TUNING_DIR` is read at
+every run, and a plan deployed while the bot is up counts from the next run.
 
 Proxies follow one pattern: an interface in `proxies/interfaces.py`, one or more
 implementations, and a factory in `proxies/factories.py` that picks one from the
