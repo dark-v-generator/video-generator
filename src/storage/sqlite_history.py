@@ -79,10 +79,20 @@ _EXPLORATION_COLUMNS = {
 _EXPLORATION_COLUMNS_SQL = "".join(
     f", {name} {kind}" for name, kind in _EXPLORATION_COLUMNS.items()
 )
+# The exploration slots a run kept and filled. Runs before them kept none, so
+# their old rows read 0, not NULL.
+_RUN_SUMMARIES_ADDED = {
+    "exploration_slots": "INTEGER NOT NULL DEFAULT 0",
+    "exploration_filled": "INTEGER NOT NULL DEFAULT 0",
+}
+_RUN_SUMMARIES_ADDED_SQL = "".join(
+    f", {name} {kind}" for name, kind in _RUN_SUMMARIES_ADDED.items()
+)
 # In the order ALTER TABLE appends them, so a history migrated step by step
 # lays its columns out as a new one does.
 _VIDEO_RECORDS_ADDED_SQL = _RECIPE_ADDED_COLUMNS_SQL + _EXPLORATION_COLUMNS_SQL
 _ADDED_COLUMNS = {
+    "run_summaries": _RUN_SUMMARIES_ADDED,
     "performance_snapshots": _AUDIENCE_COLUMNS,
     "video_records": {**_RECIPE_ADDED_COLUMNS, **_EXPLORATION_COLUMNS},
 }
@@ -92,7 +102,7 @@ CREATE TABLE IF NOT EXISTS run_summaries (
   id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT,
   mode TEXT NOT NULL, requested INTEGER, target INTEGER, candidates_found INTEGER,
   produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL,
-  stopped_reason TEXT NOT NULL DEFAULT '');
+  stopped_reason TEXT NOT NULL DEFAULT ''{_RUN_SUMMARIES_ADDED_SQL});
 CREATE TABLE IF NOT EXISTS video_records (
   {_VIDEO_RECORDS_COLUMNS}{_VIDEO_RECORDS_ADDED_SQL});
 CREATE INDEX IF NOT EXISTS video_records_by_path ON video_records (video_path);
@@ -369,7 +379,8 @@ class SqliteHistoryStore:
             cursor = db.execute(
                 "UPDATE run_summaries SET finished_at = ?, requested = ?, target = ?,"
                 " candidates_found = ?, produced = ?, scheduled = ?, skipped_json = ?,"
-                " stopped_reason = ? WHERE id = ?",
+                " stopped_reason = ?, exploration_slots = ?, exploration_filled = ?"
+                " WHERE id = ?",
                 (
                     _to_iso(summary.finished_at),
                     summary.requested,
@@ -379,6 +390,8 @@ class SqliteHistoryStore:
                     summary.scheduled,
                     json.dumps(summary.skipped, sort_keys=True),
                     summary.stopped_reason,
+                    summary.exploration_slots,
+                    summary.exploration_filled,
                     run_id,
                 ),
             )
@@ -401,6 +414,8 @@ class SqliteHistoryStore:
             scheduled=row["scheduled"],
             skipped=json.loads(row["skipped_json"]),
             stopped_reason=row["stopped_reason"],
+            exploration_slots=row["exploration_slots"],
+            exploration_filled=row["exploration_filled"],
         )
 
     def add_video_record(
@@ -481,6 +496,15 @@ class SqliteHistoryStore:
             (_to_iso(datetime.combine(since, time())),),
         ).fetchone()
         return GoalCounts(total=total, exploration=exploration)
+
+    def slot_counts(self, since: date) -> tuple[int, int]:
+        slots, filled = self._conn.execute(
+            "SELECT coalesce(sum(exploration_slots), 0),"
+            " coalesce(sum(exploration_filled), 0)"
+            " FROM run_summaries WHERE started_at >= ?",
+            (_to_iso(datetime.combine(since, time())),),
+        ).fetchone()
+        return slots, filled
 
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]:
         rows = self._conn.execute(

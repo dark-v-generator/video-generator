@@ -123,6 +123,14 @@ class InMemoryHistoryStore:
             exploration=sum(r.goal not in (None, "base") for r in made),
         )
 
+    def slot_counts(self, since: date) -> tuple[int, int]:
+        start = _utc(datetime.combine(since, time()))
+        runs = [r for r in self.runs.values() if r.started_at >= start]
+        return (
+            sum(r.exploration_slots for r in runs),
+            sum(r.exploration_filled for r in runs),
+        )
+
     def reddit_snapshots(self, record_id: int) -> list[RedditSnapshot]:
         return list(self.snapshots.get(record_id, []))
 

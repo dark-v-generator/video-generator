@@ -2,7 +2,7 @@
 
 import dataclasses
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -24,6 +24,7 @@ from src.storage.sqlite_history import (
     _AUDIENCE_COLUMNS_SQL,
     _EXPLORATION_COLUMNS_SQL,
     _RECIPE_ADDED_COLUMNS_SQL,
+    _RUN_SUMMARIES_ADDED_SQL,
     SCHEMA,
 )
 from tests.fakes.memory_history import InMemoryHistoryStore
@@ -813,3 +814,82 @@ def test_a_history_from_before_the_goals_gains_their_columns(tmp_path):
     store.add_video_record(explored("out/new.mp4"), discovery())
     # Opening it again finds the columns already there.
     assert len(SqliteHistoryStore(path).crossed_view(filters={"goal": "base"})) == 1
+
+
+def test_a_run_keeps_its_exploration_slots_and_how_many_were_filled(store):
+    run_id = store.start_run(mode="run", requested=3, started_at=T0)
+    opened = store.run_summary(run_id)
+    assert (opened.exploration_slots, opened.exploration_filled) == (0, 0)
+
+    store.finish_run(
+        run_id,
+        RunSummary(
+            T0,
+            T0,
+            "run",
+            3,
+            3,
+            5,
+            3,
+            3,
+            SKIPPED,
+            exploration_slots=1,
+            exploration_filled=0,
+        ),
+    )
+
+    finished = store.run_summary(run_id)
+    assert (finished.exploration_slots, finished.exploration_filled) == (1, 0)
+
+
+def test_a_history_from_before_the_slots_gains_their_run_columns(tmp_path):
+    path = str(tmp_path / "history.sqlite")
+    old = sqlite3.connect(path)
+    before = SCHEMA.replace(_RUN_SUMMARIES_ADDED_SQL, "")
+    assert "exploration_slots" not in before
+    old.executescript(before)
+    old.execute(
+        "INSERT INTO run_summaries (started_at, mode, requested, target,"
+        " candidates_found, produced, scheduled, skipped_json)"
+        " VALUES ('2026-09-25T10:00:00+00:00', 'run', 3, 3, 4, 3, 3, '{}')"
+    )
+    old.commit()
+    old.close()
+
+    store = SqliteHistoryStore(path)
+
+    kept = store.run_summary(1)
+    assert (kept.target, kept.produced) == (3, 3)
+    # Before the slots there were none: an old run reads as none kept.
+    assert (kept.exploration_slots, kept.exploration_filled) == (0, 0)
+    run_id = store.start_run(mode="generate", requested=1, started_at=T0)
+    assert run_id == 2
+    # Opening it again finds the columns already there.
+    assert SqliteHistoryStore(path).run_summary(2).exploration_slots == 0
+
+
+def test_slot_counts_sum_the_runs_started_since(store):
+    for day, slots, filled in ((24, 3, 3), (25, 1, 1), (26, 1, 0)):
+        at = datetime(2026, 9, day, 12, 0).astimezone()
+        run_id = store.start_run(mode="run", requested=3, started_at=at)
+        store.finish_run(
+            run_id,
+            RunSummary(
+                at,
+                at,
+                "run",
+                3,
+                3,
+                4,
+                3,
+                3,
+                SKIPPED,
+                exploration_slots=slots,
+                exploration_filled=filled,
+            ),
+        )
+    # A run that died before finishing kept no slot it could count.
+    store.start_run(mode="run", requested=3, started_at=T0 + timedelta(days=2))
+
+    assert store.slot_counts(date(2026, 9, 25)) == (2, 1)
+    assert store.slot_counts(date(2026, 9, 27)) == (0, 0)

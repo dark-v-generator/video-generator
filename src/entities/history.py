@@ -209,6 +209,10 @@ class RunSummary:
     scheduled: int
     skipped: dict[SkipReason, int]
     stopped_reason: str = ""
+    # Slots kept for the open experiments, and the stories made for them; the
+    # difference is the slots no story filled.
+    exploration_slots: int = 0
+    exploration_filled: int = 0
     id: Optional[int] = None
 
 
