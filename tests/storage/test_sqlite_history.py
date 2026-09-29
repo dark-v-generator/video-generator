@@ -19,7 +19,11 @@ from src.entities.history import (
     VideoRecord,
 )
 from src.storage import HistoryConflictError, SqliteHistoryStore, UnknownColumnError
-from src.storage.sqlite_history import _AUDIENCE_COLUMNS_SQL, SCHEMA
+from src.storage.sqlite_history import (
+    _AUDIENCE_COLUMNS_SQL,
+    _RECIPE_ADDED_COLUMNS_SQL,
+    SCHEMA,
+)
 from tests.fakes.memory_history import InMemoryHistoryStore
 
 T0 = datetime(2026, 9, 25, 10, 0, tzinfo=timezone.utc)
@@ -431,6 +435,38 @@ def test_a_history_from_before_the_audience_signals_gains_their_columns(tmp_path
     assert after == performance(**AUDIENCE)
     # Opening it again finds the columns already there.
     assert len(SqliteHistoryStore(path).performance_snapshots(1)) == 2
+
+
+def test_the_recipe_keeps_the_hashtags_prompt_version(store):
+    recipe = dataclasses.replace(ProductionRecipe.empty(), hashtags_prompt_version="h1")
+    store.add_video_record(record(recipe=recipe), discovery())
+
+    saved = store.find_record_by_video_path("out/story_01.mp4")
+
+    assert saved.recipe.hashtags_prompt_version == "h1"
+    assert ids(store.crossed_view(filters={"hashtags_prompt_version": "h1"})) == [
+        saved.id
+    ]
+
+
+def test_a_history_from_before_the_hashtags_version_gains_its_column(tmp_path):
+    path = str(tmp_path / "history.sqlite")
+    old = sqlite3.connect(path)
+    old.executescript(SCHEMA.replace(_RECIPE_ADDED_COLUMNS_SQL, ""))
+    old.executescript(
+        "INSERT INTO video_records (created_at, video_path, title, post_url,"
+        " story_prompt_version) VALUES ('2026-09-25T10:00:00+00:00', 'out/a.mp4',"
+        " 'Before', 'u', 's1');"
+    )
+    old.close()
+
+    store = SqliteHistoryStore(path)
+
+    before = store.find_record_by_video_path("out/a.mp4")
+    assert before.recipe.story_prompt_version == "s1"
+    assert before.recipe.hashtags_prompt_version is None
+    store.add_video_record(record("out/b.mp4"), discovery())
+    assert len(SqliteHistoryStore(path).crossed_view()) == 2
 
 
 def test_a_second_collection_adds_snapshots_and_keeps_the_first(store):

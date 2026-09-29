@@ -79,6 +79,8 @@ class ProductionRecipe:
     speech_rate: Optional[float]
     narrator_gender: str
     voice_id: str
+    # None on videos made before the hashtags prompt was versioned.
+    hashtags_prompt_version: Optional[str] = None
 
     @classmethod
     def empty(cls) -> "ProductionRecipe":

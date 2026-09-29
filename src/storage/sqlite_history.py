@@ -60,13 +60,24 @@ _AUDIENCE_COLUMNS_SQL = "".join(
     f", {name} {kind}" for name, kind in _AUDIENCE_COLUMNS.items()
 )
 
+# Recipe parts versioned after the first records: NULL in the rows before.
+_RECIPE_ADDED_COLUMNS = {"hashtags_prompt_version": "TEXT"}
+_RECIPE_ADDED_COLUMNS_SQL = "".join(
+    f", {name} {kind}" for name, kind in _RECIPE_ADDED_COLUMNS.items()
+)
+_ADDED_COLUMNS = {
+    "performance_snapshots": _AUDIENCE_COLUMNS,
+    "video_records": _RECIPE_ADDED_COLUMNS,
+}
+
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS run_summaries (
   id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT,
   mode TEXT NOT NULL, requested INTEGER, target INTEGER, candidates_found INTEGER,
   produced INTEGER, scheduled INTEGER, skipped_json TEXT NOT NULL,
   stopped_reason TEXT NOT NULL DEFAULT '');
-CREATE TABLE IF NOT EXISTS video_records ({_VIDEO_RECORDS_COLUMNS});
+CREATE TABLE IF NOT EXISTS video_records (
+  {_VIDEO_RECORDS_COLUMNS}{_RECIPE_ADDED_COLUMNS_SQL});
 CREATE INDEX IF NOT EXISTS video_records_by_path ON video_records (video_path);
 CREATE TABLE IF NOT EXISTS reddit_snapshots (
   id INTEGER PRIMARY KEY, record_id INTEGER NOT NULL REFERENCES video_records(id),
@@ -104,6 +115,7 @@ _RECIPE_FIELDS = [
     "speech_rate",
     "narrator_gender",
     "voice_id",
+    *_RECIPE_ADDED_COLUMNS,
 ]
 _METRIC_FIELDS = [
     "views",
@@ -269,22 +281,22 @@ class SqliteHistoryStore:
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
+        # Columns first: the rebuild copies rows whole into the full layout.
+        self._add_columns()
         self._allow_reused_video_paths()
-        self._add_audience_columns()
 
-    def _add_audience_columns(self) -> None:
-        """A history whose snapshots predate the audience signals gets their
-        columns, empty in the rows it already has."""
-        existing = {
-            column["name"]
-            for column in self._conn.execute("PRAGMA table_info(performance_snapshots)")
-        }
+    def _add_columns(self) -> None:
+        """A history from before a column was added gets it, empty in the
+        rows it already has."""
         with self._tx() as db:
-            for name, kind in _AUDIENCE_COLUMNS.items():
-                if name not in existing:
-                    db.execute(
-                        f"ALTER TABLE performance_snapshots ADD COLUMN {name} {kind}"
-                    )
+            for table, columns in _ADDED_COLUMNS.items():
+                existing = {
+                    column["name"]
+                    for column in db.execute(f"PRAGMA table_info({table})")
+                }
+                for name, kind in columns.items():
+                    if name not in existing:
+                        db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
 
     def _allow_reused_video_paths(self) -> None:
         """A history created when video_path was UNIQUE is rebuilt once
@@ -305,7 +317,8 @@ class SqliteHistoryStore:
         self._conn.executescript(f"""
             PRAGMA foreign_keys=OFF;
             BEGIN;
-            CREATE TABLE video_records_rebuilt ({_VIDEO_RECORDS_COLUMNS});
+            CREATE TABLE video_records_rebuilt (
+              {_VIDEO_RECORDS_COLUMNS}{_RECIPE_ADDED_COLUMNS_SQL});
             INSERT INTO video_records_rebuilt SELECT * FROM video_records;
             DROP TABLE video_records;
             ALTER TABLE video_records_rebuilt RENAME TO video_records;

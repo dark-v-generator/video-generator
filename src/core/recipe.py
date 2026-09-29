@@ -37,4 +37,5 @@ def build_production_recipe(config: MainConfig) -> ProductionRecipe:
         ),
         narrator_gender="",
         voice_id="",
+        hashtags_prompt_version=prompts.fingerprint("generate_hashtags.jinja2"),
     )
