@@ -105,9 +105,10 @@ cuja mudança esta desfaz, ou null).
 | `period` | `{since, until}` |
 | `data_as_of` | datetime da última coleta |
 | `videos` | `{considered, excluded: {unsettled, no_snapshot, ambiguous}}` |
+| `weekly_reach` | list[`{week, videos, median_views}`] (o `channel.weekly` do pacote; o gráfico da visão de leitura) |
 | `distortions` | list[`{kind, note, affects}`] |
 | `findings` | list[Finding] |
-| `cycle_state` | `{share_intended, share_achieved, unfilled_slots, base_median_relative, experiments: [{id, settled, target, median_relative}]}` |
+| `cycle_state` | `{share_intended, share_achieved, unfilled_slots, base_median_relative, experiments: [{id, settled, target, median_relative, days_to_target}]}` |
 | `since_previous` | `{previous, new_videos, changed_findings}` |
 | `suggestions` | list[`{question, kind, motivation, decision: opened \| backlog \| discarded}`] |
 | `recommendation` | `{action: keep \| close, reasons}` |

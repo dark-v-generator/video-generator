@@ -30,6 +30,21 @@ def test_every_record_loads():
     assert records.cycles()[0].closing.decision == "close"
 
 
+def test_a_report_holds_what_its_reading_view_draws():
+    # The page is rebuilt from the report alone: the weekly chart and each
+    # experiment's forecast have to be in it.
+    report = FileTuningRecords(VALID).reports()[-1]
+
+    assert [(w.week, w.median_views) for w in report.weekly_reach] == [
+        (date(2026, 9, 28), 584),
+        (date(2026, 10, 5), 610),
+    ]
+    assert report.cycle_state.experiments[0].days_to_target == 19
+    older = FileTuningRecords(VALID).reports()[0]
+    assert older.weekly_reach == []
+    assert older.cycle_state.experiments == []
+
+
 def test_open_experiments_keep_the_file_order(root):
     path = root / "exploration.yaml"
     plan = yaml.safe_load(path.read_text(encoding="utf-8"))

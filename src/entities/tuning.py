@@ -334,6 +334,15 @@ class VideoCount(_Record):
     excluded: Excluded
 
 
+class WeeklyReach(_Record):
+    """The channel's typical views in one week: what every video was up
+    against, and the chart the reading view draws."""
+
+    week: date
+    videos: int = Field(ge=0)
+    median_views: Optional[float] = None
+
+
 class Distortion(_Record):
     kind: str
     note: str
@@ -345,6 +354,8 @@ class ExperimentState(_Record):
     settled: int = Field(ge=0)
     target: int = Field(gt=0)
     median_relative: Optional[float] = None
+    # None while the experiment has produced nothing to project from.
+    days_to_target: Optional[int] = Field(default=None, ge=0)
 
 
 class CycleState(_Record):
@@ -387,6 +398,7 @@ class Report(_Record):
     period: Period
     data_as_of: datetime
     videos: VideoCount
+    weekly_reach: list[WeeklyReach] = []
     distortions: list[Distortion] = []
     findings: list[Finding] = []
     cycle_state: CycleState

@@ -5,6 +5,9 @@ data_as_of: 2026-10-15T08:00:00+00:00
 videos:
   considered: 120
   excluded: {unsettled: 7, no_snapshot: 1, ambiguous: 1}
+weekly_reach:
+  - {week: 2026-09-28, videos: 19, median_views: 584}
+  - {week: 2026-10-05, videos: 21, median_views: 610}
 findings:
   - statement: "Histórias de trabalho em que o narrador dá o troco vão melhor."
     area: story_kind
@@ -21,7 +24,7 @@ cycle_state:
   unfilled_slots: 4
   base_median_relative: 1.0
   experiments:
-    - {id: E001, settled: 1, target: 10, median_relative: 0.6}
+    - {id: E001, settled: 1, target: 10, median_relative: 0.6, days_to_target: 19}
 since_previous: {previous: R-2026-10-01, new_videos: 36, changed_findings: ["Trabalho com troco passou de pista a base."]}
 suggestions:
   - {question: "Desconhecidos com reação do narrador funcionam?", kind: challenge, motivation: "Ajusta o E001.", decision: opened}
