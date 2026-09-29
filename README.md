@@ -191,6 +191,48 @@ página de leitura e recomenda manter ou fechar o ciclo; os prompts editoriais
 só mudam quando você fecha um ciclo, com o motivo de cada mudança registrado.
 Comece por `tuning/README.md`; a rotina está em [docs/tuning.md](docs/tuning.md).
 
+**A skill `/prompt-tuning`** (na sessão do assistente, no laptop) tem três formas:
+
+- `/prompt-tuning [dias]` — relatório dos últimos N dias (padrão 30): confere os
+  registros, calcula os números, rotula as histórias novas, grava
+  `tuning/reports/AAAA-MM-DD.yaml`, publica uma página privada e recomenda
+  manter ou fechar o ciclo, com os motivos. Sugere experimentos, que você abre
+  ou deixa na fila. Não mexe em `src/prompts/`.
+- `/prompt-tuning close` — fecha o ciclo: veredito de cada mudança, atualização
+  das crenças, cada proposta de mudança de prompt aprovada ou rejeitada uma a
+  uma, só as aprovadas aplicadas, e abre o ciclo seguinte.
+- `/prompt-tuning view AAAA-MM-DD` — refaz a página de um relatório a partir do
+  registro gravado.
+
+A skill escreve os arquivos e nunca faz commit nem deploy: ela avisa quando o
+que mudou precisa de `just deploy` (prompts, experimentos, fatia).
+
+**Comandos** (a skill roda os três; servem também à mão):
+
+```bash
+just sync-history                            # traz o histórico do servidor antes de tudo
+just tuning-check                            # valida tuning/ e acusa prompt mudado fora da rotina
+just tuning-summary                          # regenera tuning/README.md (não edite à mão)
+just tuning-data --days 30                   # os números do relatório em JSON
+just tuning-data --since 2026-09-01 --until 2026-09-30 --json pacote.json
+```
+
+`tuning-data` recusa (código 2, com o que fazer) quando a última coleta é
+antiga ou há menos de 30 vídeos assentados no período.
+
+**Vagas de exploração.** No servidor não há nada novo para rodar: a rodada
+diária lê `tuning/exploration.yaml` a cada busca. Sem experimento aberto ela
+faz só vídeos de base, como antes. Com um aberto (e depois de `just deploy`),
+reserva a fatia do arquivo (25%: com 3 vídeos por dia, as vagas saem 1, 1, 0,
+1) e dá cada vaga ao primeiro experimento, na ordem do arquivo, que tenha uma
+história adequada. Cada vídeo grava o objetivo (`goal`: `base` ou o id do
+experimento) e cada rodada, as vagas reservadas e preenchidas:
+
+```bash
+just report --since 2026-10-01 --filter goal=E001
+sqlite3 .storage/history.sqlite "select started_at, exploration_slots, exploration_filled from run_summaries order by id desc limit 3;"
+```
+
 ### Renderizar uma história escrita à mão
 
 ```bash
