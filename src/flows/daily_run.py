@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from ..capabilities.discovery import StoryDiscovery
-from ..capabilities.exploration import ExplorationSource
+from ..capabilities.exploration import ExplorationSource, arrange
 from ..capabilities.publishing import HashtagSuggester, ITikTokPublisherProxy
 from ..capabilities.rendering import ISpeechProxy, Renderer
 from ..capabilities.writing import (
@@ -172,10 +172,14 @@ class DailyRun:
             self.record.stop("discovery_failed")
             await self.progress(f"Erro ao buscar histórias: {e}")
             return [], 0
-        if plan.open():  # no slots for experiments yet: only base stories are made
-            candidates = [c for c in candidates if c.base_worthy]
+        # The slots the share owes today go first; a plan that does not say
+        # since when its share counts, counts from today.
+        counts = self.history.goal_counts(plan.share_since or self.now().date())
+        candidates, slots = arrange(
+            candidates, plan, counts, min(requested, len(candidates))
+        )
         target = min(requested, len(candidates))
-        self.record.found(len(candidates), target, cycle=plan.cycle)
+        self.record.found(candidates, target, cycle=plan.cycle, exploration_slots=slots)
         if not candidates:
             await self.progress("Nenhuma história boa encontrada hoje.")
             return [], 0

@@ -11,7 +11,7 @@ import dataclasses
 import functools
 import inspect
 from datetime import datetime, timezone
-from typing import Callable, Optional, get_args
+from typing import Callable, Optional, Sequence, get_args
 
 from ..capabilities.rendering import ISpeechProxy
 from ..entities.generated_video import GeneratedVideo
@@ -52,6 +52,9 @@ class RunRecord:
     )
     # The tuning cycle the videos are made under; None without a plan.
     cycle: Optional[int] = None
+    # Slots kept for the open experiments, and the stories arranged for them.
+    exploration_slots: int = 0
+    exploring: int = 0
 
     def __post_init__(self) -> None:
         self.started_at = self.now()
@@ -60,11 +63,22 @@ class RunRecord:
         )
         self._record_ids: dict[str, int] = {}
         self._stories: set[str] = set()
+        self._explored: set[str] = set()
 
-    def found(self, candidates: int, target: int, *, cycle: int = 0) -> None:
-        """What the search found, under the plan's cycle (0: no plan)."""
-        self.candidates_found, self.target = candidates, target
+    def found(
+        self,
+        candidates: Sequence[EvaluatedStory],
+        target: int,
+        *,
+        cycle: int = 0,
+        exploration_slots: int = 0,
+    ) -> None:
+        """What the search found, under the plan's cycle (0: no plan), and
+        the slots it kept for experiments."""
+        self.candidates_found, self.target = len(candidates), target
         self.cycle = cycle or None
+        self.exploration_slots = exploration_slots
+        self.exploring = sum(c.goal != "base" for c in candidates)
         if not candidates:
             self.stopped_reason = "no_candidates"
 
@@ -76,7 +90,10 @@ class RunRecord:
             if publishing
             else f"Iniciando geração de {target} vídeo{'s' if target != 1 else ''}."
         )
-        return f"✅ Busca finalizada: {self.candidates_found} histórias disponíveis. {plan}"
+        found = f"{self.candidates_found} histórias disponíveis"
+        if self.exploration_slots:
+            found += f" ({self.exploring} de exploração)"
+        return f"✅ Busca finalizada: {found}. {plan}"
 
     def stop(self, reason: str) -> None:
         self.stopped_reason = reason
@@ -148,6 +165,8 @@ class RunRecord:
             record, signals
         )
         self._stories.add(video.post_url)
+        if candidate.goal != "base":
+            self._explored.add(video.post_url)
         self.produced += 1
 
     def publish_log(self, entry: PublishLogEntry) -> None:
@@ -207,6 +226,9 @@ class RunRecord:
                 scheduled=self.scheduled,
                 skipped=dict(self.skipped),
                 stopped_reason=self.stopped_reason,
+                exploration_slots=self.exploration_slots,
+                # Stories, not videos: a story in parts fills one slot.
+                exploration_filled=len(self._explored),
             ),
         )
 

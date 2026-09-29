@@ -64,6 +64,23 @@ def test_the_history_path_is_read_on_every_call(tmp_path, monkeypatch):
     assert (tmp_path / "b" / "history.sqlite").exists()
 
 
+def test_the_exploration_plan_is_read_again_at_every_run(tmp_path, monkeypatch):
+    container = ApplicationContainer()
+    for name, share in (("a", 0.25), ("b", 0.4)):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "exploration.yaml").write_text(
+            f"cycle: 2\nshare: {share}\nshare_since: 2026-10-01\n", encoding="utf-8"
+        )
+    source = container.exploration_source
+
+    monkeypatch.setenv("TUNING_DIR", str(tmp_path / "a"))
+    assert source().plan().share == 0.25
+    monkeypatch.setenv("TUNING_DIR", str(tmp_path / "b"))
+    assert source().plan().share == 0.4
+    # A new source per run, so a plan deployed while the bot is up counts.
+    assert source() is not source()
+
+
 @pytest.mark.parametrize(
     "config_file, writer, grader, rate",
     [

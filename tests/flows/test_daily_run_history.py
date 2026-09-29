@@ -440,15 +440,18 @@ async def test_each_record_carries_the_exploration_grade_and_the_cycle(
     await flow.generate(count=3, output_dir=flow.output_dir)
 
     assert flow.discovery.explored == [(["E001"], 75)]
-    served, unserved = records(history, flow)
+    explored, served, unserved = records(history, flow)
+    # The story only the exploration grade brought in takes the day's slot.
+    assert (explored.goal, explored.exploration_experiment) == ("E001", "E001")
+    assert (explored.exploration_fit, explored.cycle) == (97.0, 2)
+    # One that fits too but is good for the base is made for the base.
     assert (served.goal, served.exploration_experiment) == ("base", "E001")
     assert (served.exploration_fit, served.cycle) == (88.0, 2)
     assert (unserved.goal, unserved.exploration_experiment) == ("base", None)
     assert (unserved.exploration_fit, unserved.cycle) == (0.0, 2)
-    # Until the run keeps slots for experiments, a story the exploration grade
-    # alone brought in is not made, and the day's target does not grow for it.
     summary = history.run_summary(served.run_id)
-    assert (summary.candidates_found, summary.target) == (2, 2)
+    assert (summary.candidates_found, summary.target) == (3, 3)
+    assert (summary.exploration_slots, summary.exploration_filled) == (1, 1)
 
 
 @pytest.mark.asyncio
