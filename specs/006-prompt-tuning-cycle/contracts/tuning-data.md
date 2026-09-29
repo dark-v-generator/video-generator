@@ -103,8 +103,9 @@ Lê `HISTORY_DB_PATH` (o arquivo puxado por `just sync-history`) e `TUNING_DIR`.
   bem-sucedida, no período.
 
 Antes do M4, `goal`, `exploration_*` e `cycle` vêm `null` nas linhas, e cada
-experimento aberto aparece com `produced: 0`. `slots` e `filled` vêm `null` até
-o M5.
+experimento aberto aparece com `produced: 0`. `slots` e `filled` somam
+`run_summaries` desde `share_since` (`null` sem `share_since`); as rodadas
+anteriores ao M5 contam 0.
 
 ## Onde fica a lógica
 

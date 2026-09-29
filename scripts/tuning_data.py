@@ -143,6 +143,10 @@ def build(
     plan = records.exploration_plan()
     labels = records.story_labels()
     comparison = compare_cycles(videos, cycles)
+    # Slots kept since the share was set; a share never set kept none to count.
+    slots, filled = (
+        history.slot_counts(plan.share_since) if plan.share_since else (None, None)
+    )
     return {
         "generated_at": _local(at),
         "period": {"since": since.isoformat(), "until": until.isoformat()},
@@ -197,9 +201,8 @@ def build(
             "share_intended": plan.share,
             "share_since": plan.share_since.isoformat() if plan.share_since else None,
             "share_achieved": _round(share_achieved(videos, plan)),
-            # The run records its exploration slots from milestone 5 on.
-            "slots": None,
-            "filled": None,
+            "slots": slots,
+            "filled": filled,
             "experiments": [
                 {**asdict(p), "median_relative": _round(p.median_relative)}
                 for p in experiment_progress(videos, plan, at.date())

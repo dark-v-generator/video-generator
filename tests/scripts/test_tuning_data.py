@@ -16,6 +16,7 @@ from src.entities.history import (
     PerformanceSnapshot,
     ProductionRecipe,
     PublishAttempt,
+    RunSummary,
     VideoRecord,
 )
 from src.storage import SqliteHistoryStore
@@ -251,6 +252,39 @@ def test_the_goal_and_the_exploration_grade_come_from_the_history(
     assert (row["goal"], row["cycle"]) == ("E002", 2)
     assert (row["exploration_experiment"], row["exploration_fit"]) == ("E002", 88.0)
     assert package["exploration"]["experiments"][0]["produced"] == 1
+
+
+def test_the_slots_are_those_the_runs_kept_since_the_share_was_set(
+    history, records, capsys
+):
+    # share_since in the fixture plan is 15 October.
+    for started, slots, filled in (
+        ("2026-10-14", 5, 5),
+        ("2026-10-15", 1, 1),
+        ("2026-10-18", 1, 0),
+    ):
+        at = datetime.fromisoformat(f"{started}T12:00:00").astimezone()
+        run_id = history.start_run(mode="run", requested=3, started_at=at)
+        history.finish_run(
+            run_id,
+            RunSummary(
+                at,
+                at,
+                "run",
+                3,
+                3,
+                4,
+                3,
+                3,
+                {},
+                exploration_slots=slots,
+                exploration_filled=filled,
+            ),
+        )
+
+    exploration = _package(capsys)["exploration"]
+
+    assert (exploration["slots"], exploration["filled"]) == (2, 1)
 
 
 def test_json_writes_the_same_package_to_a_file(history, records, capsys, tmp_path):
