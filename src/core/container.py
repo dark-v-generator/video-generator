@@ -1,7 +1,7 @@
 import os
 
 from dependency_injector import containers, providers
-from .paths import history_db_path
+from .paths import history_db_path, tuning_dir
 from .recipe import build_production_recipe
 from .secrets import secrets
 
@@ -23,7 +23,7 @@ from ..flows.daily_run import DailyRun
 from ..prompts import loader as prompts
 from ..proxies import factories as proxies_factories
 from ..proxies.tiktok_publisher_proxy import BrowserUseTikTokPublisherProxy
-from ..storage import FileRunStore, SqliteHistoryStore
+from ..storage import FileRunStore, FileTuningRecords, SqliteHistoryStore
 
 _CONFIG_PATH = os.environ.get("CONFIG_PATH", "config.yaml")
 _DEFAULT_PUBLISH_LOG_PATH = ".storage/tiktok_publish_log.csv"
@@ -212,6 +212,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
     # Fixed for the process; each run fills in the narrator's voice per story.
     production_recipe = providers.Singleton(build_production_recipe, main_config)
+    # TUNING_DIR is read on every call, and the run reads the plan when it
+    # searches: a plan deployed while the bot is up counts from the next run.
+    exploration_source = providers.Factory(
+        FileTuningRecords, root=providers.Callable(tuning_dir)
+    )
     # Called with ``progress=``: the adapter decides where the lines go.
     daily_run = providers.Factory(
         DailyRun,
@@ -223,6 +228,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         store=run_store,
         history=history_store,
         recipe=production_recipe,
+        exploration=exploration_source,
         speech=speech_proxy,
         config=daily_run_config,
     )

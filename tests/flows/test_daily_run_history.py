@@ -12,15 +12,18 @@ import pytest
 from src.capabilities.writing import WriterContentBlockedError, WriterError
 from src.entities.history import ModelGrade, ProductionRecipe, RedditSnapshot
 from src.entities.reddit_post import RedditPost
-from src.entities.story_candidate import EvaluatedStory
+from src.entities.story_candidate import EvaluatedStory, ExplorationFit
+from src.entities.tuning import ExplorationPlan
 from src.flows import daily_run as daily_run_module
 from src.storage import HistoryError, SqliteHistoryStore
+from tests.fakes.exploration import FakeExplorationSource
 from tests.fakes.memory_history import InMemoryHistoryStore
 from tests.fakes.memory_store import InMemoryRunStore
 from tests.fakes.proxies import FakeSpeechProxy
 from tests.fakes.publisher import FakePublisher
 from tests.fakes.renderer import EchoRenderer
 from tests.flows.test_daily_run import NOW, ScriptedWriter, build
+from tests.proxies.test_evaluate_exploration import experiment
 
 UTC = datetime.timezone.utc
 LATER = NOW + datetime.timedelta(hours=1)
@@ -401,3 +404,78 @@ async def test_an_attempt_that_cannot_be_written_is_not_a_publish_failure(tmp_pa
     assert [e.status for e in flow.store.log] == ["scheduled"]
     assert len(flow.publisher.calls) == 1
     assert history.run_summary(1).finished_at is None
+
+
+# --------------------------------------------------------------------------
+# What each video was made for (feature 006, M4)
+# --------------------------------------------------------------------------
+
+OPEN_PLAN = ExplorationPlan(
+    cycle=2, share=0.25, min_fit=75, experiments=[experiment("E001")]
+)
+
+
+def explored_candidates() -> list[EvaluatedStory]:
+    first, second, third = graded_candidates(3)
+    return [
+        dataclasses.replace(first, exploration=ExplorationFit("E001", 88.0, "serve")),
+        dataclasses.replace(second, exploration=ExplorationFit(None, 0.0, "")),
+        # Only the exploration grade brought it in: below "Boa".
+        dataclasses.replace(
+            third,
+            evaluation={**EVALUATION, "nota_geral": 45.0, "veredito": "Mediana"},
+            exploration=ExplorationFit("E001", 97.0, "serve bem"),
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_each_record_carries_the_exploration_grade_and_the_cycle(
+    tmp_path, history
+):
+    source = FakeExplorationSource(OPEN_PLAN)
+    flow = flow_over(tmp_path, history, exploration=source)
+    flow.discovery.results = explored_candidates()
+
+    await flow.generate(count=3, output_dir=flow.output_dir)
+
+    assert flow.discovery.explored == [(["E001"], 75)]
+    served, unserved = records(history, flow)
+    assert (served.goal, served.exploration_experiment) == ("base", "E001")
+    assert (served.exploration_fit, served.cycle) == (88.0, 2)
+    assert (unserved.goal, unserved.exploration_experiment) == ("base", None)
+    assert (unserved.exploration_fit, unserved.cycle) == (0.0, 2)
+    # Until the run keeps slots for experiments, a story the exploration grade
+    # alone brought in is not made, and the day's target does not grow for it.
+    summary = history.run_summary(served.run_id)
+    assert (summary.candidates_found, summary.target) == (2, 2)
+
+
+@pytest.mark.asyncio
+async def test_without_a_plan_the_record_is_base_with_no_grade_nor_cycle(
+    tmp_path, history
+):
+    flow = flow_over(tmp_path, history)
+
+    await flow.generate(count=1, output_dir=flow.output_dir)
+
+    (made,) = records(history, flow)
+    assert made.goal == "base"
+    assert (made.exploration_experiment, made.exploration_fit, made.cycle) == (
+        None,
+        None,
+        None,
+    )
+    assert flow.discovery.explored == [([], 70)]
+
+
+@pytest.mark.asyncio
+async def test_publish_only_never_reads_the_plan(tmp_path, history):
+    source = FakeExplorationSource(OPEN_PLAN)
+    flow = flow_over(tmp_path, history, exploration=source)
+    await flow.generate(count=1, output_dir=flow.output_dir)
+    reads = source.reads
+
+    await flow.publish(flow.store.load_manifests(flow.output_dir))
+
+    assert source.reads == reads == 1

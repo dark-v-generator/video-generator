@@ -16,6 +16,7 @@ def test_daily_run_knows_nothing_of_telegram_the_terminal_or_file_paths():
     offending = [
         line
         for line in DAILY_RUN.read_text().splitlines()
-        if re.search(r"telegram|argparse|os\.path|open\(", line)
+        # The builtin open(), not a method such as the plan's open().
+        if re.search(r"telegram|argparse|os\.path|(?<![.\w])open\(", line)
     ]
     assert offending == []

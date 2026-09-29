@@ -50,6 +50,8 @@ class RunRecord:
     skipped: dict[SkipReason, int] = dataclasses.field(
         default_factory=lambda: dict.fromkeys(get_args(SkipReason), 0)
     )
+    # The tuning cycle the videos are made under; None without a plan.
+    cycle: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.started_at = self.now()
@@ -59,10 +61,22 @@ class RunRecord:
         self._record_ids: dict[str, int] = {}
         self._stories: set[str] = set()
 
-    def found(self, candidates: int, target: int) -> None:
+    def found(self, candidates: int, target: int, *, cycle: int = 0) -> None:
+        """What the search found, under the plan's cycle (0: no plan)."""
         self.candidates_found, self.target = candidates, target
+        self.cycle = cycle or None
         if not candidates:
             self.stopped_reason = "no_candidates"
+
+    def search_done(self, publishing: bool) -> str:
+        """The progress line that ends a search that found something."""
+        target = self.target
+        plan = (
+            "Iniciando geração de vídeo e agendamento."
+            if publishing
+            else f"Iniciando geração de {target} vídeo{'s' if target != 1 else ''}."
+        )
+        return f"✅ Busca finalizada: {self.candidates_found} histórias disponíveis. {plan}"
 
     def stop(self, reason: str) -> None:
         self.stopped_reason = reason
@@ -95,7 +109,7 @@ class RunRecord:
                 self.speech.voice_id(gender, story.language) if self.speech else ""
             ),
         )
-        post = candidate.post
+        post, explored = candidate.post, candidate.exploration
         now = self.now()
         record = VideoRecord(
             created_at=now,
@@ -118,6 +132,10 @@ class RunRecord:
             grade=ModelGrade.from_evaluation(candidate.evaluation),
             deterministic_score=candidate.deterministic_score,
             recipe=recipe,
+            goal=candidate.goal,
+            exploration_experiment=explored.experiment if explored else None,
+            exploration_fit=explored.fit if explored else None,
+            cycle=self.cycle,
         )
         signals = RedditSnapshot(
             taken_at=now,

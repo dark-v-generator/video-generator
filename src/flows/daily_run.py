@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from ..capabilities.discovery import StoryDiscovery
+from ..capabilities.exploration import ExplorationSource
 from ..capabilities.publishing import HashtagSuggester, ITikTokPublisherProxy
 from ..capabilities.rendering import ISpeechProxy, Renderer
 from ..capabilities.writing import (
@@ -49,6 +50,7 @@ class DailyRun:
     store: RunStore
     history: HistoryStore
     recipe: ProductionRecipe
+    exploration: ExplorationSource
     config: DailyRunConfig
     progress: Progress
     # Names the voice in each record's recipe; None leaves it empty.
@@ -154,6 +156,7 @@ class DailyRun:
         and how many stories the day gets."""
         await self.progress("🔄 Busca diária iniciada...")
         requested = count if count is not None else self.config.count
+        plan = self.exploration.plan()
         try:
             candidates = await self.discovery.find_best_stories(
                 language=self.config.language,
@@ -161,26 +164,23 @@ class DailyRun:
                 time_filter="day",
                 top_per_sub=5,
                 exclude_urls=self.store.scheduled_post_urls(),
+                experiments=plan.open(),
+                min_fit=plan.min_fit,
             )
         except Exception as e:
             logger.exception("Failed to find stories")
             self.record.stop("discovery_failed")
             await self.progress(f"Erro ao buscar histórias: {e}")
             return [], 0
+        if plan.open():  # no slots for experiments yet: only base stories are made
+            candidates = [c for c in candidates if c.base_worthy]
         target = min(requested, len(candidates))
-        self.record.found(len(candidates), target)
+        self.record.found(len(candidates), target, cycle=plan.cycle)
         if not candidates:
             await self.progress("Nenhuma história boa encontrada hoje.")
             return [], 0
         if target:
-            plan = (
-                "Iniciando geração de vídeo e agendamento."
-                if publishing
-                else f"Iniciando geração de {target} vídeo{'s' if target != 1 else ''}."
-            )
-            await self.progress(
-                f"✅ Busca finalizada: {len(candidates)} histórias disponíveis. {plan}"
-            )
+            await self.progress(self.record.search_done(publishing))
             Path(output_dir).mkdir(parents=True, exist_ok=True)
         return candidates, target
 

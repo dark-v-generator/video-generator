@@ -53,6 +53,9 @@ class FileTuningRecords:
             return ExplorationPlan.empty()
         return _load(path, ExplorationPlan)
 
+    # The name the daily run knows it by (ExplorationSource).
+    plan = exploration_plan
+
     def beliefs(self) -> list[Belief]:
         path = self._root / "beliefs.yaml"
         if not path.exists():

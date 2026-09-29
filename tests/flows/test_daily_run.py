@@ -23,10 +23,12 @@ from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.story import StoryOrigin, StoryPart
 from src.entities.story_candidate import EvaluatedStory
+from src.entities.tuning import ExplorationPlan
 from src.flows import daily_run as daily_run_module
 from src.flows.daily_run import DailyRun
 from src.flows.publish_slots import next_publish_slot
 from src.storage import FileRunStore, PublishLogEntry
+from tests.fakes.exploration import FakeExplorationSource
 from tests.fakes.memory_history import InMemoryHistoryStore
 from tests.fakes.memory_store import InMemoryRunStore
 from tests.fakes.proxies import FakeLLMProxy
@@ -60,10 +62,14 @@ class FakeDiscovery:
         self.results = results
         self.error = None
         self.excluded = []
+        self.explored = []
         self.fetched = []
 
-    async def find_best_stories(self, *, language, exclude_urls=None, **_):
+    async def find_best_stories(
+        self, *, language, exclude_urls=None, experiments=(), min_fit=70, **_
+    ):
         self.excluded.append(exclude_urls)
+        self.explored.append(([e.id for e in experiments], min_fit))
         if self.error is not None:
             raise self.error
         return self.results
@@ -118,6 +124,9 @@ def build(tmp_path, *, n=3, count=4, writer=None, renderer=None, store=None, **k
         history=kw.pop("history", InMemoryHistoryStore()),
         recipe=kw.pop("recipe", ProductionRecipe.empty()),
         speech=kw.pop("speech", None),
+        exploration=kw.pop(
+            "exploration", FakeExplorationSource(ExplorationPlan.empty())
+        ),
         config=DailyRunConfig(
             count=count,
             publish_slots_local=SLOTS,
