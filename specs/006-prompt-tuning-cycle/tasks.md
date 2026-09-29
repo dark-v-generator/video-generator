@@ -65,25 +65,25 @@ um comando, com um resumo legível gerado a partir deles.
 
 ### Tests
 
-- [ ] T007 [P] [US6] Criar `tests/scripts/test_tuning_check.py`: `valid/` passa; cada `broken-<regra>/` falha com mensagem que nomeia a regra; fingerprint divergente falha e deixa de falhar quando a mudança consta em `outside_changes`; relatório antigo modificado em relação ao `HEAD` falha (repositório git temporário em `tmp_path`)
-- [ ] T008 [P] [US6] Criar `tests/scripts/test_tuning_summary.py`: README gerado de `valid/` contém as seções na ordem do contrato, cada crença com evidência, confiança, último teste e histórico, cada mudança de prompt com trecho `after`, ciclo e justificativa; duas gerações dão bytes iguais
-- [ ] T009 [P] [US6] Estender `tests/test_container_config.py` e `tests/entities/` para `hashtags_prompt_version`: a receita traz o fingerprint de `generate_hashtags.jinja2` e a coluna aparece em `CROSSED_COLUMNS`
+- [X] T007 [P] [US6] Criar `tests/scripts/test_tuning_check.py`: `valid/` passa; cada `broken-<regra>/` falha com mensagem que nomeia a regra; fingerprint divergente falha e deixa de falhar quando a mudança consta em `outside_changes`; relatório antigo modificado em relação ao `HEAD` falha (repositório git temporário em `tmp_path`)
+- [X] T008 [P] [US6] Criar `tests/scripts/test_tuning_summary.py`: README gerado de `valid/` contém as seções na ordem do contrato, cada crença com evidência, confiança, último teste e histórico, cada mudança de prompt com trecho `after`, ciclo e justificativa; duas gerações dão bytes iguais
+- [X] T009 [P] [US6] Estender `tests/test_container_config.py` e `tests/entities/` para `hashtags_prompt_version`: a receita traz o fingerprint de `generate_hashtags.jinja2` e a coluna aparece em `CROSSED_COLUMNS`
 
 ### Implementation
 
-- [ ] T010 [US6] Adicionar `hashtags_prompt_version` a `ProductionRecipe` em `src/entities/history.py` e a `build_production_recipe` em `src/core/recipe.py`; adicionar a coluna a `src/storage/sqlite_history.py` pelo padrão de `_add_audience_columns` (`ALTER TABLE video_records ADD COLUMN` quando ausente) e a `tests/fakes/memory_history.py`
-- [ ] T011 [US6] Criar `scripts/tuning_check.py` com as nove verificações de [contracts/tuning-records.md](./contracts/tuning-records.md): uma linha por verificação, código 0 ou 1, a verificação 8 comparando `prompts.fingerprint` com o ciclo aberto, a 9 usando `git diff --name-only HEAD -- tuning/reports tuning/cycles` e ignorando arquivos novos e o ciclo aberto
-- [ ] T012 [US6] Criar `scripts/tuning_summary.py`, que gera `tuning/README.md` via `TuningRecords.write_summary` com as seções e a ordem do contrato, saída determinística
-- [ ] T013 [US6] Adicionar as receitas `tuning-check` e `tuning-summary` ao `Justfile`, com comentário de uso no padrão das receitas existentes
-- [ ] T014 [US6] Criar a semente em `tuning/`: `cycles/001.yaml` aberto com os fingerprints reais de `story`, `evaluate_story` e `generate_hashtags` (`evaluate_exploration: null`), `settings` lidos de `config.prod.yaml`, `changes: []`; `exploration.yaml` com `cycle: 1`, `share: 0.25`, `min_fit: 70`, `experiments: []`; `story_labels.csv` só com o cabeçalho; `reports/` vazio com `.gitkeep`
-- [ ] T015 [US6] Criar `tuning/beliefs.yaml` com os achados do relatório de setembro (84 vídeos, 29 ago–28 set), cada um com `status: lead`, `evidence` com a contagem do relatório, `confidence: low` e a entrada `entered` em `history` apontando para o relatório de setembro: histórias de trabalho em que o narrador dá o troco, conflitos com sogros, títulos que prometem reação, títulos de 90 a 120 caracteres, watch médio ≥ 35 s, desconhecidos e empresas, luto sem vilão nem virada, histórias de casal, postagens de sexta
-- [ ] T016 [US6] Rodar `just tuning-summary` e versionar o `tuning/README.md` gerado
+- [X] T010 [US6] Adicionar `hashtags_prompt_version` a `ProductionRecipe` em `src/entities/history.py` e a `build_production_recipe` em `src/core/recipe.py`; adicionar a coluna a `src/storage/sqlite_history.py` pelo padrão de `_add_audience_columns` (`ALTER TABLE video_records ADD COLUMN` quando ausente) e a `tests/fakes/memory_history.py`
+- [X] T011 [US6] Criar `scripts/tuning_check.py` com as nove verificações de [contracts/tuning-records.md](./contracts/tuning-records.md): uma linha por verificação, código 0 ou 1, a verificação 8 comparando `prompts.fingerprint` com o ciclo aberto, a 9 usando `git diff --name-only HEAD -- tuning/reports tuning/cycles` e ignorando arquivos novos e o ciclo aberto
+- [X] T012 [US6] Criar `scripts/tuning_summary.py`, que gera `tuning/README.md` via `TuningRecords.write_summary` com as seções e a ordem do contrato, saída determinística
+- [X] T013 [US6] Adicionar as receitas `tuning-check` e `tuning-summary` ao `Justfile`, com comentário de uso no padrão das receitas existentes
+- [X] T014 [US6] Criar a semente em `tuning/`: `cycles/001.yaml` aberto com os fingerprints reais de `story`, `evaluate_story` e `generate_hashtags` (`evaluate_exploration: null`), `settings` lidos de `config.prod.yaml`, `changes: []`; `exploration.yaml` com `cycle: 1`, `share: 0.25`, `min_fit: 70`, `experiments: []`; `story_labels.csv` só com o cabeçalho; `reports/` vazio com `.gitkeep`
+- [X] T015 [US6] Criar `tuning/beliefs.yaml` com os achados do relatório de setembro (84 vídeos, 29 ago–28 set), cada um com `status: lead`, `evidence` com a contagem do relatório, `confidence: low` e a entrada `entered` em `history` apontando para o relatório de setembro: histórias de trabalho em que o narrador dá o troco, conflitos com sogros, títulos que prometem reação, títulos de 90 a 120 caracteres, watch médio ≥ 35 s, desconhecidos e empresas, luto sem vilão nem virada, histórias de casal, postagens de sexta
+- [X] T016 [US6] Rodar `just tuning-summary` e versionar o `tuning/README.md` gerado
 
 ### Live verification (milestone gate)
 
-- [ ] T017 [US6] Executar [quickstart §1](./quickstart.md): suíte verde, `just tuning-check` verde, check falhando com `story.jinja2` editado e voltando a passar depois de `git checkout`; anotar as saídas em Notes
+- [X] T017 [US6] Executar [quickstart §1](./quickstart.md): suíte verde, `just tuning-check` verde, check falhando com `story.jinja2` editado e voltando a passar depois de `git checkout`; anotar as saídas em Notes
 
-**Checkpoint**: Milestone 1 DONE
+**Checkpoint**: Milestone 1 DONE ✅ (2026-09-29)
 
 ---
 
@@ -325,3 +325,12 @@ Se os dados do M4 mostrarem que quase nenhuma história atinge `min_fit`, ajusta
 - A skill escreve os registros de `tuning/`; o código só os lê, com exceção do `README.md` gerado.
 - Commit por tarefa ou grupo lógico; mensagens de commit em inglês.
 - Linha de base (T001, 2026-09-29, `main` em 9812b37): `uv run pytest -q` → 494 passed, 0 falhas; `wc -l src/flows/daily_run.py` → 315.
+- Gate M1 (T017, 2026-09-29, branch `006-prompt-tuning-cycle`):
+  - `uv run pytest -q` → 537 passed (linha de base 494 + 43 novos), 0 falhas.
+  - `uv run pytest tests/storage/test_tuning_files.py tests/scripts/test_tuning_check.py tests/scripts/test_tuning_summary.py -q` → 38 passed.
+  - `just tuning-check` sobre a semente → nove linhas `ok`, "tudo certo", saída 0.
+  - `just tuning-summary` duas vezes → `git diff --stat tuning/README.md` vazio. README: ciclo 1 aberto, nove crenças de setembro em "Pistas e contestadas", "Experimentos abertos: Nenhum".
+  - `{# quickstart #}` na primeira linha de `src/prompts/story.jinja2` → `FALHOU 8. ... prompt story mudou fora da rotina: 42072ca8893c → 4ba6834641b4`, saída 1; depois de `git checkout src/prompts/story.jinja2`, saída 0.
+  - Migração sobre uma cópia de `.storage/history.sqlite`: 444 linhas mantidas, coluna `hashtags_prompt_version` criada, NULL em todas.
+  - Semente: `cycles/001.yaml` com `deployed: null`, porque `tuning/` ainda não foi implantado; preencher no próximo `just deploy`. Nenhum registro do histórico tem receita ainda (os 444 são importados), então não havia versão implantada a conferir.
+  - Contagem de B005 (≥ 35 s, 30 vídeos) refeita sobre o histórico local; o relatório de setembro não a trazia.
