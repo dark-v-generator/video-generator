@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Sequence
 
 from ..entities.history import PerformanceMetrics, TikTokVideoStats
 from ..entities.reddit_post import RedditPost
 from ..entities.transcription import TranscriptionResult
 from ..entities.language import Language
 from ..entities.speech_voice import SpeechVoice
+from ..entities.tuning import Experiment
 
 
 class RedditPostUnavailableError(ValueError):
@@ -105,6 +106,19 @@ class ILLMProxy(ABC):
         """Evaluate a Reddit post for TikTok potential.
         Returns a dict with 'resumo', 'notas' (per-criterion grades + justificativas),
         'nota_geral', and 'veredito'."""
+        ...
+
+    @abstractmethod
+    async def evaluate_exploration(
+        self,
+        title: str,
+        content: str,
+        experiments: Sequence[Experiment],
+        target_language: Language,
+    ) -> dict:
+        """Which of the open *experiments* a Reddit post is a fair test of.
+        Returns ``{"experiment": id or None, "fit": 0-100, "reason": str}``;
+        an id that was not given or a fit off the scale raises ValueError."""
         ...
 
     @abstractmethod

@@ -1,12 +1,14 @@
 """Fake proxies with fixed answers and a programmable error sequence."""
 
 import os
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Sequence, Union
 
 from src.entities.language import Language
 from src.entities.reddit_post import RedditPost
 from src.entities.speech_voice import SpeechVoice
 from src.entities.transcription import TranscriptionResult, TranscriptionWord
+from src.entities.tuning import Experiment
+from src.proxies.exploration import normalize_exploration
 from src.proxies.interfaces import (
     ICoverProxy,
     ILLMProxy,
@@ -64,18 +66,23 @@ class FakeRedditProxy(IRedditProxy):
 class FakeLLMProxy(ILLMProxy):
     """Answers every prompt deterministically from the post title.
 
-    ``grades`` sets each post's overall grade, which is what orders discovery.
-    ``story_errors`` maps a post title to the exceptions ``generate_story``
-    raises, one per call, before it starts answering normally.
+    ``grades`` sets each post's overall grade, which is what orders discovery;
+    an exception there is an evaluation that fails. ``story_errors`` maps a
+    post title to the exceptions ``generate_story`` raises, one per call,
+    before it starts answering normally. ``exploration`` maps a post title to
+    its exploration answer, or to the exception it raises; any other title
+    serves no experiment.
     """
 
     def __init__(
         self,
-        grades: Optional[Dict[str, float]] = None,
+        grades: Optional[Dict[str, Union[float, Exception]]] = None,
         story_errors: Optional[Dict[str, List[Exception]]] = None,
+        exploration: Optional[Dict[str, Union[dict, Exception]]] = None,
     ):
         self._grades = grades or {}
         self._story_errors = {k: list(v) for k, v in (story_errors or {}).items()}
+        self._exploration = exploration or {}
         self.calls: List[tuple[str, str]] = []
 
     async def generate_story(
@@ -96,12 +103,29 @@ class FakeLLMProxy(ILLMProxy):
     ) -> dict:
         self.calls.append(("evaluate_story", title))
         grade = self._grades.get(title, 70.0)
+        if isinstance(grade, Exception):
+            raise grade
         return {
             "resumo": f"Resumo de {title}",
             "notas": {},
             "nota_geral": grade,
-            "veredito": "Excelente" if grade >= 85 else "Boa",
+            "veredito": (
+                "Excelente" if grade >= 85 else "Boa" if grade >= 60 else "Mediana"
+            ),
         }
+
+    async def evaluate_exploration(
+        self,
+        title: str,
+        content: str,
+        experiments: Sequence[Experiment],
+        target_language: Language,
+    ) -> dict:
+        self.calls.append(("evaluate_exploration", title))
+        answer = self._exploration.get(title, {"experiment": None, "fit": 0})
+        if isinstance(answer, Exception):
+            raise answer
+        return normalize_exploration(answer, experiments)
 
     async def generate_hashtags(
         self, title: str, summary: str, target_language: Language

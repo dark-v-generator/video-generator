@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Sequence
 
 # dspy imports litellm: keep that import offline, see llm_prompt_proxy.py.
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
@@ -9,6 +10,8 @@ from src.prompts import loader as prompts
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import DSPyLLMConfig
 from src.entities.language import Language, get_language_name
+from src.entities.tuning import Experiment
+from src.proxies.exploration import normalize_exploration
 from src.core.logging_config import get_logger
 from src.capabilities.publishing.hashtags import normalize_hashtags
 
@@ -121,6 +124,31 @@ class EnhanceTranscriptionSignature(dspy.Signature):
 
     enhanced_transcription = dspy.OutputField(
         desc='A JSON array string of corrected word segments: [{"word": ..., "start": ..., "end": ...}, ...]'
+    )
+
+
+class ExplorationSignature(dspy.Signature):
+    """
+    You help a TikTok storytelling channel decide which Reddit stories to narrate.
+    The channel keeps part of its production to learn: each experiment is a question it asks its audience, and the videos made for it are the answer.
+
+    Judge whether this story is a fair test of one of the experiments. A fair test is the kind of story the question is about, as its description says, and a good video in its own right, because a weak story that does badly answers nothing: the audience rejected the story, not the idea.
+    This grade does not measure how well the story will do; another evaluation does that.
+    Being different from what the channel publishes is worth nothing by itself: when no experiment is served, the answer is none.
+    When the story could test more than one, pick the one it tests best.
+    """
+
+    target_language = dspy.InputField(desc="The language of the reason.")
+    experiments = dspy.InputField(
+        desc='A JSON array of the open experiments: [{"id", "question", "looks_like"}]'
+    )
+    reddit_post_title = dspy.InputField(desc="The original title of the story.")
+    reddit_post_text = dspy.InputField(desc="The original content of the story.")
+
+    exploration_json = dspy.OutputField(
+        desc='A JSON object: {"experiment": "<an id from the list, or null>", '
+        '"fit": <0-100, how fair a test it is; 0 when experiment is null>, '
+        '"reason": "<1-2 sentences in target_language>"}'
     )
 
 
@@ -241,6 +269,32 @@ class DSPyLLMProxy(ILLMProxy):
 
         data = self._parse_json_text(result.evaluation_json)
         return self._normalize_evaluation(data)
+
+    async def evaluate_exploration(
+        self,
+        title: str,
+        content: str,
+        experiments: Sequence[Experiment],
+        target_language: Language,
+    ) -> dict:
+        self._logger.info(
+            f"Grading story for exploration via DSPy {self.config.provider}/{self.config.model}"
+        )
+
+        result = dspy.Predict(ExplorationSignature)(
+            target_language=get_language_name(target_language),
+            experiments=json.dumps(
+                [
+                    {"id": e.id, "question": e.question, "looks_like": e.looks_like}
+                    for e in experiments
+                ],
+                ensure_ascii=False,
+            ),
+            reddit_post_title=title,
+            reddit_post_text=content,
+        )
+        data = self._parse_json_text(result.exploration_json)
+        return normalize_exploration(data, experiments)
 
     @staticmethod
     def _normalize_evaluation(data: dict) -> dict:

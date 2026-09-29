@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import types
+from typing import Sequence
 
 # litellm downloads its model cost map on every import (~4 s, and startup
 # then depends on the network). Nothing here reads costs, and the bundled map
@@ -13,6 +14,8 @@ import litellm
 from src.proxies.interfaces import ILLMProxy
 from src.entities.configs.proxies.llm import PromptLLMConfig
 from src.entities.language import Language, get_language_name
+from src.entities.tuning import Experiment
+from src.proxies.exploration import normalize_exploration
 from src.core.logging_config import get_logger
 from src.capabilities.publishing.hashtags import normalize_hashtags
 import json
@@ -355,6 +358,43 @@ class PromptLLMProxy(ILLMProxy):
             "nota_geral": nota_geral,
             "veredito": veredito,
         }
+
+    async def evaluate_exploration(
+        self,
+        title: str,
+        content: str,
+        experiments: Sequence[Experiment],
+        target_language: Language,
+    ) -> dict:
+        model_str = self._get_model_string()
+        self._logger.info(f"Grading story for exploration via LiteLLM {model_str}")
+
+        prompt = prompts.render(
+            "evaluate_exploration.jinja2",
+            target_language=get_language_name(target_language),
+            reddit_title=title,
+            reddit_text=content,
+            experiments=experiments,
+        )
+
+        response = await litellm.acompletion(
+            model=model_str,
+            messages=[{"role": "user", "content": prompt}],
+            api_key=self.config.api_key,
+            temperature=self.config.temperature,
+            **self._get_completion_kwargs(model_str),
+        )
+
+        response_text = response.choices[0].message.content
+        if not response_text:
+            raise self._empty_response_error(response, "exploration grade")
+
+        try:
+            data = json.loads(self._clean_json(response_text))
+        except json.JSONDecodeError as e:
+            self._logger.error(f"Failed to parse exploration JSON: {response_text}")
+            raise RuntimeError(f"Could not parse valid JSON from LLM: {e}")
+        return normalize_exploration(data, experiments)
 
     async def generate_hashtags(
         self, title: str, summary: str, target_language: Language

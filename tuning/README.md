@@ -11,7 +11,7 @@ Ciclo 1, aberto em 2026-09-29, ainda não implantado.
 | story | `42072ca8893c` |
 | evaluate_story | `673b96bf11d3` |
 | generate_hashtags | `620d6983865b` |
-| evaluate_exploration | — |
+| evaluate_exploration | `dc034827b48f` |
 
 Exploração: 25% da produção desde 2026-09-29, nota mínima 70. Sem experimento aberto, nenhuma vaga é reservada.
 

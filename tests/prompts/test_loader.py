@@ -2,6 +2,7 @@ import pytest
 from jinja2 import TemplateSyntaxError
 
 from src.prompts import loader
+from tests.proxies.test_evaluate_exploration import EXPERIMENTS
 
 
 class TestRender:
@@ -37,6 +38,31 @@ class TestRender:
         )
 
         assert "Um resumo." in prompt
+
+    def test_evaluate_exploration_lists_each_experiment(self):
+        prompt = self._exploration(EXPERIMENTS)
+
+        for e in EXPERIMENTS:
+            assert e.id in prompt and e.question in prompt and e.looks_like in prompt
+        assert "A tia no velório" in prompt and "Portuguese (Brazil)" in prompt
+
+    def test_the_experiments_are_data_so_changing_them_keeps_the_fingerprint(self):
+        before = loader.fingerprint("evaluate_exploration.jinja2")
+
+        one, both = self._exploration(EXPERIMENTS[:1]), self._exploration(EXPERIMENTS)
+
+        assert one != both
+        assert loader.fingerprint("evaluate_exploration.jinja2") == before
+
+    @staticmethod
+    def _exploration(experiments) -> str:
+        return loader.render(
+            "evaluate_exploration.jinja2",
+            target_language="Portuguese (Brazil)",
+            reddit_title="A tia no velório",
+            reddit_text="Ela contou tudo.",
+            experiments=experiments,
+        )
 
     def test_enhance_transcription_with_the_shipped_examples(self):
         examples = loader.load_examples("transcription_enhancement")

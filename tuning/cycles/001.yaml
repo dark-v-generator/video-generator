@@ -7,7 +7,8 @@ prompts:
   story: 42072ca8893c
   evaluate_story: 673b96bf11d3
   generate_hashtags: 620d6983865b
-  evaluate_exploration: null
+  # Written with milestone 4, before any experiment opened: its baseline.
+  evaluate_exploration: dc034827b48f
 settings:
   writer_model: openrouter/moonshotai/kimi-k2.6
   grader_model: openrouter/deepseek/deepseek-v4-flash

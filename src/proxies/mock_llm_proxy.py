@@ -1,8 +1,10 @@
 import logging
-from typing import List
+from typing import List, Sequence
 
+from .exploration import normalize_exploration
 from .interfaces import ILLMProxy
 from ..entities.language import Language, get_language_name
+from ..entities.tuning import Experiment
 from ..prompts import loader as prompts
 from ..capabilities.publishing.hashtags import normalize_hashtags
 
@@ -97,8 +99,9 @@ logger = logging.getLogger(__name__)
 class MockLLMProxy(ILLMProxy):
     """Returns a fixed story, evaluation and hashtags without calling any model.
 
-    The story prompt is still rendered and logged, so a prompt edit can be
-    seen and exercised in development without paying for a model call.
+    The story and exploration prompts are still rendered and logged, so a
+    prompt edit can be seen and exercised in development without paying for a
+    model call. Every story is a fair test of the first open experiment.
     """
 
     async def generate_story(
@@ -118,6 +121,27 @@ class MockLLMProxy(ILLMProxy):
         self, title: str, content: str, target_language: Language
     ) -> dict:
         return dict(MOCK_EVALUATION)
+
+    async def evaluate_exploration(
+        self,
+        title: str,
+        content: str,
+        experiments: Sequence[Experiment],
+        target_language: Language,
+    ) -> dict:
+        prompt = prompts.render(
+            "evaluate_exploration.jinja2",
+            target_language=get_language_name(target_language),
+            reddit_title=title,
+            reddit_text=content,
+            experiments=experiments,
+        )
+        logger.info("Mock LLM exploration prompt:\n%s", prompt)
+        first = experiments[0].id if experiments else None
+        return normalize_exploration(
+            {"experiment": first, "fit": 80, "reason": "Resposta fixa do mock."},
+            experiments,
+        )
 
     async def generate_hashtags(
         self, title: str, summary: str, target_language: Language
