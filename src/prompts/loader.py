@@ -24,10 +24,10 @@ def render(template_name: str, **variables) -> str:
     return _environment(PROMPTS_DIR).get_template(template_name).render(**variables)
 
 
-def fingerprint(template_name: str) -> str:
+def fingerprint(template_name: str, directory: str = PROMPTS_DIR) -> str:
     """A short hash of the template file, so a record can tell which version
     of a prompt made it. A missing template raises."""
-    with open(os.path.join(PROMPTS_DIR, template_name), "rb") as f:
+    with open(os.path.join(directory, template_name), "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()[:12]
 
 

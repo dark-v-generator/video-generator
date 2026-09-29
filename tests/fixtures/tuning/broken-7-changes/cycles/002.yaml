@@ -7,7 +7,7 @@ prompts:
   evaluate_story: 3e4291cd0044
   generate_hashtags: 45008173f17e
   evaluate_exploration: null
-settings: {writer_model: moonshotai/kimi-k2.6, grader_model: deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
+settings: {writer_model: openrouter/moonshotai/kimi-k2.6, grader_model: openrouter/deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
 changes:
   - prompt: evaluate_story
     before: "Valorize histórias com conflito claro."

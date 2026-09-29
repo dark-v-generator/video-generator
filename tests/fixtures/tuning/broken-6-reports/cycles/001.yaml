@@ -7,7 +7,7 @@ prompts:
   evaluate_story: bbbbbbbbbbbb
   generate_hashtags: cccccccccccc
   evaluate_exploration: null
-settings: {writer_model: moonshotai/kimi-k2.6, grader_model: deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
+settings: {writer_model: openrouter/moonshotai/kimi-k2.6, grader_model: openrouter/deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
 changes: []
 experiment_changes:
   - {date: 2026-10-01, report: R-2026-10-01, action: opened, experiment: E001}
