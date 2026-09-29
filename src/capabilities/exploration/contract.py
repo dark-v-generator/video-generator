@@ -7,7 +7,11 @@ run, naming the file and the field.
 
 from typing import Protocol
 
+from ...entities.history import GoalCounts
 from ...entities.tuning import ExplorationPlan
+
+# Kept with the history, whose contract counts them; the allocation reads them.
+__all__ = ["ExplorationSource", "GoalCounts"]
 
 
 class ExplorationSource(Protocol):
