@@ -1,0 +1,20 @@
+# The baseline: the prompts in effect when the routine started.
+number: 1
+opened: 2026-09-29
+deployed: null
+closed: null
+prompts:
+  story: 42072ca8893c
+  evaluate_story: 673b96bf11d3
+  generate_hashtags: 620d6983865b
+  evaluate_exploration: null
+settings:
+  writer_model: openrouter/moonshotai/kimi-k2.6
+  grader_model: openrouter/deepseek/deepseek-v4-flash
+  rendering_strategy: narration-over-footage
+changes: []
+experiment_changes: []
+outside_changes: []
+evaluation: null
+reports: []
+closing: null

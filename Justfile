@@ -109,6 +109,17 @@ sync-history:
 report *args:
     uv run python scripts/performance_report.py {{args}}
 
+# Exits 1 naming what failed; a prompt edited outside the routine is one of
+# them. The /prompt-tuning skill runs it first.
+#
+# Check the tuning records in tuning/ and the prompt versions they record.
+tuning-check:
+    uv run python scripts/tuning_check.py
+
+# Regenerate tuning/README.md from the tuning records (never edit it by hand).
+tuning-summary:
+    uv run python scripts/tuning_summary.py
+
 # Render a hand-written story JSON over a folder of .mp4 clips (output/render/).
 render-story story_json footage_dir:
     uv run python scripts/render_story.py {{story_json}} {{footage_dir}}

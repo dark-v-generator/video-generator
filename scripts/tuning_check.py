@@ -63,7 +63,9 @@ def _one_open_cycle(records: Records) -> list[str]:
     numbers = [c.number for c in records.cycles]
     problems = []
     if numbers != list(range(1, len(numbers) + 1)):
-        problems.append(f"os ciclos devem ir de 1 a {len(numbers)} sem lacunas: {numbers}")
+        problems.append(
+            f"os ciclos devem ir de 1 a {len(numbers)} sem lacunas: {numbers}"
+        )
     open_cycles = [c.number for c in records.cycles if c.is_open]
     if len(open_cycles) != 1:
         problems.append(
@@ -201,8 +203,15 @@ def _written_records_unchanged(records: Records) -> list[str]:
     # one being worked on, and closing it is an edit.
     changed = _git(
         records.root,
-        "diff", "--relative", "--name-only", "--no-renames", "--diff-filter=MD",
-        "HEAD", "--", "reports", "cycles",
+        "diff",
+        "--relative",
+        "--name-only",
+        "--no-renames",
+        "--diff-filter=MD",
+        "HEAD",
+        "--",
+        "reports",
+        "cycles",
     ).split()
     problems = []
     for path in changed:
@@ -226,7 +235,11 @@ CHECKS: list[tuple[int, str, Callable[[Records], list[str]]]] = [
     (6, "relatórios ligados aos seus ciclos", _reports),
     (7, "mudanças de prompt com justificativa existente", _prompt_changes),
     (8, "prompts em disco iguais aos do ciclo aberto", _prompts_match),
-    (9, "relatórios e ciclos fechados sem mudança desde o último commit", _written_records_unchanged),
+    (
+        9,
+        "relatórios e ciclos fechados sem mudança desde o último commit",
+        _written_records_unchanged,
+    ),
 ]
 LOAD = "os registros carregam"
 

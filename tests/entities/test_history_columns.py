@@ -16,7 +16,9 @@ def test_the_hashtags_prompt_version_is_a_crossed_column():
 
 
 def test_the_crossed_row_carries_the_hashtags_prompt_version():
-    recipe = dataclasses.replace(ProductionRecipe.empty(), hashtags_prompt_version="abc")
+    recipe = dataclasses.replace(
+        ProductionRecipe.empty(), hashtags_prompt_version="abc"
+    )
     record = VideoRecord(
         created_at=datetime(2026, 9, 29, tzinfo=timezone.utc),
         run_id=1,

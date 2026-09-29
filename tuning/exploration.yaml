@@ -1,0 +1,7 @@
+# The only tuning record the daily run reads. The order of the experiments
+# is their priority.
+cycle: 1
+share: 0.25
+share_since: 2026-09-29
+min_fit: 70
+experiments: []

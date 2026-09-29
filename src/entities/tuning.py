@@ -105,7 +105,13 @@ class Experiment(_Record):
         if self.status != "backlog":
             missing = [
                 name
-                for name in ("kind", "looks_like", "sample_target", "decision_rule", "opened")
+                for name in (
+                    "kind",
+                    "looks_like",
+                    "sample_target",
+                    "decision_rule",
+                    "opened",
+                )
                 if not getattr(self, name)
             ]
             if missing:

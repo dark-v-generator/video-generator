@@ -17,7 +17,16 @@ STORY = "7762c0b406eb"
 
 def _git(directory: Path, *args: str) -> None:
     subprocess.run(
-        ["git", "-C", str(directory), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        [
+            "git",
+            "-C",
+            str(directory),
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            *args,
+        ],
         check=True,
         capture_output=True,
     )
@@ -97,19 +106,21 @@ def test_a_record_that_does_not_load_stops_the_other_checks(repo, prompts):
 
 def test_a_prompt_edited_outside_the_routine_names_both_versions(repo, prompts):
     story = prompts / "story.jinja2"
-    story.write_text("{# edited #}\n" + story.read_text(encoding="utf-8"), encoding="utf-8")
+    story.write_text(
+        "{# edited #}\n" + story.read_text(encoding="utf-8"), encoding="utf-8"
+    )
     on_disk = hashlib.sha256(story.read_bytes()).hexdigest()[:12]
 
     failing = _failing(repo / "tuning", prompts)
 
-    assert failing == {
-        8: [f"prompt story mudou fora da rotina: {STORY} → {on_disk}"]
-    }
+    assert failing == {8: [f"prompt story mudou fora da rotina: {STORY} → {on_disk}"]}
 
 
 def test_an_explained_outside_change_passes(repo, prompts):
     story = prompts / "story.jinja2"
-    story.write_text("{# edited #}\n" + story.read_text(encoding="utf-8"), encoding="utf-8")
+    story.write_text(
+        "{# edited #}\n" + story.read_text(encoding="utf-8"), encoding="utf-8"
+    )
     on_disk = hashlib.sha256(story.read_bytes()).hexdigest()[:12]
     _edit_yaml(
         repo / "tuning" / "cycles" / "002.yaml",
@@ -133,7 +144,9 @@ def test_a_prompt_the_cycle_does_not_know_is_an_outside_change(repo, prompts):
     failing = _failing(repo / "tuning", prompts)
 
     assert list(failing) == [8]
-    assert failing[8][0].startswith("prompt evaluate_exploration mudou fora da rotina: ausente → ")
+    assert failing[8][0].startswith(
+        "prompt evaluate_exploration mudou fora da rotina: ausente → "
+    )
 
 
 def test_an_old_report_changed_since_commit_fails(repo, prompts):
@@ -162,9 +175,16 @@ def test_a_closed_cycle_changed_since_commit_fails(repo, prompts):
 
 def test_new_reports_and_the_open_cycle_may_change(repo, prompts):
     tuning = repo / "tuning"
-    shutil.copy(tuning / "reports" / "2026-10-15.yaml", tuning / "reports" / "2026-10-29.yaml")
-    _edit_yaml(tuning / "reports" / "2026-10-29.yaml", lambda r: r.update(id="R-2026-10-29", cycle=2))
-    _edit_yaml(tuning / "cycles" / "002.yaml", lambda c: c["reports"].append("R-2026-10-29"))
+    shutil.copy(
+        tuning / "reports" / "2026-10-15.yaml", tuning / "reports" / "2026-10-29.yaml"
+    )
+    _edit_yaml(
+        tuning / "reports" / "2026-10-29.yaml",
+        lambda r: r.update(id="R-2026-10-29", cycle=2),
+    )
+    _edit_yaml(
+        tuning / "cycles" / "002.yaml", lambda c: c["reports"].append("R-2026-10-29")
+    )
     _git(repo, "add", "-A")  # staged, not committed: still new to HEAD
 
     assert _failing(tuning, prompts) == {}
@@ -174,7 +194,10 @@ def test_closing_the_cycle_that_was_open_is_not_a_rewrite(repo, prompts):
     tuning = repo / "tuning"
     shutil.copy(tuning / "cycles" / "002.yaml", tuning / "cycles" / "003.yaml")
     _edit_yaml(tuning / "cycles" / "002.yaml", lambda c: c.update(closed="2026-10-29"))
-    _edit_yaml(tuning / "cycles" / "003.yaml", lambda c: c.update(number=3, opened="2026-10-29"))
+    _edit_yaml(
+        tuning / "cycles" / "003.yaml",
+        lambda c: c.update(number=3, opened="2026-10-29"),
+    )
     _edit_yaml(tuning / "exploration.yaml", lambda p: p.update(cycle=3))
 
     assert _failing(tuning, prompts) == {}

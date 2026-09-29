@@ -56,7 +56,10 @@ def test_each_belief_shows_evidence_confidence_last_test_and_history(summary):
     assert "12 vídeos, relativo mediano 4,1×, de 2026-08-29 a 2026-10-14" in base
     assert "Confiança média" in base
     assert "último teste em 2026-10-15" in base
-    assert "2026-10-15, ciclo 1: confirmada (R-2026-10-15). 12 vídeos, entra na base." in base
+    assert (
+        "2026-10-15, ciclo 1: confirmada (R-2026-10-15). 12 vídeos, entra na base."
+        in base
+    )
     assert "B002" in leads and "pista" in leads
     assert _section(summary, "## O que não funciona").strip() == "Nenhuma."
 
@@ -65,7 +68,10 @@ def test_experiments_show_the_open_ones_and_the_queue(summary):
     open_ = _section(summary, "## Experimentos abertos")
     queue = _section(summary, "## Fila de ideias")
 
-    assert "### E002 — Histórias com desconhecidos funcionam quando o narrador reage?" in open_
+    assert (
+        "### E002 — Histórias com desconhecidos funcionam quando o narrador reage?"
+        in open_
+    )
     assert "Desafia a crença B002" in open_ and "substitui E001" in open_
     assert "E001" not in queue and "E003" in queue
 

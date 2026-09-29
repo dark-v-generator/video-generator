@@ -20,6 +20,7 @@ from src.entities.tuning import (
     Belief,
     Cycle,
     Experiment,
+    ExplorationPlan,
     PromptChange,
     Report,
 )
@@ -41,9 +42,17 @@ EVENTS = {
     "retired": "aposentada",
     "kept_against_evidence": "mantida contra a evidência",
 }
-KINDS = {"unexplored": "território novo", "variation": "variação", "challenge": "desafio"}
+KINDS = {
+    "unexplored": "território novo",
+    "variation": "variação",
+    "challenge": "desafio",
+}
 DECISIONS = {"approved": "aprovada", "modified": "modificada", "rejected": "rejeitada"}
-JUSTIFICATIONS = {"finding": "achado de", "belief": "crença", "experiment": "experimento"}
+JUSTIFICATIONS = {
+    "finding": "achado de",
+    "belief": "crença",
+    "experiment": "experimento",
+}
 ACTIONS = {"keep": "manter", "close": "fechar"}
 RESULTS = {
     "helped": "ajudou",
@@ -61,7 +70,7 @@ def _quote(text: str) -> list[str]:
     return [f"    > {line}".rstrip() for line in text.strip().splitlines()]
 
 
-def _open_cycle(cycle: Cycle, share: float, since, min_fit: int) -> list[str]:
+def _open_cycle(plan: ExplorationPlan, cycle: Cycle) -> list[str]:
     deployed = (
         f"implantado em {cycle.deployed}" if cycle.deployed else "ainda não implantado"
     )
@@ -76,12 +85,14 @@ def _open_cycle(cycle: Cycle, share: float, since, min_fit: int) -> list[str]:
         ),
         "",
     ]
-    if share:
-        lines.append(
-            f"Exploração: {share:.0%} da produção desde {since}, nota mínima {min_fit}."
-        )
-    else:
-        lines.append("Exploração: nenhuma fatia reservada.")
+    if not plan.share:
+        return lines + ["Exploração: nenhuma fatia reservada."]
+    lines.append(
+        f"Exploração: {plan.share:.0%} da produção desde {plan.share_since},"
+        f" nota mínima {plan.min_fit}."
+    )
+    if not plan.open():
+        lines[-1] += " Sem experimento aberto, nenhuma vaga é reservada."
     return lines
 
 
@@ -119,7 +130,9 @@ def _beliefs(beliefs: list[Belief], statuses: tuple[str, ...]) -> list[str]:
 def _progress(experiment: Experiment, last: Optional[Report]) -> str:
     if last is None:
         return "- Progresso: nenhum relatório ainda."
-    state = next((e for e in last.cycle_state.experiments if e.id == experiment.id), None)
+    state = next(
+        (e for e in last.cycle_state.experiments if e.id == experiment.id), None
+    )
     if state is None:
         return f"- Progresso: não consta no {last.id}."
     return (
@@ -248,7 +261,7 @@ def render(records: TuningRecords) -> str:
         "",
         "## Ciclo aberto",
         "",
-        *_open_cycle(records.open_cycle(), plan.share, plan.share_since, plan.min_fit),
+        *_open_cycle(plan, records.open_cycle()),
         "",
         "## Base",
         "",
