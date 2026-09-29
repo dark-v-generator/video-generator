@@ -35,6 +35,10 @@ def _number(value: object) -> str:
     return "" if value is None else f"{value:.0f}"
 
 
+def _percent(value: Optional[float]) -> str:
+    return "" if value is None else f"{value * 100:.1f}%"
+
+
 def _upvotes_now(columns: dict) -> str:
     if columns["latest_reddit_available"] is False:
         return "indisp."
@@ -70,15 +74,10 @@ TABLE: list[tuple[str, Callable[[dict], str], bool]] = [
         ),
         True,
     ),
-    (
-        "% fim",
-        lambda c: (
-            ""
-            if c["latest_full_watch_ratio"] is None
-            else f"{c['latest_full_watch_ratio'] * 100:.1f}%"
-        ),
-        True,
-    ),
+    ("% fim", lambda c: _percent(c["latest_full_watch_ratio"]), True),
+    ("% 3s", lambda c: _percent(c["latest_retained_3s"]), True),
+    ("% FYP", lambda c: _percent(c["latest_for_you_ratio"]), True),
+    ("seguid.", lambda c: _number(c["latest_new_followers"]), True),
     ("prompt", lambda c: (c["story_prompt_version"] or "")[:8], False),
     ("modelo", lambda c: c["writer_model"] or "", False),
 ]

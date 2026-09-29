@@ -73,6 +73,9 @@ def seed(history, title, grade, views=None, *, days=0, prompt="abc123def456"):
                         likes=10,
                         avg_watch_seconds=21.5,
                         full_watch_ratio=0.12,
+                        new_followers=3,
+                        retention=(1.0, 0.9, 0.8, 0.645),
+                        traffic_sources={"For You": 0.97, "Search": 0.03},
                     ),
                 )
             },
@@ -134,6 +137,16 @@ def test_a_video_not_collected_yet_is_there_with_empty_numbers(seeded, capsys):
     assert cell(lines, "up desc.", "waiting") == "300"
     assert cell(lines, "up agora", "waiting") == ""
     assert out.endswith("\n\n4 vídeos\n")
+
+
+def test_the_table_shows_the_hook_the_for_you_share_and_the_followers(seeded, capsys):
+    assert performance_report.main([]) == 0
+
+    lines = table(capsys)
+    assert cell(lines, "% 3s", "fine") == "64.5%"
+    assert cell(lines, "% FYP", "fine") == "97.0%"
+    assert cell(lines, "seguid.", "fine") == "3"
+    assert cell(lines, "% 3s", "waiting") == ""
 
 
 def test_filter_and_since_narrow_the_rows(seeded, capsys):
