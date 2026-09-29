@@ -2,7 +2,8 @@
 
 tests/fixtures/tiktok_studio_probe.json is a redacted dump of
 scripts/tiktok_studio_probe.py: two pages of the content list (the first page
-and a later one) and the analytics insight that carries the retention.
+and a later one) and the analytics insight that carries the retention, the
+traffic sources and the followers a video brought.
 """
 
 import copy
@@ -82,7 +83,67 @@ def test_the_analytics_give_the_counts_and_the_retention():
         saves=10,
         avg_watch_seconds=38.78,
         full_watch_ratio=0.0683,
+        new_followers=6,
+        retention=(1.0, 0.86, 0.76, 0.69, 0.62, 0.56),
+        traffic_sources={
+            "For You": 0.977,
+            "Personal Profile": 0.015,
+            "Others": 0.005,
+            "Follow": 0.002,
+            "Search": 0.001,
+            "Sound": 0.0,
+        },
     )
+
+
+def test_the_curve_and_the_breakdown_read_by_second_and_by_source():
+    metrics = _parse_analytics(insight())
+
+    assert metrics.retained_at(3) == 0.69
+    assert metrics.retained_at(6) is None
+    assert metrics.traffic_share("For You") == 0.977
+    assert metrics.traffic_share("Ads") == 0.0
+
+
+def test_signals_the_studio_has_not_computed_yet_are_none():
+    body = insight()
+    body["video_retention_rate_realtime"]["value"] = {"status": 2}
+    body["video_traffic_source_percent_realtime"]["value"] = {"status": 2}
+    body["video_new_followers"] = {"status": 2}
+
+    metrics = _parse_analytics(body)
+
+    assert metrics.retention is None
+    assert metrics.traffic_sources is None
+    assert metrics.new_followers is None
+    assert metrics.retained_at(3) is None
+    assert metrics.traffic_share("For You") is None
+
+
+def test_a_retention_curve_not_in_whole_seconds_fails_naming_it():
+    body = insight()
+    body["video_retention_rate_realtime"]["value"]["list"][2]["timestamp"] = "2500"
+
+    with pytest.raises(
+        TikTokStudioLayoutError, match="video_retention_rate_realtime point 2"
+    ):
+        _parse_analytics(body)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "video_retention_rate_realtime",
+        "video_traffic_source_percent_realtime",
+        "video_new_followers",
+    ],
+)
+def test_analytics_without_an_audience_insight_fail_naming_it(name):
+    body = insight()
+    del body[name]
+
+    with pytest.raises(TikTokStudioLayoutError, match=name):
+        _parse_analytics(body)
 
 
 def test_retention_the_studio_has_not_computed_yet_is_none():

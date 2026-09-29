@@ -14,6 +14,9 @@ RunMode = Literal["run", "generate", "publish"]
 SnapshotSource = Literal["discovery", "collection"]
 AttemptStatus = Literal["scheduled", "failed"]
 
+# The traffic source TikTok's algorithm feeds, as the Studio names it.
+FOR_YOU = "For You"
+
 # The evaluate_story prompt's criterion keys, by the name the history uses.
 _CRITERIA = {
     "retention": "retencao",
@@ -105,6 +108,25 @@ class PerformanceMetrics:
     saves: Optional[int] = None
     avg_watch_seconds: Optional[float] = None
     full_watch_ratio: Optional[float] = None
+    new_followers: Optional[int] = None
+    # The share of viewers still watching at each whole second, 1.0 at 0 s:
+    # where the hook or the middle loses people.
+    retention: Optional[tuple[float, ...]] = None
+    # The share of views by where they came from ("For You", "Search", ...).
+    traffic_sources: Optional[dict[str, float]] = None
+
+    def retained_at(self, second: int) -> Optional[float]:
+        """The share still watching at ``second``; None past the curve's end."""
+        if self.retention is None or second >= len(self.retention):
+            return None
+        return self.retention[second]
+
+    def traffic_share(self, source: str) -> Optional[float]:
+        """The share of views from ``source``; None when the Studio gave no
+        breakdown, 0 when it gave one without that source."""
+        if self.traffic_sources is None:
+            return None
+        return self.traffic_sources.get(source, 0.0)
 
 
 @dataclass(frozen=True)
@@ -215,7 +237,14 @@ _RECORD_COLUMNS = (
 _GRADE_COLUMNS = ("overall", "verdict", *_CRITERIA)
 _RECIPE_COLUMNS = tuple(f.name for f in fields(ProductionRecipe))
 _REDDIT_COLUMNS = ("score", "num_comments", "upvote_ratio", "taken_at")
-_METRIC_COLUMNS = tuple(f.name for f in fields(PerformanceMetrics))
+# The curve and the breakdown are not columns: the crossed view shows the
+# points of them that compare across videos.
+METRIC_COLUMNS = tuple(
+    f.name
+    for f in fields(PerformanceMetrics)
+    if f.name not in ("retention", "traffic_sources")
+)
+RETAINED_AT_SECONDS = (3, 10)
 
 # The crossed view's columns by name, in the order a table or CSV shows them;
 # the names sorting and filtering accept.
@@ -232,7 +261,9 @@ CROSSED_COLUMNS: tuple[str, ...] = (
     *(f"latest_reddit_{name}" for name in _REDDIT_COLUMNS),
     "latest_reddit_available",
     "tiktok_video_id",
-    *(f"latest_{name}" for name in _METRIC_COLUMNS),
+    *(f"latest_{name}" for name in METRIC_COLUMNS),
+    *(f"latest_retained_{second}s" for second in RETAINED_AT_SECONDS),
+    "latest_for_you_ratio",
     "latest_taken_at",
 )
 
@@ -280,8 +311,17 @@ class CrossedRow:
                 f"latest_{name}": (
                     getattr(performance.metrics, name) if performance else None
                 )
-                for name in _METRIC_COLUMNS
+                for name in METRIC_COLUMNS
             },
+            **{
+                f"latest_retained_{second}s": (
+                    performance.metrics.retained_at(second) if performance else None
+                )
+                for second in RETAINED_AT_SECONDS
+            },
+            "latest_for_you_ratio": (
+                performance.metrics.traffic_share(FOR_YOU) if performance else None
+            ),
             "latest_taken_at": performance.taken_at if performance else None,
         }
 

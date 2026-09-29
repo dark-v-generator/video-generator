@@ -19,7 +19,7 @@ from src.entities.history import (
     VideoRecord,
 )
 from src.storage import HistoryConflictError, SqliteHistoryStore, UnknownColumnError
-from src.storage.sqlite_history import SCHEMA
+from src.storage.sqlite_history import _AUDIENCE_COLUMNS_SQL, SCHEMA
 from tests.fakes.memory_history import InMemoryHistoryStore
 
 T0 = datetime(2026, 9, 25, 10, 0, tzinfo=timezone.utc)
@@ -394,6 +394,45 @@ def test_a_metric_the_studio_did_not_show_comes_back_none(store):
     assert metrics.views == 1000
 
 
+AUDIENCE = dict(
+    new_followers=6,
+    retention=(1.0, 0.86, 0.76, 0.69),
+    traffic_sources={"For You": 0.977, "Search": 0.023},
+)
+
+
+def test_a_collection_keeps_the_audience_signals(store):
+    record_id = scheduled_record(store, "out/a.mp4")
+
+    store.record_collection(collection(), {record_id: performance(**AUDIENCE)}, {})
+
+    assert store.performance_snapshots(record_id) == [performance(**AUDIENCE)]
+
+
+def test_a_history_from_before_the_audience_signals_gains_their_columns(tmp_path):
+    path = str(tmp_path / "history.sqlite")
+    old = sqlite3.connect(path)
+    old.executescript(SCHEMA.replace(_AUDIENCE_COLUMNS_SQL, ""))
+    old.executescript(
+        "INSERT INTO video_records (created_at, video_path, title, post_url)"
+        " VALUES ('2026-09-25T10:00:00+00:00', 'out/a.mp4', 'Before', 'u');"
+        "INSERT INTO collections (started_at, finished_at)"
+        " VALUES ('2026-09-28T10:00:00+00:00', '2026-09-28T10:05:00+00:00');"
+        "INSERT INTO performance_snapshots (record_id, collection_id, taken_at,"
+        " tiktok_video_id, views) VALUES (1, 1, '2026-09-28T10:00:00+00:00', 'v1', 9);"
+    )
+    old.close()
+
+    store = SqliteHistoryStore(path)
+    store.record_collection(collection(), {1: performance(**AUDIENCE)}, {})
+
+    before, after = store.performance_snapshots(1)
+    assert before.metrics == PerformanceMetrics(views=9)
+    assert after == performance(**AUDIENCE)
+    # Opening it again finds the columns already there.
+    assert len(SqliteHistoryStore(path).performance_snapshots(1)) == 2
+
+
 def test_a_second_collection_adds_snapshots_and_keeps_the_first(store):
     record_id = scheduled_record(store, "out/a.mp4")
     store.record_collection(collection(), {record_id: performance(views=10)}, {})
@@ -597,3 +636,35 @@ def test_an_unknown_column_raises_naming_the_valid_ones(store, crossed, call):
 def test_a_crossed_row_flattens_into_the_crossed_columns(store, crossed):
     for row in store.crossed_view():
         assert tuple(row.columns()) == CROSSED_COLUMNS
+
+
+def test_the_crossed_view_shows_the_hook_and_the_for_you_share(store, crossed):
+    store.record_collection(
+        collection(matched=2),
+        {
+            crossed["loved"]: performance("v1", views=600, **AUDIENCE),
+            crossed["flopped"]: performance(
+                "v2",
+                views=9100,
+                retention=(1.0, 0.5, 0.4, 0.3),
+                traffic_sources={"Search": 1.0},
+            ),
+        },
+        {},
+    )
+
+    rows = store.crossed_view(sort=("latest_retained_3s", True))
+
+    assert ids(rows)[:2] == [crossed["loved"], crossed["flopped"]]
+    loved, flopped = rows[0].columns(), rows[1].columns()
+    assert loved["latest_retained_3s"] == 0.69
+    # Past the end of the curve, as a short video would be at 10 s.
+    assert loved["latest_retained_10s"] is None
+    assert loved["latest_new_followers"] == 6
+    assert loved["latest_for_you_ratio"] == 0.977
+    # A breakdown without For You means none of the views came from it.
+    assert flopped["latest_for_you_ratio"] == 0.0
+    assert rows[2].columns()["latest_for_you_ratio"] is None
+    assert ids(store.crossed_view(filters={"latest_for_you_ratio": "0"})) == [
+        crossed["flopped"]
+    ]

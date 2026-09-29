@@ -285,16 +285,68 @@ def _parse_analytics(body: dict) -> PerformanceMetrics:
         saves=int(_field(stats, "collect_count", INSIGHT_PATH)),
         avg_watch_seconds=_insight(body, "video_per_duration_realtime"),
         full_watch_ratio=_insight(body, "video_finish_rate_realtime"),
+        new_followers=_new_followers(body),
+        retention=_retention_curve(body),
+        traffic_sources=_traffic_sources(body),
     )
 
 
-def _insight(body: dict, name: str) -> Optional[float]:
-    """An insight's value; None when the Studio says it has none (a status
-    other than 0, as for a post too new to have retention)."""
+def _insight_value(body: dict, name: str) -> Optional[dict]:
+    """An insight's value object; None when the Studio says it has none (a
+    status other than 0, as for a post too new to have retention)."""
     value = _field(_field(body, name, INSIGHT_PATH), "value", INSIGHT_PATH, name)
     if value.get("status") != 0:
         return None
+    return value
+
+
+def _insight(body: dict, name: str) -> Optional[float]:
+    value = _insight_value(body, name)
+    if value is None:
+        return None
     return float(_field(value, "value", INSIGHT_PATH, f"{name}.value"))
+
+
+def _new_followers(body: dict) -> Optional[int]:
+    # Unlike the realtime insights, this one is the status and value itself.
+    name = "video_new_followers"
+    insight = _field(body, name, INSIGHT_PATH)
+    if insight.get("status") != 0:
+        return None
+    return int(_field(insight, "value", INSIGHT_PATH, f"{name}.value"))
+
+
+def _retention_curve(body: dict) -> Optional[tuple[float, ...]]:
+    """The share still watching at each second, from the curve the Studio
+    draws: one point per 1000 ms from 0. Other steps are a changed layout."""
+    name = "video_retention_rate_realtime"
+    value = _insight_value(body, name)
+    if value is None:
+        return None
+    points = _field(value, "list", INSIGHT_PATH, f"{name}.list")
+    for second, point in enumerate(points):
+        timestamp = int(_field(point, "timestamp", INSIGHT_PATH, f"{name}.timestamp"))
+        if timestamp != second * 1000:
+            raise TikTokStudioLayoutError(
+                f"{name} point {second} is at {timestamp} ms, not {second * 1000}"
+                f" in {INSIGHT_PATH}"
+            )
+    return tuple(
+        float(_field(point, "value", INSIGHT_PATH, f"{name}.value")) for point in points
+    )
+
+
+def _traffic_sources(body: dict) -> Optional[dict[str, float]]:
+    name = "video_traffic_source_percent_realtime"
+    value = _insight_value(body, name)
+    if value is None:
+        return None
+    return {
+        _field(source, "key", INSIGHT_PATH, f"{name}.key"): float(
+            _field(source, "value", INSIGHT_PATH, f"{name}.value")
+        )
+        for source in _field(value, "value", INSIGHT_PATH, f"{name}.value")
+    }
 
 
 def _field(obj: dict, key: str, endpoint: str, label: Optional[str] = None) -> Any:

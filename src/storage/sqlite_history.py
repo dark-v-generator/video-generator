@@ -13,6 +13,8 @@ from typing import Iterator, Optional
 
 from ..entities.history import (
     CROSSED_COLUMNS,
+    FOR_YOU,
+    RETAINED_AT_SECONDS,
     Collection,
     CrossedRow,
     ModelGrade,
@@ -47,6 +49,17 @@ _VIDEO_RECORDS_COLUMNS = """
   voice_id TEXT, hashtags TEXT NOT NULL DEFAULT '', tiktok_video_id TEXT UNIQUE,
   imported INTEGER NOT NULL DEFAULT 0"""
 
+# Added after the first collections: a history from before gets them, NULL in
+# its old rows. retention and traffic_sources are JSON (a list, an object).
+_AUDIENCE_COLUMNS = {
+    "new_followers": "INTEGER",
+    "retention": "TEXT",
+    "traffic_sources": "TEXT",
+}
+_AUDIENCE_COLUMNS_SQL = "".join(
+    f", {name} {kind}" for name, kind in _AUDIENCE_COLUMNS.items()
+)
+
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS run_summaries (
   id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT,
@@ -73,7 +86,7 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
   collection_id INTEGER NOT NULL REFERENCES collections(id), taken_at TEXT NOT NULL,
   tiktok_video_id TEXT NOT NULL, views INTEGER, likes INTEGER, comments INTEGER,
   shares INTEGER, saves INTEGER, avg_watch_seconds REAL, full_watch_ratio REAL,
-  tiktok_created_at TEXT);
+  tiktok_created_at TEXT{_AUDIENCE_COLUMNS_SQL});
 CREATE INDEX IF NOT EXISTS reddit_snapshots_by_record ON reddit_snapshots (record_id);
 CREATE INDEX IF NOT EXISTS publish_attempts_by_record ON publish_attempts (record_id);
 CREATE INDEX IF NOT EXISTS performance_snapshots_by_record
@@ -100,7 +113,9 @@ _METRIC_FIELDS = [
     "saves",
     "avg_watch_seconds",
     "full_watch_ratio",
+    "new_followers",
 ]
+_JSON_METRIC_FIELDS = ["retention", "traffic_sources"]
 _COLLECTION_FIELDS = [
     "lookback_days",
     "matched",
@@ -130,6 +145,7 @@ _PERFORMANCE_FIELDS = [
     "taken_at",
     "tiktok_video_id",
     *_METRIC_FIELDS,
+    *_JSON_METRIC_FIELDS,
     "tiktok_created_at",
 ]
 
@@ -162,6 +178,14 @@ _CROSSED_SQL = {
     **{f"latest_reddit_{f}": f"c.{f}" for f in _REDDIT_NUMBERS},
     "latest_reddit_available": "c.available",
     **{f"latest_{f}": f"p.{f}" for f in _METRIC_FIELDS},
+    **{
+        f"latest_retained_{second}s": f"json_extract(p.retention, '$[{second}]')"
+        for second in RETAINED_AT_SECONDS
+    },
+    "latest_for_you_ratio": (
+        "CASE WHEN p.traffic_sources IS NULL THEN NULL ELSE"
+        f" coalesce(json_extract(p.traffic_sources, '$.\"{FOR_YOU}\"'), 0.0) END"
+    ),
     "latest_taken_at": "p.taken_at",
 }
 
@@ -211,11 +235,28 @@ def _publish_attempt(row: sqlite3.Row, prefix: str = "") -> PublishAttempt:
     )
 
 
+def _metric_values(metrics: PerformanceMetrics) -> list[object]:
+    """The metrics in _METRIC_FIELDS then _JSON_METRIC_FIELDS order."""
+    return [
+        *(getattr(metrics, f) for f in _METRIC_FIELDS),
+        *(
+            None if getattr(metrics, f) is None else json.dumps(getattr(metrics, f))
+            for f in _JSON_METRIC_FIELDS
+        ),
+    ]
+
+
 def _performance_snapshot(row: sqlite3.Row, prefix: str = "") -> PerformanceSnapshot:
+    retention = row[f"{prefix}retention"]
+    traffic_sources = row[f"{prefix}traffic_sources"]
     return PerformanceSnapshot(
         taken_at=_from_iso(row[f"{prefix}taken_at"]),
         tiktok_video_id=row[f"{prefix}tiktok_video_id"],
-        metrics=PerformanceMetrics(**{f: row[f"{prefix}{f}"] for f in _METRIC_FIELDS}),
+        metrics=PerformanceMetrics(
+            **{f: row[f"{prefix}{f}"] for f in _METRIC_FIELDS},
+            retention=tuple(json.loads(retention)) if retention else None,
+            traffic_sources=json.loads(traffic_sources) if traffic_sources else None,
+        ),
         tiktok_created_at=_from_iso(row[f"{prefix}tiktok_created_at"]),
     )
 
@@ -229,6 +270,21 @@ class SqliteHistoryStore:
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._conn.executescript(SCHEMA)
         self._allow_reused_video_paths()
+        self._add_audience_columns()
+
+    def _add_audience_columns(self) -> None:
+        """A history whose snapshots predate the audience signals gets their
+        columns, empty in the rows it already has."""
+        existing = {
+            column["name"]
+            for column in self._conn.execute("PRAGMA table_info(performance_snapshots)")
+        }
+        with self._tx() as db:
+            for name, kind in _AUDIENCE_COLUMNS.items():
+                if name not in existing:
+                    db.execute(
+                        f"ALTER TABLE performance_snapshots ADD COLUMN {name} {kind}"
+                    )
 
     def _allow_reused_video_paths(self) -> None:
         """A history created when video_path was UNIQUE is rebuilt once
@@ -502,18 +558,20 @@ class SqliteHistoryStore:
                 ),
             ).lastrowid
             for record_id, snapshot in performance.items():
+                values = (
+                    record_id,
+                    collection_id,
+                    _to_iso(snapshot.taken_at),
+                    snapshot.tiktok_video_id,
+                    *_metric_values(snapshot.metrics),
+                    _to_iso(snapshot.tiktok_created_at),
+                )
                 db.execute(
                     "INSERT INTO performance_snapshots (record_id, collection_id,"
-                    f" taken_at, tiktok_video_id, {', '.join(_METRIC_FIELDS)},"
-                    " tiktok_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        record_id,
-                        collection_id,
-                        _to_iso(snapshot.taken_at),
-                        snapshot.tiktok_video_id,
-                        *(getattr(snapshot.metrics, f) for f in _METRIC_FIELDS),
-                        _to_iso(snapshot.tiktok_created_at),
-                    ),
+                    " taken_at, tiktok_video_id,"
+                    f" {', '.join([*_METRIC_FIELDS, *_JSON_METRIC_FIELDS])},"
+                    f" tiktok_created_at) VALUES ({', '.join('?' * len(values))})",
+                    values,
                 )
                 db.execute(
                     "UPDATE video_records SET tiktok_video_id = ? WHERE id = ?",
