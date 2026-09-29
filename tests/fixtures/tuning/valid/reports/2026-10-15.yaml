@@ -1,0 +1,32 @@
+id: R-2026-10-15
+cycle: 1
+period: {since: 2026-08-29, until: 2026-10-14}
+data_as_of: 2026-10-15T08:00:00+00:00
+videos:
+  considered: 120
+  excluded: {unsettled: 7, no_snapshot: 1, ambiguous: 1}
+findings:
+  - statement: "Histórias de trabalho em que o narrador dá o troco vão melhor."
+    area: story_kind
+    direction: works
+    videos: [101, 102, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113]
+    median_relative: 4.1
+    confidence: medium
+    is_lead: false
+    belief: B001
+    unchanged_since: null
+cycle_state:
+  share_intended: 0.25
+  share_achieved: 0.0
+  unfilled_slots: 4
+  base_median_relative: 1.0
+  experiments:
+    - {id: E001, settled: 1, target: 10, median_relative: 0.6}
+since_previous: {previous: R-2026-10-01, new_videos: 36, changed_findings: ["Trabalho com troco passou de pista a base."]}
+suggestions:
+  - {question: "Desconhecidos com reação do narrador funcionam?", kind: challenge, motivation: "Ajusta o E001.", decision: opened}
+  - {question: "Títulos em forma de pergunta trazem mais comentários?", kind: unexplored, motivation: "Debate traz comentários.", decision: backlog}
+recommendation: {action: close, reasons: ["Trabalho com troco atingiu 12 vídeos."]}
+decision: {action: close, note: "Fechar e ajustar a avaliação."}
+corrects: null
+view_url: https://claude.ai/artifact/example

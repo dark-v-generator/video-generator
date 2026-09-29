@@ -1,0 +1,32 @@
+id: R-2026-10-01
+cycle: 1
+period: {since: 2026-08-29, until: 2026-09-28}
+data_as_of: 2026-09-30T08:00:00+00:00
+videos:
+  considered: 84
+  excluded: {unsettled: 6, no_snapshot: 3, ambiguous: 0}
+distortions:
+  - {kind: failed_uploads, note: "32% dos envios de setembro falharam.", affects: "todos os achados de setembro"}
+findings:
+  - statement: "Histórias de trabalho em que o narrador dá o troco vão melhor."
+    area: story_kind
+    direction: works
+    videos: [101, 102, 104, 105, 106, 107, 108]
+    median_relative: 5.6
+    confidence: low
+    is_lead: true
+    belief: B001
+    unchanged_since: null
+cycle_state:
+  share_intended: 0.25
+  share_achieved: null
+  unfilled_slots: null
+  base_median_relative: 1.0
+  experiments: []
+since_previous: null
+suggestions:
+  - {question: "Histórias com desconhecidos funcionam?", kind: challenge, motivation: "Poucas foram feitas.", decision: opened}
+recommendation: {action: keep, reasons: ["O ciclo acabou de abrir."]}
+decision: {action: keep, note: ""}
+corrects: null
+view_url: null

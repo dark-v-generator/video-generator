@@ -35,7 +35,7 @@ fundação (entidades e leitura de `tuning/`) entra no PR 1.
 
 ## Phase 1: Setup
 
-- [ ] T001 Criar a branch `006-prompt-tuning-cycle` a partir de `main`; levar para ela `specs/006-prompt-tuning-cycle/`, `.specify/feature.json` e a mudança de `AGENTS.md`; registrar a linha de base de `uv run pytest -q` (testes coletados e falhas) e de `wc -l src/flows/daily_run.py` na seção Notes deste arquivo
+- [X] T001 Criar a branch `006-prompt-tuning-cycle` a partir de `main`; levar para ela `specs/006-prompt-tuning-cycle/`, `.specify/feature.json` e a mudança de `AGENTS.md`; registrar a linha de base de `uv run pytest -q` (testes coletados e falhas) e de `wc -l src/flows/daily_run.py` na seção Notes deste arquivo
 
 ---
 
@@ -44,11 +44,11 @@ fundação (entidades e leitura de `tuning/`) entra no PR 1.
 **Purpose**: entidades dos registros de ajuste e a leitura de `tuning/`. Bloqueia
 todas as stories.
 
-- [ ] T002 [P] Criar `src/entities/tuning.py` com os modelos pydantic de [data-model.md §1](./data-model.md): `Experiment` (com `Outcome`), `ExplorationPlan` (com `open()` devolvendo os `status=open` na ordem da lista e `ExplorationPlan.empty()` com `share=0`, `cycle=0`), `Belief`, `PromptChange`, `Cycle`, `Finding`, `Report`, `StoryLabel`; validadores para as regras do data-model (`open`/`closed` exigem todos os campos de texto, `closed` exige `outcome`, `challenge` exige `belief`, `share` entre 0 e 0,5, `base`/`does_not_work` exigem `evidence.videos ≥ 10`); sem I/O
-- [ ] T003 [P] Adicionar `tuning_dir()` em `src/core/paths.py` (lê `TUNING_DIR`, padrão `tuning/`, mesmo padrão de `history_db_path()`)
-- [ ] T004 Criar `src/storage/tuning_contract.py` com `TuningError` e o Protocol `TuningRecords` de [contracts/tuning-records.md](./contracts/tuning-records.md), e `src/storage/tuning_files.py` com `FileTuningRecords(root: Path)`: lê do disco a cada chamada, `exploration.yaml` ausente devolve o plano vazio, outros arquivos ausentes devolvem lista vazia, arquivo malformado levanta `TuningError` com caminho e campo, `open_cycle()` levanta se não houver exatamente um ciclo aberto, `story_labels()` devolve a linha mais recente por `record_id`, `write_summary()` grava `README.md`; exportar em `src/storage/__init__.py`
-- [ ] T005 [P] Criar os fixtures `tests/fixtures/tuning/valid/` (um ciclo fechado, um aberto, duas crenças, um experimento aberto, um fechado com `outcome`, um em `backlog`, dois relatórios, rótulos com uma reclassificação) e um diretório `tests/fixtures/tuning/broken-<regra>/` para cada invariante 2 a 7 de [contracts/tuning-records.md](./contracts/tuning-records.md), cada um quebrando só aquela regra
-- [ ] T006 Criar `tests/storage/test_tuning_files.py`: carga completa de `valid/`, ordem de prioridade preservada em `open()`, plano vazio sem arquivo, `TuningError` nomeando caminho e campo em YAML inválido, rótulo mais recente vence, `write_summary` grava o arquivo
+- [X] T002 [P] Criar `src/entities/tuning.py` com os modelos pydantic de [data-model.md §1](./data-model.md): `Experiment` (com `Outcome`), `ExplorationPlan` (com `open()` devolvendo os `status=open` na ordem da lista e `ExplorationPlan.empty()` com `share=0`, `cycle=0`), `Belief`, `PromptChange`, `Cycle`, `Finding`, `Report`, `StoryLabel`; validadores para as regras do data-model (`open`/`closed` exigem todos os campos de texto, `closed` exige `outcome`, `challenge` exige `belief`, `share` entre 0 e 0,5, `base`/`does_not_work` exigem `evidence.videos ≥ 10`); sem I/O
+- [X] T003 [P] Adicionar `tuning_dir()` em `src/core/paths.py` (lê `TUNING_DIR`, padrão `tuning/`, mesmo padrão de `history_db_path()`)
+- [X] T004 Criar `src/storage/tuning_contract.py` com `TuningError` e o Protocol `TuningRecords` de [contracts/tuning-records.md](./contracts/tuning-records.md), e `src/storage/tuning_files.py` com `FileTuningRecords(root: Path)`: lê do disco a cada chamada, `exploration.yaml` ausente devolve o plano vazio, outros arquivos ausentes devolvem lista vazia, arquivo malformado levanta `TuningError` com caminho e campo, `open_cycle()` levanta se não houver exatamente um ciclo aberto, `story_labels()` devolve a linha mais recente por `record_id`, `write_summary()` grava `README.md`; exportar em `src/storage/__init__.py`
+- [X] T005 [P] Criar os fixtures `tests/fixtures/tuning/valid/` (um ciclo fechado, um aberto, duas crenças, um experimento aberto, um fechado com `outcome`, um em `backlog`, dois relatórios, rótulos com uma reclassificação) e um diretório `tests/fixtures/tuning/broken-<regra>/` para cada invariante 2 a 7 de [contracts/tuning-records.md](./contracts/tuning-records.md), cada um quebrando só aquela regra
+- [X] T006 Criar `tests/storage/test_tuning_files.py`: carga completa de `valid/`, ordem de prioridade preservada em `open()`, plano vazio sem arquivo, `TuningError` nomeando caminho e campo em YAML inválido, rótulo mais recente vence, `write_summary` grava o arquivo
 
 ---
 
@@ -324,4 +324,4 @@ Se os dados do M4 mostrarem que quase nenhuma história atinge `min_fit`, ajusta
 - O golden (`tests/fixtures/daily_run_golden.json`) não muda em nenhum PR.
 - A skill escreve os registros de `tuning/`; o código só os lê, com exceção do `README.md` gerado.
 - Commit por tarefa ou grupo lógico; mensagens de commit em inglês.
-- Linha de base (T001): _a preencher_.
+- Linha de base (T001, 2026-09-29, `main` em 9812b37): `uv run pytest -q` → 494 passed, 0 falhas; `wc -l src/flows/daily_run.py` → 315.

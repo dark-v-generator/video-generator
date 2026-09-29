@@ -1,0 +1,28 @@
+beliefs:
+  - id: B001
+    statement: "Histórias de trabalho em que o narrador dá o troco vão melhor que as vizinhas."
+    area: story_kind
+    status: base
+    evidence:
+      videos: 12
+      median_relative: 4.1
+      period: {since: 2026-08-29, until: 2026-10-14}
+    confidence: medium
+    entered: {cycle: 1, date: 2026-10-01}
+    last_tested: 2026-10-15
+    history:
+      - {date: 2026-10-01, cycle: 1, event: entered, source: R-2026-10-01, note: "7 vídeos, pista."}
+      - {date: 2026-10-15, cycle: 1, event: confirmed, source: R-2026-10-15, note: "12 vídeos, entra na base."}
+  - id: B002
+    statement: "Histórias com desconhecidos e empresas não decolam."
+    area: story_kind
+    status: lead
+    evidence:
+      videos: 7
+      median_relative: 0.8
+      period: {since: 2026-08-29, until: 2026-10-14}
+    confidence: low
+    entered: {cycle: 1, date: 2026-10-01}
+    last_tested: 2026-10-15
+    history:
+      - {date: 2026-10-01, cycle: 1, event: entered, source: R-2026-10-01}

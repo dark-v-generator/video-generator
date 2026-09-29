@@ -1,0 +1,23 @@
+number: 1
+opened: 2026-10-01
+deployed: 2026-10-01
+closed: 2026-10-15
+prompts:
+  story: aaaaaaaaaaaa
+  evaluate_story: bbbbbbbbbbbb
+  generate_hashtags: cccccccccccc
+  evaluate_exploration: null
+settings: {writer_model: moonshotai/kimi-k2.6, grader_model: deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
+changes: []
+experiment_changes:
+  - {date: 2026-10-01, report: R-2026-10-01, action: opened, experiment: E001}
+  - {date: 2026-10-15, report: R-2026-10-15, action: closed, experiment: E001, note: "Substituído pelo E002."}
+outside_changes: []
+evaluation:
+  result: not_evaluated
+  base_videos: 30
+  median_relative: 1.0
+  previous_median_relative: null
+  note: "Linha de base: nada a comparar."
+reports: [R-2026-10-01]
+closing: {recommendation: close, decision: close, note: "Trabalho com troco tem evidência para a base."}

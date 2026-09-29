@@ -1,0 +1,40 @@
+cycle: 2
+share: 0.25
+share_since: 2026-10-15
+min_fit: 70
+experiments:
+  - id: E002
+    status: open
+    kind: challenge
+    question: "Histórias com desconhecidos funcionam quando o narrador reage?"
+    motivation: "Nenhuma das 10 com desconhecidos passou de 1,5×, mas nenhuma tinha reação."
+    belief: B099
+    looks_like: "Conflito com um desconhecido ou empresa em que o narrador faz algo a respeito."
+    sample_target: 10
+    decision_rule: "Confirma a crença abaixo de 0,8; refuta acima de 1,2."
+    opened: {cycle: 2, date: 2026-10-15}
+    replaces: E001
+    outcome: null
+  - id: E001
+    status: closed
+    kind: challenge
+    question: "Histórias com desconhecidos funcionam?"
+    motivation: "Poucas foram feitas."
+    belief: B002
+    looks_like: "Conflito com um desconhecido."
+    sample_target: 10
+    decision_rule: "Confirma abaixo de 0,8."
+    opened: {cycle: 1, date: 2026-10-01}
+    replaces: null
+    outcome:
+      verdict: closed_without_verdict
+      date: 2026-10-15
+      cycle: 1
+      videos: [103]
+      settled_count: 1
+      median_relative: 0.6
+      note: "Substituído pelo E002, que pede a reação do narrador."
+  - id: E003
+    status: backlog
+    question: "Títulos em forma de pergunta trazem mais comentários?"
+    motivation: "Histórias em que o narrador é culpado têm mais comentários."

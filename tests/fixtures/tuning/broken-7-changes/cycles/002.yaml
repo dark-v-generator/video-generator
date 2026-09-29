@@ -1,0 +1,29 @@
+number: 2
+opened: 2026-10-15
+deployed: 2026-10-16
+closed: null
+prompts:
+  story: 7762c0b406eb
+  evaluate_story: 3e4291cd0044
+  generate_hashtags: 45008173f17e
+  evaluate_exploration: null
+settings: {writer_model: moonshotai/kimi-k2.6, grader_model: deepseek/deepseek-v4-flash, rendering_strategy: narration-over-footage}
+changes:
+  - prompt: evaluate_story
+    before: "Valorize histórias com conflito claro."
+    after: "Valorize histórias em que o narrador reage, porque a audiência fica para ver a reação."
+    justification: {kind: finding, ref: R-2026-09-01, summary: "Títulos que prometem reação: 2,4× em 12 vídeos."}
+    decision: approved
+    reverts: null
+  - prompt: story
+    before: "Termine com uma pergunta."
+    after: "Termine com 'quem tá errado?'."
+    justification: {kind: belief, ref: B002, summary: "Debate traz comentários."}
+    decision: rejected
+    reason: "Pista fraca; esperar o experimento."
+experiment_changes:
+  - {date: 2026-10-15, report: R-2026-10-15, action: opened, experiment: E002}
+outside_changes: []
+evaluation: null
+reports: []
+closing: null
